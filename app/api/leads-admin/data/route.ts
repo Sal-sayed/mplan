@@ -3,7 +3,7 @@ import { getLeads } from '@/lib/leads-store';
 
 export async function GET() {
   try {
-    const leads = getLeads();
+    const leads = await getLeads();
 
     return NextResponse.json({
       leads,

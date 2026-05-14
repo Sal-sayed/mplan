@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Save lead
-    const lead = saveLead({
+    const lead = await saveLead({
       email,
       mode,
       website_url: planOrAudit.websiteInfo?.url || '',

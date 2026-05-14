@@ -1,8 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import fs from 'fs';
-import path from 'path';
+import { createClient } from '@supabase/supabase-js';
 
-const LEADS_FILE = path.join(process.cwd(), 'data', 'leads.json');
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
 export interface Lead {
   id: string;
@@ -18,33 +20,37 @@ export interface Lead {
   created_at: string;
 }
 
-function ensureFile() {
-  const dir = path.dirname(LEADS_FILE);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  if (!fs.existsSync(LEADS_FILE)) fs.writeFileSync(LEADS_FILE, '[]', 'utf-8');
-}
+export async function getLeads(): Promise<Lead[]> {
+  const { data, error } = await supabase
+    .from('leads')
+    .select('id, email, mode, website_url, website_title, industry, business_type, health_score, health_grade, plan_summary, created_at')
+    .order('created_at', { ascending: false });
 
-export function getLeads(): Lead[] {
-  ensureFile();
-  try {
-    const raw = fs.readFileSync(LEADS_FILE, 'utf-8');
-    return JSON.parse(raw);
-  } catch {
+  if (error) {
+    console.error('Supabase getLeads error:', error);
     return [];
   }
+  return data || [];
 }
 
-export function saveLead(lead: Omit<Lead, 'id' | 'created_at'>): Lead {
-  ensureFile();
-  const leads = getLeads();
-  const newLead: Lead = {
+export async function saveLead(lead: Omit<Lead, 'id' | 'created_at'>): Promise<Lead> {
+  const newLead = {
     ...lead,
     id: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    created_at: new Date().toISOString(),
   };
-  leads.unshift(newLead);
-  fs.writeFileSync(LEADS_FILE, JSON.stringify(leads, null, 2), 'utf-8');
-  return newLead;
+
+  const { data, error } = await supabase
+    .from('leads')
+    .insert(newLead)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Supabase saveLead error:', error);
+    // Return a fallback so the pipeline doesn't break
+    return { ...newLead, created_at: new Date().toISOString() };
+  }
+  return data;
 }
 
 export function maskEmail(email: string): string {
