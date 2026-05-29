@@ -19,7 +19,14 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (_anthropic) return _anthropic;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY must be set');
+  _anthropic = new Anthropic({ apiKey });
+  return _anthropic;
+}
 
 export type CoverageMethod = 'no-events' | 'normalized-match' | 'keyword-match' | 'ai-check' | 'no-match';
 
@@ -144,7 +151,7 @@ async function aiCheckEquivalence(
     return { isCovered: false, coveredByEvent: null, method: 'no-events', reasoning: 'No events to compare against' };
   }
   try {
-    const response = await anthropic.messages.create({
+    const response = await getAnthropic().messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
       messages: [{

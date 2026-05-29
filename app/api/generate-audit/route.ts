@@ -4,7 +4,14 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AUDIT_PROMPT } from '@/lib/audit-prompt';
 import { findEventCoverage } from '@/lib/event-equivalence';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
+let _anthropic: Anthropic | null = null;
+function getAnthropic(): Anthropic {
+  if (_anthropic) return _anthropic;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY must be set');
+  _anthropic = new Anthropic({ apiKey });
+  return _anthropic;
+}
 export const maxDuration = 90;
 
 export async function POST(req: NextRequest) {
@@ -43,7 +50,7 @@ export async function POST(req: NextRequest) {
       console.log(`[generate-audit] retailer redirects: ${(businessModel.retailers || []).join(', ') || 'detected via CTA text'}`);
     }
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 16000,
       messages: [{

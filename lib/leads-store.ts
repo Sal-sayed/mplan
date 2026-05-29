@@ -1,10 +1,17 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+let _supabase: SupabaseClient | null = null;
+function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set');
+  }
+  _supabase = createClient(url, key);
+  return _supabase;
+}
 
 export interface Lead {
   id: string;
@@ -21,7 +28,7 @@ export interface Lead {
 }
 
 export async function getLeads(): Promise<Lead[]> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('leads')
     .select('id, email, mode, website_url, website_title, industry, business_type, health_score, health_grade, plan_summary, created_at')
     .order('created_at', { ascending: false });
@@ -39,7 +46,7 @@ export async function saveLead(lead: Omit<Lead, 'id' | 'created_at'>): Promise<L
     id: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('leads')
     .insert(newLead)
     .select()

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { anthropic } from '@/lib/anthropic';
+import { getAnthropic } from '@/lib/anthropic';
 import { MEASUREMENT_PLAN_PROMPT } from '@/lib/prompts';
 import { sanitizePlan } from '@/lib/sanitize-plan';
 
@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-20250514',
       max_tokens: 16000,
       messages: [
