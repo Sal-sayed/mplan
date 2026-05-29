@@ -39,9 +39,6 @@ export default function LeadsLogin() {
       <AnimatedBackground />
 
       <div className="relative h-full flex items-center justify-center p-6">
-        <Link href="/" className="absolute top-6 left-6 flex items-center gap-2 text-white/50 hover:text-white transition text-sm">
-          <ArrowLeft size={14} /> Back to home
-        </Link>
 
         <div className="w-full max-w-sm">
           <div className="text-center mb-8">

@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import * as Icons from 'lucide-react';
-import { Check } from 'lucide-react';
-import { LOADING_MESSAGES, getMessageTier } from '@/lib/loading-messages';
-import EventNetworkAnimation from './loading/EventNetworkAnimation';
+import { motion } from 'framer-motion';
+import { Check, ArrowLeft } from 'lucide-react';
+import SpeedCoder from './loading/SpeedCoder';
+import WhackABugGame from './loading/WhackABugGame';
 
 const STAGES = [
   { key: 'scraping', label: 'Scanning website', desc: 'Reading buttons, forms, and CTAs' },
@@ -14,57 +13,150 @@ const STAGES = [
   { key: 'delivering', label: 'Delivering to inbox', desc: 'Building Excel and sending email' },
 ];
 
-interface Props { stage: string; progress: number; url: string; email: string; mode?: 'new' | 'audit'; }
+// Checkpoint progress each stage starts at (matches setProgress(...) calls in runPipeline)
+const STAGE_CHECKPOINTS: Record<string, number> = {
+  scraping: 15,
+  scoring: 30,
+  generating: 65,
+  delivering: 85,
+};
 
-export default function LoadingScreen({ stage, progress, url, email, mode }: Props) {
+// Heuristic expected duration per stage, in ms. Used to drive smooth creep — does
+// not affect actual work; only the visual bar. Existing-mode scrape is much heavier
+// (network interception, dataLayer extraction, GTM container fetch, sub-pages).
+function getExpectedDurationMs(stage: string, mode?: 'new' | 'audit'): number {
+  switch (stage) {
+    // Existing-mode scrape: 45s sim on homepage + 25s sim × up to 3 sub-pages
+    // + consent/navigation/settle/GTM-fetch overhead → ~3-4 minutes.
+    case 'scraping': return mode === 'audit' ? 420000 : 25000;
+    case 'scoring': return 8000;
+    case 'generating': return 60000;
+    case 'delivering': return 6000;
+    default: return 10000;
+  }
+}
+
+function nextCheckpoint(stage: string): number {
+  const idx = STAGES.findIndex(s => s.key === stage);
+  if (idx < 0) return 100;
+  const next = STAGES[idx + 1];
+  return next ? STAGE_CHECKPOINTS[next.key] : 100;
+}
+
+interface Props {
+  stage: string;
+  progress: number;
+  url: string;
+  email: string;
+  mode?: 'new' | 'audit';
+  onCancel?: () => void;
+}
+
+export default function LoadingScreen({ stage, progress, url, email, mode, onCancel }: Props) {
   const currentIdx = STAGES.findIndex(s => s.key === stage);
   const [elapsedSec, setElapsedSec] = useState(0);
-  const [messageIdx, setMessageIdx] = useState(0);
   const startTime = useRef<number>(Date.now());
 
-  useEffect(() => { const i = setInterval(() => { setElapsedSec(Math.floor((Date.now() - startTime.current) / 1000)); }, 1000); return () => clearInterval(i); }, []);
-  useEffect(() => { const i = setInterval(() => { setMessageIdx(n => n + 1); }, 4000); return () => clearInterval(i); }, []);
+  // Smooth, asymptotic creep — display progress edges toward the next checkpoint
+  // over the stage's expected duration so the bar always appears to be moving.
+  const [displayProgress, setDisplayProgress] = useState(progress);
+  const stageEnteredAt = useRef<number>(Date.now());
+  const stageEntryProgress = useRef<number>(progress);
+  const lastStage = useRef<string>(stage);
+  const lastTargetProgress = useRef<number>(progress);
 
-  const tier = getMessageTier(elapsedSec);
-  const messages = LOADING_MESSAGES[tier];
-  const currentMessage = messages[messageIdx % messages.length];
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const IconComponent = (Icons as any)[currentMessage.icon] || Icons.Loader2;
+  // Reset stage anchors when the real stage or backend checkpoint changes
+  useEffect(() => {
+    if (stage !== lastStage.current || progress !== lastTargetProgress.current) {
+      stageEnteredAt.current = Date.now();
+      stageEntryProgress.current = Math.max(progress, displayProgress);
+      lastStage.current = stage;
+      lastTargetProgress.current = progress;
+    }
+    // displayProgress intentionally excluded — we only re-anchor on real stage/checkpoint changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, progress]);
+
+  useEffect(() => {
+    const i = setInterval(() => {
+      setElapsedSec(Math.floor((Date.now() - startTime.current) / 1000));
+
+      const expected = getExpectedDurationMs(stage, mode);
+      const elapsedInStage = Date.now() - stageEnteredAt.current;
+      const ceiling = Math.max(nextCheckpoint(stage) - 0.5, progress);
+      const start = stageEntryProgress.current;
+      // 1 - exp(-t / expected) gives a curve that approaches 1 but never reaches it,
+      // so the bar feels alive without lying about completion.
+      const k = 1 - Math.exp(-elapsedInStage / (expected * 0.7));
+      const target = start + (ceiling - start) * k;
+      // Never go backwards, never overtake the next checkpoint, always >= real progress
+      setDisplayProgress(prev => Math.max(prev, Math.min(target, ceiling), progress));
+    }, 200);
+    return () => clearInterval(i);
+  }, [stage, mode, progress]);
+
   const minutes = Math.floor(elapsedSec / 60);
   const seconds = elapsedSec % 60;
   const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-  // Adjust stage labels based on mode
-  const stages = STAGES.map(s => {
-    if (s.key === 'generating' && mode === 'audit') {
-      return { ...s, label: 'Generating audit', desc: 'Analyzing gaps and recommending events' };
-    }
-    return s;
-  });
-
   return (
-    <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden">
-      <div className="w-full max-w-lg">
-        <div className="mb-8"><EventNetworkAnimation /></div>
+    <div className="h-full w-full flex flex-col items-center justify-center p-6 overflow-hidden relative">
 
-        {/* URL + Email */}
-        <div className="text-center mb-6">
-          <p className="text-sm text-slate-300 truncate">{url}</p>
-          <p className="text-xs text-slate-500 mt-1 truncate">&rarr; {email}</p>
+      {/* Back button */}
+      {onCancel && (
+        <button onClick={onCancel}
+          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20 pointer-events-auto">
+          <ArrowLeft size={14} /> Back
+        </button>
+      )}
+
+      {/* Interactive whack-a-bug game layer */}
+      <WhackABugGame />
+
+      {/* Main content — pointer-events-none so bugs behind are clickable */}
+      <div className="relative z-10 flex flex-col items-center justify-center w-full pointer-events-none">
+
+        {/* URL and Email */}
+        <div className="mb-6 text-center">
+          <p className="text-white text-sm font-medium truncate max-w-md">{url}</p>
+          <p className="text-white/70 text-xs mt-1 truncate max-w-md">&rarr; {email}</p>
         </div>
 
-        {/* Stages */}
-        <div className="space-y-2 mb-8">
-          {stages.map((s, i) => {
-            const done = i < currentIdx; const active = i === currentIdx;
+        {/* Speed Coder — the star of the show */}
+        <div className="relative">
+          <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
+          <div className="relative">
+            <SpeedCoder />
+          </div>
+        </div>
+
+        {/* Stage progress list */}
+        <div className="w-full max-w-md mt-6 space-y-3">
+          {STAGES.map((s, idx) => {
+            const isActive = s.key === stage;
+            const isDone = currentIdx > idx;
             return (
-              <div key={s.key} className={`flex items-start gap-3 p-3 rounded-xl border transition-all ${active ? 'bg-blue-500/10 border-blue-500/20' : done ? 'bg-white/[0.03] border-white/[0.05] opacity-60' : 'bg-transparent border-transparent opacity-30'}`}>
-                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${done ? 'bg-emerald-500' : active ? 'bg-blue-500' : 'bg-white/10'}`}>
-                  {done ? <Check size={11} className="text-white" /> : active ? <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" /> : null}
+              <div key={s.key} className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  {isDone ? (
+                    <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
+                      <Check size={10} className="text-white" />
+                    </div>
+                  ) : isActive ? (
+                    <div className="w-4 h-4 rounded-full bg-blue-500 animate-pulse" />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full border border-white/30" />
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <div className={`text-sm font-medium ${done || active ? 'text-white' : 'text-slate-600'}`}>{s.label}</div>
-                  <div className="text-xs text-slate-500 truncate">{s.desc}</div>
+                <div>
+                  <div className={
+                    isActive ? 'text-white font-medium text-sm'
+                    : isDone ? 'text-emerald-400 text-sm'
+                    : 'text-white/40 text-sm'
+                  }>
+                    {s.label}
+                  </div>
+                  <div className="text-white/60 text-xs">{s.desc}</div>
                 </div>
               </div>
             );
@@ -72,28 +164,24 @@ export default function LoadingScreen({ stage, progress, url, email, mode }: Pro
         </div>
 
         {/* Progress bar */}
-        <div className="h-1.5 bg-white/[0.05] rounded-full overflow-hidden mb-2">
-          <motion.div initial={{ width: '0%' }} animate={{ width: `${progress}%` }} transition={{ duration: 0.5 }}
-            className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-400 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
-          </motion.div>
-        </div>
-        <div className="flex items-center justify-between text-xs text-slate-500 mb-8"><span>{progress}%</span><span className="font-mono">{timeDisplay}</span></div>
-
-        {/* Rotating message */}
-        <div className="relative min-h-[80px]" aria-live="polite" aria-atomic="true">
-          <AnimatePresence mode="wait">
-            <motion.div key={`${tier}-${messageIdx}`} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.4 }}
-              className="flex items-start gap-3 px-4 py-4 bg-white/[0.05] backdrop-blur-xl border border-white/[0.08] rounded-xl">
-              <div className={`mt-0.5 shrink-0 ${tier === 'tactical' ? 'text-slate-400' : tier === 'permission' ? 'text-amber-400' : 'text-blue-400'}`}><IconComponent size={18} /></div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white leading-relaxed">{currentMessage.text}</p>
-                {tier === 'permission' && <p className="text-xs text-slate-500 mt-1">We&apos;ll keep working in the background</p>}
-              </div>
+        <div className="w-full max-w-md mt-6">
+          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-400 relative"
+              initial={{ width: 0 }}
+              animate={{ width: `${displayProgress}%` }}
+              transition={{ duration: 0.4, ease: 'linear' }}
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
             </motion.div>
-          </AnimatePresence>
+          </div>
+          <div className="flex items-center justify-between text-xs text-white/50 mt-1.5">
+            <span>{Math.round(displayProgress)}%</span>
+            <span className="font-mono">{timeDisplay}</span>
+          </div>
         </div>
-      </div>
+
+      </div>{/* end pointer-events-none wrapper */}
     </div>
   );
 }

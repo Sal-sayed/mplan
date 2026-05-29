@@ -6,6 +6,15 @@ export const LOADING_MESSAGES = {
     { text: 'Detecting your business model...', icon: 'Briefcase' },
     { text: 'Analyzing user touchpoints...', icon: 'Users' },
     { text: 'Auditing your current analytics setup...', icon: 'Activity' },
+    // ─── Aggressive-simulation tier — surfaced during the click-everything pass ───
+    { text: 'Clicking every button on your site...', icon: 'MousePointerClick' },
+    { text: 'Triggering 50+ interactive elements...', icon: 'Zap' },
+    { text: 'Hovering through navigation menus...', icon: 'Compass' },
+    { text: 'Tapping product cards to fire events...', icon: 'Layers' },
+    { text: 'Simulating purchase intent flows...', icon: 'ShoppingCart' },
+    { text: 'Activating all configured tracking...', icon: 'Radio' },
+    { text: 'Forcing every GTM trigger to fire...', icon: 'Bolt' },
+    { text: 'Capturing dynamic event firing...', icon: 'Activity' },
   ],
   permission: [
     { text: 'This usually takes under a minute — feel free to grab a coffee', icon: 'Coffee' },
@@ -26,7 +35,9 @@ export const LOADING_MESSAGES = {
 } as const;
 
 export function getMessageTier(elapsedSeconds: number): keyof typeof LOADING_MESSAGES {
-  if (elapsedSeconds < 15) return 'tactical';
-  if (elapsedSeconds < 45) return 'permission';
+  // The existing-mode scrape now runs ~3-4 minutes (45s sim × 4 pages + GTM
+  // container fetches), so the tactical/permission windows widened.
+  if (elapsedSeconds < 90) return 'tactical';
+  if (elapsedSeconds < 180) return 'permission';
   return 'value';
 }

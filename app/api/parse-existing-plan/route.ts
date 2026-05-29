@@ -61,7 +61,11 @@ export async function POST(req: NextRequest) {
     });
     parsedPlan.detectedEvents = eventNames;
 
-    return NextResponse.json({ success: true, parsedPlan });
+    return NextResponse.json({
+      success: true,
+      parsedPlan,
+      rawBufferBase64: Buffer.from(arrayBuffer).toString('base64'),
+    });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to parse Excel file';
     console.error('Parse error:', err);

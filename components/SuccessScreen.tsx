@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Mail, FileSpreadsheet, ArrowRight, RotateCcw, Search } from 'lucide-react';
+import { CheckCircle2, Mail, FileSpreadsheet, ArrowRight, RotateCcw, Search, ArrowLeft } from 'lucide-react';
 import ResultsScreen from './ResultsScreen';
+import AuditResultsScreen from './AuditResultsScreen';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -20,9 +21,21 @@ interface Props {
 
 export default function SuccessScreen({ mode, plan, audit, score, scrapeData, email, emailDelivered, onReset }: Props) {
   const [showPlan, setShowPlan] = useState(false);
+  const [gameScore, setGameScore] = useState(0);
+
+  useEffect(() => {
+    try {
+      const saved = sessionStorage.getItem('bugGameHighScore');
+      if (saved) setGameScore(parseInt(saved));
+    } catch { /* SSR safe */ }
+  }, []);
 
   if (showPlan && mode === 'new' && plan) {
     return <ResultsScreen plan={plan} score={score} scrapeData={scrapeData} onReset={onReset} />;
+  }
+
+  if (showPlan && mode === 'audit' && audit) {
+    return <AuditResultsScreen audit={audit} score={score} scrapeData={scrapeData} onReset={onReset} onBack={() => setShowPlan(false)} />;
   }
 
   const isAudit = mode === 'audit';
@@ -31,7 +44,14 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
     : (plan?.websiteInfo?.title || plan?.websiteInfo?.url);
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0b1120]">
+    <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0b1120] relative">
+
+      {/* Back button */}
+      <button onClick={onReset}
+        className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20">
+        <ArrowLeft size={14} /> Back
+      </button>
+
       <div className="w-full max-w-lg">
 
         {/* Check animation */}
@@ -127,11 +147,30 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
               View the plan on-screen <ArrowRight size={15} />
             </button>
           )}
+          {mode === 'audit' && audit && (
+            <button onClick={() => setShowPlan(true)}
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 text-white font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/20 transition-all">
+              View audit findings <ArrowRight size={15} />
+            </button>
+          )}
           <button onClick={onReset}
             className="w-full py-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-400 text-sm hover:text-white hover:border-white/[0.15] transition flex items-center justify-center gap-2">
             <RotateCcw size={13} /> Analyze another website
           </button>
         </motion.div>
+
+        {/* Bug game score badge */}
+        {gameScore > 0 && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55 }}
+            className="mt-4 text-center">
+            <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-4 py-2">
+              <span className="text-lg">{'\ud83d\udc1b'}</span>
+              <span className="text-sm text-yellow-300 font-medium">
+                You squashed bugs for {gameScore} points while we worked!
+              </span>
+            </div>
+          </motion.div>
+        )}
 
         {/* Footer */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}

@@ -60,9 +60,7 @@ export default function LeadsPage() {
     <div className="h-screen w-screen overflow-hidden bg-[#0b1120] flex flex-col">
       {/* Header */}
       <header className="shrink-0 h-14 px-6 flex items-center justify-between border-b border-white/[0.08]">
-        <Link href="/" className="flex items-center gap-2 text-slate-400 hover:text-white transition text-sm">
-          <ArrowLeft size={15} /> Back to home
-        </Link>
+        <div />
         <div className="flex items-center gap-3">
           <span className="text-xs text-slate-500 uppercase tracking-wider hidden sm:inline">Admin</span>
           <button onClick={handleLogout}
@@ -110,12 +108,10 @@ export default function LeadsPage() {
           ) : (
             <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl overflow-hidden flex flex-col min-h-0">
               {/* Table header */}
-              <div className="shrink-0 grid grid-cols-[1.8fr_0.6fr_2fr_1.2fr_0.7fr_1.3fr] gap-0 px-5 py-2.5 border-b border-white/[0.07] bg-white/[0.02]">
+              <div className="shrink-0 grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 px-5 py-2.5 border-b border-white/[0.07] bg-white/[0.02]">
                 <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Email</span>
                 <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Mode</span>
                 <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Website</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Industry</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Score</span>
                 <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Date & Time</span>
               </div>
 
@@ -123,7 +119,7 @@ export default function LeadsPage() {
               <div className="flex-1 overflow-y-auto scroll-area">
                 {leads.map((lead, i) => (
                   <motion.div key={lead.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                    className="grid grid-cols-[1.8fr_0.6fr_2fr_1.2fr_0.7fr_1.3fr] gap-0 items-center px-5 py-3 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02] transition">
+                    className="grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 items-center px-5 py-3 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02] transition">
                     <span className="text-sm text-white font-mono truncate pr-3">{lead.email}</span>
                     <span className={`text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-medium ${
                       lead.mode === 'audit'
@@ -136,10 +132,6 @@ export default function LeadsPage() {
                       <Globe size={11} className="text-slate-600 shrink-0" />
                       <span className="text-sm text-slate-400 truncate">{lead.website_title || lead.website_url || '—'}</span>
                     </div>
-                    <span className="text-sm text-slate-500 truncate pr-3">{lead.industry || '—'}</span>
-                    <span className={`text-sm font-medium ${lead.health_score >= 70 ? 'text-emerald-400' : lead.health_score >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                      {lead.health_score ? <>{lead.health_score}<span className="text-slate-600">/100</span></> : <span className="text-slate-600">—</span>}
-                    </span>
                     <span className="text-xs text-slate-500 font-mono">{formatDateTime(lead.created_at)}</span>
                   </motion.div>
                 ))}

@@ -10,17 +10,31 @@ interface GlowNode {
   x: number; y: number; vx: number; vy: number; r: number; opacity: number; pulse: number; offset: number;
 }
 
+interface Ripple {
+  x: number; y: number; r: number; maxR: number; opacity: number;
+}
+
+interface Spark {
+  x: number; y: number; vx: number; vy: number; life: number; maxLife: number; size: number; hue: number;
+}
+
+interface TrailPoint {
+  x: number; y: number; age: number;
+}
+
 export default function AnimatedBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mouseRef = useRef({ x: 0.5, y: 0.5 });
+  const mouseRef = useRef({ x: 0.5, y: 0.5, px: 0, py: 0, speed: 0 });
   const particlesRef = useRef<Particle[]>([]);
   const nodesRef = useRef<GlowNode[]>([]);
+  const ripplesRef = useRef<Ripple[]>([]);
+  const sparksRef = useRef<Spark[]>([]);
+  const trailRef = useRef<TrailPoint[]>([]);
   const frameRef = useRef(0);
   const tRef = useRef(0);
   const startRef = useRef(Date.now());
 
   const init = useCallback((w: number, h: number) => {
-    // Floating particles
     const pCount = Math.min(100, Math.floor((w * h) / 12000));
     const particles: Particle[] = [];
     for (let i = 0; i < pCount; i++) particles.push({
@@ -33,7 +47,6 @@ export default function AnimatedBackground() {
     });
     particlesRef.current = particles;
 
-    // Network nodes
     const nCount = Math.min(40, Math.floor((w * h) / 35000));
     const nodes: GlowNode[] = [];
     for (let i = 0; i < nCount; i++) nodes.push({
@@ -52,8 +65,47 @@ export default function AnimatedBackground() {
     const resize = () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; particlesRef.current = []; nodesRef.current = []; init(canvas.width, canvas.height); };
     resize(); window.addEventListener('resize', resize);
 
-    const onMouse = (e: MouseEvent) => { mouseRef.current = { x: e.clientX / window.innerWidth, y: e.clientY / window.innerHeight }; };
+    const onMouse = (e: MouseEvent) => {
+      const prevX = mouseRef.current.px;
+      const prevY = mouseRef.current.py;
+      mouseRef.current.px = e.clientX;
+      mouseRef.current.py = e.clientY;
+      mouseRef.current.x = e.clientX / window.innerWidth;
+      mouseRef.current.y = e.clientY / window.innerHeight;
+      mouseRef.current.speed = Math.sqrt((e.clientX - prevX) ** 2 + (e.clientY - prevY) ** 2);
+
+      // Add trail point
+      trailRef.current.push({ x: e.clientX, y: e.clientY, age: 0 });
+      if (trailRef.current.length > 30) trailRef.current.shift();
+    };
     window.addEventListener('mousemove', onMouse);
+
+    // Click/touch: spawn ripple + sparks
+    const onClick = (e: MouseEvent | TouchEvent) => {
+      const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      const y = 'touches' in e ? e.touches[0].clientY : e.clientY;
+
+      // Ripple
+      ripplesRef.current.push({ x, y, r: 0, maxR: 120 + Math.random() * 80, opacity: 0.6 });
+
+      // Sparks burst
+      const sparkCount = 12 + Math.floor(Math.random() * 8);
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (Math.PI * 2 * i) / sparkCount + (Math.random() - 0.5) * 0.5;
+        const speed = 2 + Math.random() * 4;
+        sparksRef.current.push({
+          x, y,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: 1,
+          maxLife: 40 + Math.random() * 30,
+          size: 1 + Math.random() * 2,
+          hue: 200 + Math.random() * 40,
+        });
+      }
+    };
+    canvas.addEventListener('click', onClick);
+    canvas.addEventListener('touchstart', onClick as EventListener);
 
     const animate = () => {
       if (!ctx || !canvas) return;
@@ -62,10 +114,11 @@ export default function AnimatedBackground() {
       const t = tRef.current;
       const elapsed = (Date.now() - startRef.current) / 1000;
       const mx = mouseRef.current.x, my = mouseRef.current.y;
+      const mpx = mouseRef.current.px, mpy = mouseRef.current.py;
+      const mSpeed = mouseRef.current.speed;
 
       ctx.clearRect(0, 0, w, h);
 
-      // Parallax offset from mouse
       const px = (mx - 0.5) * 20;
       const py = (my - 0.5) * 15;
 
@@ -88,7 +141,6 @@ export default function AnimatedBackground() {
         const bh = b.h * h * 0.5;
         const by = h - bh + py * 0.3;
 
-        // Building body
         const bGrad = ctx.createLinearGradient(bx, by, bx, h);
         bGrad.addColorStop(0, 'rgba(20,30,60,0.6)');
         bGrad.addColorStop(0.3, 'rgba(15,23,50,0.5)');
@@ -96,7 +148,6 @@ export default function AnimatedBackground() {
         ctx.fillStyle = bGrad;
         ctx.fillRect(bx, by, bw, bh);
 
-        // Glass reflection sweep
         const sweepX = ((t * 15 + b.x * 500) % (bw + 30)) - 15;
         const rGrad = ctx.createLinearGradient(bx + sweepX, by, bx + sweepX + 15, by);
         rGrad.addColorStop(0, 'rgba(100,160,255,0)');
@@ -105,7 +156,7 @@ export default function AnimatedBackground() {
         ctx.fillStyle = rGrad;
         ctx.fillRect(bx, by, bw, bh);
 
-        // Window lights
+        // Window lights — brighten near mouse
         const wRows = Math.floor(bh / 18);
         const wCols = Math.floor(bw / 10);
         for (let r = 0; r < wRows; r++) {
@@ -113,8 +164,11 @@ export default function AnimatedBackground() {
             if (Math.sin(b.x * 100 + r * 7 + c * 13) > 0.3) {
               const wx = bx + c * 10 + 3;
               const wy = by + r * 18 + 6;
-              const flicker = 0.15 + Math.sin(t * 0.5 + r + c * b.x * 50) * 0.08;
-              ctx.fillStyle = `rgba(180,200,255,${flicker})`;
+              const dToMouse = Math.sqrt((wx - mpx) ** 2 + (wy - mpy) ** 2);
+              const mouseBoost = Math.max(0, 1 - dToMouse / 200) * 0.25;
+              const flicker = 0.15 + Math.sin(t * 0.5 + r + c * b.x * 50) * 0.08 + mouseBoost;
+              const blue = mouseBoost > 0.05 ? Math.floor(200 + mouseBoost * 200) : 255;
+              ctx.fillStyle = `rgba(180,${blue},255,${flicker})`;
               ctx.fillRect(wx, wy, 5, 8);
             }
           }
@@ -132,131 +186,119 @@ export default function AnimatedBackground() {
         const maxH = h * 0.45 * growth;
         const introScale = Math.min(1, Math.max(0, (elapsed - 0.5 - i * 0.12) * 2));
         const breathe = 1 + Math.sin(t * 0.8 + i * 0.5) * 0.03;
-        const barH = maxH * introScale * breathe;
+
+        // Mouse proximity boost on bars
+        const barCenterX = barStartX + i * barSpacing + barSpacing * 0.275;
+        const dToBar = Math.abs(barCenterX - mpx);
+        const barBoost = dToBar < 100 ? (1 - dToBar / 100) * 0.12 : 0;
+
+        const barH = maxH * introScale * (breathe + barBoost);
         const bx = barStartX + i * barSpacing;
         const by = barBaseY - barH;
         const bw = barSpacing * 0.55;
 
-        // Bar gradient (glass effect)
+        // Bar body — fade to transparent at bottom
         const grad = ctx.createLinearGradient(bx, by, bx, barBaseY);
-        grad.addColorStop(0, `rgba(60,140,255,${0.25 * introScale})`);
-        grad.addColorStop(0.4, `rgba(40,100,220,${0.18 * introScale})`);
-        grad.addColorStop(1, `rgba(20,60,160,${0.08 * introScale})`);
+        const boostAlpha = barBoost > 0 ? 0.1 : 0;
+        grad.addColorStop(0, `rgba(60,140,255,${(0.25 + boostAlpha) * introScale})`);
+        grad.addColorStop(0.5, `rgba(40,100,220,${(0.15 + boostAlpha * 0.5) * introScale})`);
+        grad.addColorStop(0.85, `rgba(25,70,180,${0.06 * introScale})`);
+        grad.addColorStop(1, 'rgba(15,40,120,0)');
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.roundRect(bx, by, bw, barH, [4, 4, 0, 0]);
         ctx.fill();
 
-        // Glass edge glow
-        const edgeGrad = ctx.createLinearGradient(bx, by, bx + bw, by);
-        edgeGrad.addColorStop(0, `rgba(100,180,255,${0.3 * introScale})`);
-        edgeGrad.addColorStop(0.1, `rgba(100,180,255,${0.05 * introScale})`);
-        edgeGrad.addColorStop(0.9, `rgba(100,180,255,${0.05 * introScale})`);
-        edgeGrad.addColorStop(1, `rgba(100,180,255,${0.2 * introScale})`);
-        ctx.fillStyle = edgeGrad;
+        // Subtle side edges — only on top half, fade out
+        const edgeGrad = ctx.createLinearGradient(bx, by, bx, by + barH * 0.6);
+        edgeGrad.addColorStop(0, `rgba(100,180,255,${0.2 * introScale})`);
+        edgeGrad.addColorStop(1, 'rgba(100,180,255,0)');
+        ctx.strokeStyle = edgeGrad;
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(bx, by, bw, barH, [4, 4, 0, 0]);
-        ctx.fill();
+        ctx.moveTo(bx, by + 4); ctx.lineTo(bx, by + barH * 0.6);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bx + bw, by + 4); ctx.lineTo(bx + bw, by + barH * 0.6);
+        ctx.stroke();
 
-        // Top glow cap
+        // Top cap glow
         const capGlow = ctx.createRadialGradient(bx + bw / 2, by, 0, bx + bw / 2, by, bw);
-        capGlow.addColorStop(0, `rgba(100,200,255,${0.3 * introScale})`);
+        capGlow.addColorStop(0, `rgba(100,200,255,${(0.3 + barBoost * 2) * introScale})`);
         capGlow.addColorStop(1, 'rgba(100,200,255,0)');
         ctx.fillStyle = capGlow;
         ctx.beginPath(); ctx.arc(bx + bw / 2, by, bw, 0, Math.PI * 2); ctx.fill();
 
-        // Moving reflection on bar
-        const refY = by + ((t * 30 + i * 20) % barH);
-        if (refY > by && refY < barBaseY) {
+        // Moving shimmer reflection (only in upper portion)
+        const refY = by + ((t * 30 + i * 20) % (barH * 0.7));
+        if (refY > by && refY < by + barH * 0.7) {
           const refGrad = ctx.createLinearGradient(bx, refY - 10, bx, refY + 10);
           refGrad.addColorStop(0, 'rgba(150,200,255,0)');
-          refGrad.addColorStop(0.5, `rgba(150,200,255,${0.08 * introScale})`);
+          refGrad.addColorStop(0.5, `rgba(150,200,255,${0.06 * introScale})`);
           refGrad.addColorStop(1, 'rgba(150,200,255,0)');
           ctx.fillStyle = refGrad;
           ctx.fillRect(bx, refY - 10, bw, 20);
         }
       }
 
-      // ─── GROWTH ARROW ───
-      const arrowIntro = Math.min(1, Math.max(0, (elapsed - 1.5) * 0.8));
-      if (arrowIntro > 0) {
-        ctx.save();
+      // ─── ANIMATED BASELINE (replaces hard bottom edge) ───
+      const baseLineY = barBaseY;
+      const baseStartX = barStartX - barSpacing * 0.3;
+      const baseEndX = barStartX + barCount * barSpacing + barSpacing * 0.3;
+
+      // Flowing dots along the baseline
+      const dotCount = 30;
+      for (let i = 0; i < dotCount; i++) {
+        const frac = ((t * 0.08 + i / dotCount) % 1);
+        const dotX = baseStartX + frac * (baseEndX - baseStartX);
+        const dotAlpha = Math.sin(frac * Math.PI) * 0.25;
+        const dotSize = 1 + Math.sin(frac * Math.PI) * 1;
         ctx.beginPath();
-        const arrowPts: [number, number][] = [];
-        const steps = 80;
-        for (let i = 0; i <= steps; i++) {
-          const frac = i / steps;
-          const ax = w * 0.12 + frac * w * 0.72 + px * 1.2;
-          const ay = h * 0.82 - frac * h * 0.55 - Math.pow(frac, 1.5) * h * 0.1 + py * 0.6
-            + Math.sin(frac * Math.PI * 2 + t * 0.3) * 8;
-          arrowPts.push([ax, ay]);
-          if (i === 0) ctx.moveTo(ax, ay); else ctx.lineTo(ax, ay);
-        }
-
-        // Arrow glow trail
-        const drawFrac = arrowIntro;
-        const drawSteps = Math.floor(drawFrac * steps);
-
-        // Wide glow
-        ctx.beginPath();
-        for (let i = 0; i <= drawSteps; i++) {
-          const [ax, ay] = arrowPts[i];
-          if (i === 0) ctx.moveTo(ax, ay); else ctx.lineTo(ax, ay);
-        }
-        ctx.strokeStyle = `rgba(255,255,255,${0.06 * arrowIntro})`;
-        ctx.lineWidth = 20;
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.stroke();
-
-        // Medium glow
-        ctx.beginPath();
-        for (let i = 0; i <= drawSteps; i++) {
-          const [ax, ay] = arrowPts[i];
-          if (i === 0) ctx.moveTo(ax, ay); else ctx.lineTo(ax, ay);
-        }
-        ctx.strokeStyle = `rgba(120,180,255,${0.15 * arrowIntro})`;
-        ctx.lineWidth = 8;
-        ctx.stroke();
-
-        // Core line
-        ctx.beginPath();
-        for (let i = 0; i <= drawSteps; i++) {
-          const [ax, ay] = arrowPts[i];
-          if (i === 0) ctx.moveTo(ax, ay); else ctx.lineTo(ax, ay);
-        }
-        ctx.strokeStyle = `rgba(200,230,255,${0.5 * arrowIntro})`;
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
-
-        // Arrowhead
-        if (drawSteps >= 2) {
-          const [tx, ty] = arrowPts[drawSteps];
-          const [px2, py2] = arrowPts[drawSteps - 2];
-          const angle = Math.atan2(ty - py2, tx - px2);
-          const headLen = 18;
-          ctx.beginPath();
-          ctx.moveTo(tx, ty);
-          ctx.lineTo(tx - headLen * Math.cos(angle - 0.4), ty - headLen * Math.sin(angle - 0.4));
-          ctx.moveTo(tx, ty);
-          ctx.lineTo(tx - headLen * Math.cos(angle + 0.4), ty - headLen * Math.sin(angle + 0.4));
-          ctx.strokeStyle = `rgba(200,230,255,${0.6 * arrowIntro})`;
-          ctx.lineWidth = 2.5;
-          ctx.stroke();
-
-          // Arrowhead glow pulse
-          const pulseR = 15 + Math.sin(t * 3) * 5;
-          const headGlow = ctx.createRadialGradient(tx, ty, 0, tx, ty, pulseR);
-          headGlow.addColorStop(0, `rgba(150,210,255,${0.35 * arrowIntro})`);
-          headGlow.addColorStop(1, 'rgba(150,210,255,0)');
-          ctx.fillStyle = headGlow;
-          ctx.beginPath(); ctx.arc(tx, ty, pulseR, 0, Math.PI * 2); ctx.fill();
-        }
-        ctx.restore();
+        ctx.arc(dotX, baseLineY, dotSize, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(80,140,220,${dotAlpha})`;
+        ctx.fill();
       }
 
-      // ─── NETWORK CONNECTIONS ───
+      // Soft gradient line (barely visible)
+      const baseGrad = ctx.createLinearGradient(baseStartX, 0, baseEndX, 0);
+      baseGrad.addColorStop(0, 'rgba(60,120,200,0)');
+      baseGrad.addColorStop(0.15, 'rgba(60,120,200,0.06)');
+      baseGrad.addColorStop(0.5, 'rgba(80,150,220,0.1)');
+      baseGrad.addColorStop(0.85, 'rgba(60,120,200,0.06)');
+      baseGrad.addColorStop(1, 'rgba(60,120,200,0)');
+      ctx.strokeStyle = baseGrad;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(baseStartX, baseLineY);
+      ctx.lineTo(baseEndX, baseLineY);
+      ctx.stroke();
+
+      // Traveling pulse along baseline
+      const pulsePos = ((t * 0.15) % 1);
+      const pulseX = baseStartX + pulsePos * (baseEndX - baseStartX);
+      const pulseGlow = ctx.createRadialGradient(pulseX, baseLineY, 0, pulseX, baseLineY, 40);
+      pulseGlow.addColorStop(0, 'rgba(100,180,255,0.15)');
+      pulseGlow.addColorStop(1, 'rgba(100,180,255,0)');
+      ctx.fillStyle = pulseGlow;
+      ctx.beginPath(); ctx.arc(pulseX, baseLineY, 40, 0, Math.PI * 2); ctx.fill();
+
+      // (Growth arrow removed)
+
+      // ─── NETWORK CONNECTIONS + MOUSE INTERACTION ───
       const nodes = nodesRef.current;
+      const mouseRadius = 150;
+
       for (let i = 0; i < nodes.length; i++) {
+        // Repel nodes from mouse
+        const dxM = nodes[i].x - mpx;
+        const dyM = nodes[i].y - mpy;
+        const distM = Math.sqrt(dxM * dxM + dyM * dyM);
+        if (distM < mouseRadius && distM > 0) {
+          const force = (1 - distM / mouseRadius) * 0.8;
+          nodes[i].vx += (dxM / distM) * force;
+          nodes[i].vy += (dyM / distM) * force;
+        }
+
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
           const dist = Math.sqrt(dx * dx + dy * dy);
@@ -266,7 +308,6 @@ export default function AnimatedBackground() {
             ctx.strokeStyle = `rgba(80,130,230,${a})`;
             ctx.lineWidth = 0.5; ctx.stroke();
 
-            // Data pulse
             const pT = (t * 0.6 + i * 0.2 + j * 0.15) % 2.5;
             if (pT < 1) {
               const ppx = nodes[i].x + (nodes[j].x - nodes[i].x) * pT;
@@ -277,39 +318,159 @@ export default function AnimatedBackground() {
             }
           }
         }
+
+        // Draw lines from mouse to nearby nodes
+        if (distM < mouseRadius * 1.5) {
+          const a = (1 - distM / (mouseRadius * 1.5)) * 0.2;
+          ctx.beginPath(); ctx.moveTo(mpx, mpy); ctx.lineTo(nodes[i].x, nodes[i].y);
+          ctx.strokeStyle = `rgba(100,180,255,${a})`;
+          ctx.lineWidth = 0.8; ctx.stroke();
+        }
       }
 
       // ─── NETWORK NODES ───
       for (const n of nodes) {
-        n.vx *= 0.99; n.vy *= 0.99; n.x += n.vx; n.y += n.vy;
+        n.vx *= 0.96; n.vy *= 0.96; n.x += n.vx; n.y += n.vy;
         if (n.x < 0) n.x = w; if (n.x > w) n.x = 0; if (n.y < 0) n.y = h; if (n.y > h) n.y = 0;
         const pulse = Math.sin(t * n.pulse * 60 + n.offset) * 0.3 + 0.7;
-        const r = n.r * pulse;
+
+        // Boost glow near mouse
+        const dToM = Math.sqrt((n.x - mpx) ** 2 + (n.y - mpy) ** 2);
+        const mBoost = dToM < mouseRadius ? (1 - dToM / mouseRadius) * 0.5 : 0;
+        const r = n.r * (pulse + mBoost);
 
         const glow = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 5);
-        glow.addColorStop(0, `rgba(80,140,240,${n.opacity * 0.2})`);
+        glow.addColorStop(0, `rgba(80,140,240,${(n.opacity + mBoost) * 0.2})`);
         glow.addColorStop(1, 'rgba(80,140,240,0)');
         ctx.beginPath(); ctx.arc(n.x, n.y, r * 5, 0, Math.PI * 2); ctx.fillStyle = glow; ctx.fill();
 
         ctx.beginPath(); ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(100,170,255,${n.opacity * pulse})`;
+        ctx.fillStyle = `rgba(100,170,255,${(n.opacity + mBoost) * pulse})`;
         ctx.fill();
       }
 
-      // ─── FLOATING PARTICLES ───
+      // ─── MOUSE CURSOR GLOW ───
+      if (mpx > 0 && mpy > 0) {
+        const glowSize = 60 + Math.min(mSpeed, 20) * 3;
+        const cursorGlow = ctx.createRadialGradient(mpx, mpy, 0, mpx, mpy, glowSize);
+        cursorGlow.addColorStop(0, `rgba(80,160,255,${0.08 + Math.min(mSpeed, 15) * 0.005})`);
+        cursorGlow.addColorStop(0.5, 'rgba(60,120,220,0.03)');
+        cursorGlow.addColorStop(1, 'rgba(60,120,220,0)');
+        ctx.fillStyle = cursorGlow;
+        ctx.beginPath(); ctx.arc(mpx, mpy, glowSize, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // ─── MOUSE TRAIL ───
+      const trail = trailRef.current;
+      for (let i = 0; i < trail.length; i++) {
+        trail[i].age += 0.03;
+      }
+      // Remove old trail points
+      trailRef.current = trail.filter(p => p.age < 1);
+
+      if (trailRef.current.length > 2 && mSpeed > 3) {
+        ctx.beginPath();
+        ctx.moveTo(trailRef.current[0].x, trailRef.current[0].y);
+        for (let i = 1; i < trailRef.current.length; i++) {
+          const p = trailRef.current[i];
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.strokeStyle = `rgba(100,180,255,${Math.min(mSpeed * 0.01, 0.15)})`;
+        ctx.lineWidth = 1.5;
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+
+      // ─── CLICK RIPPLES ───
+      const ripples = ripplesRef.current;
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        const rip = ripples[i];
+        rip.r += 3;
+        rip.opacity -= 0.015;
+
+        if (rip.opacity <= 0) {
+          ripples.splice(i, 1);
+          continue;
+        }
+
+        // Outer ring
+        ctx.beginPath();
+        ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(100,180,255,${rip.opacity * 0.6})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Inner ring
+        ctx.beginPath();
+        ctx.arc(rip.x, rip.y, rip.r * 0.6, 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(150,210,255,${rip.opacity * 0.3})`;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Fill glow
+        const ripGlow = ctx.createRadialGradient(rip.x, rip.y, 0, rip.x, rip.y, rip.r);
+        ripGlow.addColorStop(0, `rgba(80,160,255,${rip.opacity * 0.05})`);
+        ripGlow.addColorStop(1, 'rgba(80,160,255,0)');
+        ctx.fillStyle = ripGlow;
+        ctx.beginPath(); ctx.arc(rip.x, rip.y, rip.r, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // ─── CLICK SPARKS ───
+      const sparks = sparksRef.current;
+      for (let i = sparks.length - 1; i >= 0; i--) {
+        const s = sparks[i];
+        s.x += s.vx; s.y += s.vy;
+        s.vx *= 0.96; s.vy *= 0.96;
+        s.vy += 0.03; // slight gravity
+        s.life -= 1 / s.maxLife;
+
+        if (s.life <= 0) {
+          sparks.splice(i, 1);
+          continue;
+        }
+
+        const alpha = s.life * 0.8;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.size * s.life, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${s.hue}, 80%, 70%, ${alpha})`;
+        ctx.fill();
+
+        // Spark glow
+        const sGlow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.size * 4 * s.life);
+        sGlow.addColorStop(0, `hsla(${s.hue}, 80%, 70%, ${alpha * 0.3})`);
+        sGlow.addColorStop(1, `hsla(${s.hue}, 80%, 70%, 0)`);
+        ctx.fillStyle = sGlow;
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size * 4 * s.life, 0, Math.PI * 2); ctx.fill();
+      }
+
+      // ─── FLOATING PARTICLES (mouse-interactive) ───
       for (const p of particlesRef.current) {
         p.x += p.drift + Math.sin(t * 0.3 + p.x * 0.01) * 0.15;
         p.y += p.vy * p.speed;
         if (p.y < -10) { p.y = h + 10; p.x = Math.random() * w; }
         if (p.x < -10) p.x = w + 10; if (p.x > w + 10) p.x = -10;
 
-        const flicker = p.opacity * (0.7 + Math.sin(t * 2 + p.x + p.y) * 0.3);
-        ctx.beginPath(); ctx.arc(p.x + px * 0.3, p.y + py * 0.2, p.size, 0, Math.PI * 2);
+        // Particles scatter away from mouse
+        const dpx = (p.x + px * 0.3) - mpx;
+        const dpy = (p.y + py * 0.2) - mpy;
+        const dpDist = Math.sqrt(dpx * dpx + dpy * dpy);
+        let drawX = p.x + px * 0.3;
+        let drawY = p.y + py * 0.2;
+        if (dpDist < 80 && dpDist > 0) {
+          const push = (1 - dpDist / 80) * 15;
+          drawX += (dpx / dpDist) * push;
+          drawY += (dpy / dpDist) * push;
+        }
+
+        // Brighten near mouse
+        const brightBoost = dpDist < 120 ? (1 - dpDist / 120) * 0.4 : 0;
+        const flicker = (p.opacity + brightBoost) * (0.7 + Math.sin(t * 2 + p.x + p.y) * 0.3);
+        ctx.beginPath(); ctx.arc(drawX, drawY, p.size + brightBoost * 2, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(180,210,255,${flicker})`;
         ctx.fill();
       }
 
-      // ─── SUNLIGHT BLOOM (top-right golden hour) ───
+      // ─── SUNLIGHT BLOOM ───
       const sunX = w * 0.82 + px * 2;
       const sunY = h * 0.08 + py * 1.5;
       const bloomR = 200 + Math.sin(t * 0.4) * 30;
@@ -327,7 +488,6 @@ export default function AnimatedBackground() {
       ctx.fillStyle = bloom2;
       ctx.beginPath(); ctx.arc(sunX, sunY, bloomR * 0.4, 0, Math.PI * 2); ctx.fill();
 
-      // Lens flare streaks
       for (let i = 0; i < 4; i++) {
         const fAngle = (i * Math.PI / 4) + t * 0.05;
         const fLen = 80 + Math.sin(t * 0.6 + i) * 30;
@@ -350,20 +510,21 @@ export default function AnimatedBackground() {
     };
     animate();
 
-    return () => { cancelAnimationFrame(frameRef.current); window.removeEventListener('resize', resize); window.removeEventListener('mousemove', onMouse); };
+    return () => {
+      cancelAnimationFrame(frameRef.current);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('mousemove', onMouse);
+      canvas.removeEventListener('click', onClick);
+      canvas.removeEventListener('touchstart', onClick as EventListener);
+    };
   }, [init]);
 
   return (
     <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" style={{ background: 'linear-gradient(170deg, #0d1525 0%, #0a1028 30%, #0e1530 50%, #091020 80%, #0b1322 100%)' }}>
-      {/* Deep ambient orbs */}
       <div className="absolute top-[-5%] right-[10%] w-[700px] h-[700px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(60,100,200,0.08) 0%, transparent 60%)' }} />
       <div className="absolute bottom-[5%] left-[5%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(40,80,180,0.06) 0%, transparent 60%)' }} />
       <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(100,140,240,0.05) 0%, transparent 60%)' }} />
-
-      {/* Subtle grid */}
       <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(100,160,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(100,160,255,1) 1px, transparent 1px)', backgroundSize: '70px 70px' }} />
-
-      {/* Canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-auto" />
     </div>
   );

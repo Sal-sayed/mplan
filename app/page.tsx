@@ -24,29 +24,31 @@ export default function Home() {
 
   const handleSubmitNew = async ({ url: inputUrl, email: inputEmail }: { url: string; email: string }) => {
     setMode('new');
-    await runPipeline(inputUrl, inputEmail, null);
+    await runPipeline(inputUrl, inputEmail, null, 'new');
   };
 
   const handleSubmitExisting = async ({ url: inputUrl, email: inputEmail, planFile }: { url: string; email: string; planFile: File | null }) => {
     setMode('audit');
-    await runPipeline(inputUrl, inputEmail, planFile);
+    await runPipeline(inputUrl, inputEmail, planFile, 'audit');
   };
 
-  const runPipeline = async (inputUrl: string, inputEmail: string, planFile: File | null) => {
+  const runPipeline = async (inputUrl: string, inputEmail: string, planFile: File | null, pipelineMode: Mode) => {
     setUrl(inputUrl);
     setEmail(inputEmail);
     setError('');
     setEmailDelivered(true);
-
-    const isAudit = planFile !== undefined && mode === 'audit' || planFile !== null;
-    const currentMode: Mode = planFile !== undefined ? 'audit' : 'new';
 
     try {
       // Stage 1: Scrape
       setStage('scraping'); setProgress(15);
       const scrapeRes = await fetch('/api/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: inputUrl }),
+        body: JSON.stringify({
+          url: inputUrl,
+          mode: pipelineMode === 'audit' ? 'existing' : 'new',
+          // siteType is optional — server defaults to 'ecommerce'. Wire a
+          // selector here once the UI exposes one.
+        }),
       });
       const scrapeJson = await scrapeRes.json();
       if (!scrapeJson.success) throw new Error(scrapeJson.error || 'Failed to analyze website');
@@ -73,6 +75,7 @@ export default function Home() {
 
       // Stage 2.5: Parse uploaded Excel if Existing path with file
       let existingPlanData = null;
+      let existingPlanRawBuffer: string | null = null;
       if (planFile) {
         setProgress(45);
         const formData = new FormData();
@@ -82,33 +85,52 @@ export default function Home() {
           body: formData,
         });
         const parseJson = await parseRes.json();
-        existingPlanData = parseJson.success ? parseJson.parsedPlan : null;
+        if (parseJson.success) {
+          existingPlanData = parseJson.parsedPlan;
+          existingPlanRawBuffer = parseJson.rawBufferBase64 || null;
+        }
       }
 
       // Stage 3: Generate plan or audit
       setStage('generating'); setProgress(65);
-      const useAudit = mode === 'audit';
-      const planEndpoint = useAudit ? '/api/generate-audit' : '/api/generate-plan';
-      const planBody = useAudit
-        ? { websiteData: scrapeJson.data, score: scoreData, existingPlan: existingPlanData }
-        : { websiteData: scrapeJson.data, score: scoreData };
 
-      const planRes = await fetch(planEndpoint, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(planBody),
-      });
-      const planJson = await planRes.json();
-      if (!planJson.success) throw new Error(planJson.error || `Failed to generate ${useAudit ? 'audit' : 'plan'}`);
+      let plan = null;
+      let audit = null;
 
-      const plan = useAudit ? null : planJson.plan;
-      const audit = useAudit ? planJson.audit : null;
+      if (pipelineMode === 'audit') {
+        // EXISTING WEBSITE: run audit
+        const auditRes = await fetch('/api/generate-audit', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ websiteData: scrapeJson.data, score: scoreData, existingPlan: existingPlanData }),
+        });
+        const auditJson = await auditRes.json();
+        if (!auditJson.success) throw new Error(auditJson.error || 'Failed to generate audit');
+        audit = auditJson.audit;
+      } else {
+        // NEW WEBSITE: generate plan
+        const planRes = await fetch('/api/generate-plan', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ websiteData: scrapeJson.data, score: scoreData }),
+        });
+        const planJson = await planRes.json();
+        if (!planJson.success) throw new Error(planJson.error || 'Failed to generate plan');
+        plan = planJson.plan;
+      }
 
       // Stage 4: Send email
       setStage('delivering'); setProgress(85);
       try {
         const deliverRes = await fetch('/api/send-plan', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: inputEmail, plan, audit, score: scoreData, scrapeData: scrapeJson.data, mode }),
+          body: JSON.stringify({
+            email: inputEmail,
+            mode: pipelineMode === 'audit' ? 'audit' : 'new',
+            plan,
+            audit,
+            score: scoreData,
+            scrapeData: scrapeJson.data,
+            existingPlanRawBuffer,
+          }),
         });
         const deliverJson = await deliverRes.json();
         setEmailDelivered(deliverJson.success);
@@ -116,7 +138,7 @@ export default function Home() {
         setEmailDelivered(false);
       }
 
-      setData({ plan, audit, score: scoreData, scrapeData: scrapeJson.data, mode, existingPlanData });
+      setData({ plan, audit, score: scoreData, scrapeData: scrapeJson.data, mode: pipelineMode, existingPlanData });
       setProgress(100);
       setTimeout(() => setStage('complete'), 500);
     } catch (err: any) {
@@ -179,7 +201,7 @@ export default function Home() {
         {(stage === 'scraping' || stage === 'scoring' || stage === 'generating' || stage === 'delivering') && (
           <motion.div key="loading" className="absolute inset-0"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoadingScreen stage={stage} progress={progress} url={url} email={email} mode={mode} />
+            <LoadingScreen stage={stage} progress={progress} url={url} email={email} mode={mode} onCancel={reset} />
           </motion.div>
         )}
 
