@@ -136,10 +136,26 @@ const GA4_STANDARD_EVENTS = new Set([
   'share', 'sign_up', 'login', 'generate_lead', 'search',
 ]);
 
+// Names to suppress from "configured / firing" lists — they are emitted by
+// the browser, the tag manager itself, or a consent banner, NOT by anyone
+// instrumenting the site for analytics. Keep in sync with the identical
+// sets in lib/scraper.ts and lib/tracking-spy/parsers.ts.
 const GTM_INTERNAL_EVENTS = new Set([
+  // GTM internal triggers
   'gtm.js', 'gtm.dom', 'gtm.load', 'gtm.click', 'gtm.linkClick', 'gtm.formSubmit',
   'gtm.historyChange', 'gtm.timer', 'gtm.scrollDepth', 'gtm.video', 'gtm.elementVisibility',
   'gtm.triggerGroup', 'gtm.init_consent',
+  // Browser-native page-lifecycle events (fire on every page, not analytics)
+  'load', 'DOMContentLoaded', 'readystatechange', 'beforeunload', 'unload',
+  'pageshow', 'pagehide', 'visibilitychange',
+  // Consent-management banner internals (OneTrust / Optanon / Cookiebot)
+  'OneTrustLoaded', 'OptanonLoaded', 'OneTrustGroupsUpdated', 'OptanonConsent',
+  'CookieConsent', 'cookiebot_loaded', 'cookiebot_consent',
+  'consent_default', 'consent_update', 'cookie_consent_update',
+  // Generic anonymous wrappers — real instrumentation always uses a meaningful name
+  'customEvent', 'pageEvent',
+  // Virtual pageview wrappers (page_view itself is a real GA4 event and stays)
+  'virtualPageview', 'virtual_pageview',
 ]);
 
 function emptyIds(): MeasurementIds {

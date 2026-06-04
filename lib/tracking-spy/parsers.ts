@@ -47,10 +47,19 @@ const META_STANDARD_EVENTS = new Set([
   'SubmitApplication', 'Subscribe',
 ]);
 
+// Names to suppress from captured-event lists — see comment on the matching
+// set in lib/existing-site-auditor.ts.
 const GTM_INTERNAL_EVENTS = new Set([
   'gtm.js', 'gtm.dom', 'gtm.load', 'gtm.click', 'gtm.linkClick',
   'gtm.formSubmit', 'gtm.historyChange', 'gtm.timer', 'gtm.scrollDepth',
   'gtm.video', 'gtm.elementVisibility', 'gtm.triggerGroup', 'gtm.init_consent',
+  'load', 'DOMContentLoaded', 'readystatechange', 'beforeunload', 'unload',
+  'pageshow', 'pagehide', 'visibilitychange',
+  'OneTrustLoaded', 'OptanonLoaded', 'OneTrustGroupsUpdated', 'OptanonConsent',
+  'CookieConsent', 'cookiebot_loaded', 'cookiebot_consent',
+  'consent_default', 'consent_update', 'cookie_consent_update',
+  'customEvent', 'pageEvent',
+  'virtualPageview', 'virtual_pageview',
 ]);
 
 function parseQuery(url: string): URLSearchParams | null {
