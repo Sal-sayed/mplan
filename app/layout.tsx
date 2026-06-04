@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import ThemeToggle from '@/components/ThemeToggle';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -27,24 +25,13 @@ export const viewport: Viewport = {
   viewportFit: 'cover',
 };
 
-// Inlined and executed before React hydrates so the first paint already
-// has the correct theme class. Otherwise users see a dark→light or
-// light→dark flash on every page load.
-const themeInitScript = `(function(){try{var s=localStorage.getItem('theme');var t=s==='light'||s==='dark'?s:(window.matchMedia('(prefers-color-scheme: light)').matches?'light':'dark');var r=document.documentElement;r.classList.toggle('dark',t==='dark');r.classList.toggle('light',t==='light');r.style.colorScheme=t;}catch(e){}})();`;
-
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
-      </head>
       <body className="h-screen w-screen overflow-hidden">
-        <ThemeProvider>
-          <div className="h-screen w-screen overflow-hidden relative">{children}</div>
-          <ThemeToggle />
-        </ThemeProvider>
+        <div className="h-screen w-screen overflow-hidden relative">{children}</div>
       </body>
     </html>
   );
