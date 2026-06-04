@@ -71,32 +71,58 @@ function populateObjectivesAndKPIs(wb: ExcelJS.Workbook, plan: any) {
   const kpis = plan.kpis || [];
   let currentRow = 5;
 
+  const objTitle = (o: any) => o.objective || o.title || o.name || o.businessObjective || '';
+  const objGoal = (o: any) => o.description || o.smartGoal || o.goal || (o.timeframe ? `Achieve within ${o.timeframe}` : '');
+  const linksToObj = (k: any, oid: string) => (k.businessObjectiveId ?? k.objectiveId ?? k.objId) === oid;
+  const kpiDef = (k: any) => k.definition || (k.dataSource ? `Tracked via ${k.dataSource}` : (k.formula ? `Calculated from: ${k.formula}` : ''));
+  const kpiBaseline = (k: any) => k.baseline ?? k.currentValue ?? '';
+  const kpiTargetDate = (k: any) => k.targetDate || k.deadline || k.frequency || '';
+  const kpiPriority = (k: any, o: any) => k.priority || o.priority || 'High';
+
   objectives.forEach((obj: any, objIdx: number) => {
-    const linked = kpis.filter((k: any) => k.objectiveId === obj.id);
+    const linked = kpis.filter((k: any) => linksToObj(k, obj.id));
     if (linked.length === 0) {
       if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
       writeValue(sheet, `A${currentRow}`, obj.id || `BO${objIdx + 1}`);
-      writeValue(sheet, `B${currentRow}`, obj.title || obj.name);
-      writeValue(sheet, `C${currentRow}`, obj.goal || obj.smartGoal || '');
+      writeValue(sheet, `B${currentRow}`, objTitle(obj));
+      writeValue(sheet, `C${currentRow}`, objGoal(obj));
       currentRow++;
     } else {
       linked.forEach((kpi: any, ki: number) => {
         if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
         if (ki === 0) {
           writeValue(sheet, `A${currentRow}`, obj.id || `BO${objIdx + 1}`);
-          writeValue(sheet, `B${currentRow}`, obj.title || obj.name);
-          writeValue(sheet, `C${currentRow}`, obj.goal || obj.smartGoal || '');
+          writeValue(sheet, `B${currentRow}`, objTitle(obj));
+          writeValue(sheet, `C${currentRow}`, objGoal(obj));
         }
-        writeValue(sheet, `D${currentRow}`, kpi.name);
-        writeValue(sheet, `E${currentRow}`, kpi.definition || '');
+        writeValue(sheet, `D${currentRow}`, kpi.name || '');
+        writeValue(sheet, `E${currentRow}`, kpiDef(kpi));
         writeValue(sheet, `F${currentRow}`, kpi.formula || '');
-        writeValue(sheet, `G${currentRow}`, kpi.baseline || '');
+        writeValue(sheet, `G${currentRow}`, kpiBaseline(kpi));
         writeValue(sheet, `H${currentRow}`, kpi.target || '');
-        writeValue(sheet, `I${currentRow}`, kpi.targetDate || '');
-        writeValue(sheet, `J${currentRow}`, kpi.priority || 'High');
+        writeValue(sheet, `I${currentRow}`, kpiTargetDate(kpi));
+        writeValue(sheet, `J${currentRow}`, kpiPriority(kpi, obj));
         currentRow++;
       });
     }
+  });
+
+  const usedKpiIds = new Set<string>();
+  objectives.forEach((obj: any) => kpis.filter((k: any) => linksToObj(k, obj.id)).forEach((k: any) => usedKpiIds.add(k.id)));
+  const orphanKpis = kpis.filter((k: any) => !usedKpiIds.has(k.id));
+  orphanKpis.forEach((kpi: any) => {
+    if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
+    writeValue(sheet, `A${currentRow}`, '');
+    writeValue(sheet, `B${currentRow}`, '');
+    writeValue(sheet, `C${currentRow}`, '');
+    writeValue(sheet, `D${currentRow}`, kpi.name || '');
+    writeValue(sheet, `E${currentRow}`, kpiDef(kpi));
+    writeValue(sheet, `F${currentRow}`, kpi.formula || '');
+    writeValue(sheet, `G${currentRow}`, kpiBaseline(kpi));
+    writeValue(sheet, `H${currentRow}`, kpi.target || '');
+    writeValue(sheet, `I${currentRow}`, kpiTargetDate(kpi));
+    writeValue(sheet, `J${currentRow}`, kpiPriority(kpi, {}));
+    currentRow++;
   });
 }
 
@@ -206,10 +232,26 @@ function populateReportingCadence(wb: ExcelJS.Workbook, plan: any) {
   });
 }
 
-// ─── SHEET 8: RACI (only fill sign-off values, never touch matrix styling) ───
+// ─── SHEET 8: RACI (write legend on row 2, then sign-off values) ───
 function populateRACI(wb: ExcelJS.Workbook, plan: any) {
   const sheet = wb.getWorksheet('8. RACI & Sign-off');
   if (!sheet) return;
+
+  const LEGEND = [
+    { col: 'A', text: 'Legend:', font: { size: 10, bold: true, color: { argb: 'FF374151' } } },
+    { col: 'B', text: 'R = Responsible (does the work)', font: { size: 10, color: { argb: 'FF1E40AF' } } },
+    { col: 'C', text: 'A = Accountable (owns outcome)', font: { size: 10, color: { argb: 'FF991B1B' } } },
+    { col: 'D', text: 'C = Consulted (provides input)', font: { size: 10, color: { argb: 'FF92400E' } } },
+    { col: 'E', text: 'I = Informed (kept in the loop)', font: { size: 10, color: { argb: 'FF065F46' } } },
+  ];
+  LEGEND.forEach(({ col, text, font }) => {
+    const cell = sheet.getCell(`${col}2`);
+    cell.value = text;
+    cell.font = font;
+    cell.alignment = { vertical: 'middle', horizontal: 'left' };
+  });
+  sheet.getRow(2).height = 22;
+
   if (plan.signoff) {
     plan.signoff.forEach((s: any, idx: number) => {
       const row = 17 + idx;
