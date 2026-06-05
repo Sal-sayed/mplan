@@ -108,6 +108,11 @@ export async function POST(req: NextRequest) {
       excelBuffer: excelBuf,
       excelFilename,
       mode: isAudit ? 'audit' : 'new',
+      businessType: planOrAudit.websiteInfo?.businessType || '',
+      industry: planOrAudit.websiteInfo?.industry || '',
+      eventsCount: isAudit ? (audit?.eventsToAdd?.length || 0) : (plan?.events?.length || 0),
+      kpisCount: isAudit ? (audit?.eventsToModify?.length || 0) : (plan?.kpis?.length || 0),
+      leadId: lead.id,
     });
 
     // Track delivery on the lead record.

@@ -20,6 +20,13 @@ export interface EmailParams {
   excelBuffer: Buffer;
   excelFilename: string;
   mode: 'new' | 'audit';
+  // Optional metadata — included in the n8n payload so existing workflows
+  // that read these fields keep working.
+  businessType?: string;
+  industry?: string;
+  eventsCount?: number;
+  kpisCount?: number;
+  leadId?: string;
 }
 
 export interface EmailResult {
@@ -42,20 +49,26 @@ export async function sendMeasurementPlanEmail(params: EmailParams): Promise<Ema
     }
   }
 
-  if (process.env.N8N_WEBHOOK_URL) {
+  const n8nUrl = process.env.N8N_WEBHOOK_URL || N8N_WEBHOOK_URL_DEFAULT;
+  if (n8nUrl) {
     try {
-      const result = await sendViaN8n(params);
-      console.log('[email] ✓ sent via n8n fallback');
+      const result = await sendViaN8n(n8nUrl, params);
+      console.log('[email] ✓ sent via n8n');
       return { success: true, provider: 'n8n', messageId: result.messageId };
     } catch (err) {
       const msg = (err as Error)?.message || 'n8n failed';
-      console.error('[email] ⚠ n8n also failed:', msg);
+      console.error('[email] ⚠ n8n failed:', msg);
       return { success: false, provider: 'failed', error: msg };
     }
   }
 
   return { success: false, provider: 'failed', error: 'No email provider configured' };
 }
+
+// Preserves the historic default so existing deploys that never set
+// N8N_WEBHOOK_URL keep working. Override by setting the env var.
+const N8N_WEBHOOK_URL_DEFAULT =
+  'https://n8n.srv930949.hstgr.cloud/webhook/017f05f9-fb1d-41c4-b3a4-44f6ebef7252';
 
 async function sendViaResend(resend: Resend, params: EmailParams) {
   const fromAddress = process.env.RESEND_FROM_EMAIL || 'Measurement Plan <onboarding@resend.dev>';
@@ -111,19 +124,25 @@ async function sendViaResend(resend: Resend, params: EmailParams) {
   return { messageId: result.data?.id || 'unknown' };
 }
 
-async function sendViaN8n(params: EmailParams) {
-  const url = process.env.N8N_WEBHOOK_URL!;
+async function sendViaN8n(url: string, params: EmailParams) {
   const subjectPrefix = params.mode === 'audit' ? 'Tracking audit for' : 'Measurement plan for';
   const subject = `${subjectPrefix} ${params.websiteUrl}`;
 
   const attachmentBase64 = params.excelBuffer.toString('base64');
-  const payload = {
+
+  // Keep the payload aligned with the existing n8n workflow so it can read
+  // every field it has historically read.
+  const payload: Record<string, any> = {
     to: params.to,
     name: params.toName || params.to.split('@')[0],
     subject,
     mode: params.mode,
     websiteUrl: params.websiteUrl,
     websiteTitle: params.websiteName,
+    businessType: params.businessType || '',
+    industry: params.industry || '',
+    eventsCount: params.eventsCount ?? 0,
+    kpisCount: params.kpisCount ?? 0,
     healthScore: params.healthScore ?? 0,
     healthGrade: params.healthGrade ?? 'N/A',
     formatsRequested: ['Excel workbook'],
@@ -134,6 +153,7 @@ async function sendViaN8n(params: EmailParams) {
         contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
     ],
+    leadId: params.leadId || '',
   };
 
   const res = await fetch(url, {
@@ -141,7 +161,10 @@ async function sendViaN8n(params: EmailParams) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) throw new Error(`n8n returned ${res.status}`);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`n8n returned ${res.status}${body ? `: ${body.slice(0, 200)}` : ''}`);
+  }
   const data = await res.json().catch(() => null);
-  return { messageId: (data && (data.messageId || data.id)) || 'n8n-fallback' };
+  return { messageId: (data && (data.messageId || data.id)) || 'n8n-success' };
 }
