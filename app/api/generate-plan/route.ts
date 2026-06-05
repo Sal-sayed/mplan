@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropic } from '@/lib/anthropic';
-import { MEASUREMENT_PLAN_PROMPT } from '@/lib/prompts';
+import { MEASUREMENT_PLAN_SYSTEM_PROMPT, MEASUREMENT_PLAN_USER } from '@/lib/prompts';
 import { sanitizePlan } from '@/lib/sanitize-plan';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 
@@ -32,14 +32,28 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-5',
       max_tokens: 16000,
+      system: [
+        {
+          type: 'text',
+          text: MEASUREMENT_PLAN_SYSTEM_PROMPT,
+          cache_control: { type: 'ephemeral' },
+        },
+      ],
       messages: [
         {
           role: 'user',
-          content: MEASUREMENT_PLAN_PROMPT(JSON.stringify(websiteData), score),
+          content: MEASUREMENT_PLAN_USER(JSON.stringify(websiteData), score),
         },
       ],
+    });
+
+    console.log('[generate-plan] usage:', {
+      input: message.usage.input_tokens,
+      output: message.usage.output_tokens,
+      cacheRead: message.usage.cache_read_input_tokens ?? 0,
+      cacheWrite: message.usage.cache_creation_input_tokens ?? 0,
     });
 
     const textBlock = message.content.find((b) => b.type === 'text');

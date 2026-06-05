@@ -1,20 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export const MEASUREMENT_PLAN_PROMPT = (websiteData: string, score?: any) => `
-You are a Senior Digital Analytics Strategist. You will receive deep scrape data from a website's homepage and key sub-pages, including every button, form field, CTA, product card, pricing tier, and detected technology.
+
+// Stable system prompt — same bytes every request. Goes in `system` with
+// cache_control so subsequent requests within the TTL window only pay the
+// cache-read price for this prefix.
+export const MEASUREMENT_PLAN_SYSTEM_PROMPT = `You are a Senior Digital Analytics Strategist. You will receive deep scrape data from a website's homepage and key sub-pages, including every button, form field, CTA, product card, pricing tier, and detected technology.
 
 YOUR JOB: Generate a measurement plan that is SPECIFIC to this site — every event must map to an actual element found in the scrape data. Do NOT generate generic templates.
-
-SCRAPE DATA:
-${websiteData}
-
-${score ? `CURRENT TRACKING HEALTH SCORE: ${JSON.stringify(score)}
-
-When generating the measurement plan:
-- Reference the detected gaps from score.topFixes in the "insights.quickWins" section
-- Mark events as "ALREADY TRACKED" if they appear in audit.ga4.customEventsFound
-- Mark events as "CRITICAL GAP" if they address a high-priority fix
-- In implementationPlan, Phase 1 must address the highest-impact fixes from the score
-` : ''}
 
 RULES FOR SPECIFICITY:
 1. For EVERY button in scrapeData.homepage.buttons and sub-pages, decide if it deserves a tracked event. If yes, create one with the exact button label as context.
@@ -72,5 +63,28 @@ EXCLUSION RULES:
 - If you would have generated such a KPI, replace it with a different KPI from a different category (retention, engagement, monetization, or conversion quality).
 - This exclusion applies to the kpis array AND any references in businessObjectives.
 
-CRITICAL: Every event MUST reference a real element from the scrape data in its "trigger" and "linkedFeature" fields. Return ONLY the JSON object.
-`;
+CRITICAL: Every event MUST reference a real element from the scrape data in its "trigger" and "linkedFeature" fields. Return ONLY the JSON object.`;
+
+// Variable per-request payload. Lives in the user message so cache_control
+// on the system prompt isn't invalidated by site-specific data.
+export const MEASUREMENT_PLAN_USER = (websiteData: string, score?: any): string => {
+  const scoreSection = score
+    ? `
+
+CURRENT TRACKING HEALTH SCORE: ${JSON.stringify(score)}
+
+When generating the measurement plan:
+- Reference the detected gaps from score.topFixes in the "insights.quickWins" section
+- Mark events as "ALREADY TRACKED" if they appear in audit.ga4.customEventsFound
+- Mark events as "CRITICAL GAP" if they address a high-priority fix
+- In implementationPlan, Phase 1 must address the highest-impact fixes from the score`
+    : '';
+
+  return `SCRAPE DATA:
+${websiteData}${scoreSection}`;
+};
+
+// Kept for backwards compatibility — wraps system+user back into a single
+// string in case anything still imports it.
+export const MEASUREMENT_PLAN_PROMPT = (websiteData: string, score?: any): string =>
+  `${MEASUREMENT_PLAN_SYSTEM_PROMPT}\n\n${MEASUREMENT_PLAN_USER(websiteData, score)}`;

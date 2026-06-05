@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
     }
 
     const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 16000,
       messages: [{
         role: 'user',
@@ -83,6 +83,11 @@ export async function POST(req: NextRequest) {
           }
         ),
       }],
+    });
+
+    console.log('[generate-audit] usage:', {
+      input: message.usage.input_tokens,
+      output: message.usage.output_tokens,
     });
 
     const textBlock = message.content.find((b: any) => b.type === 'text');
