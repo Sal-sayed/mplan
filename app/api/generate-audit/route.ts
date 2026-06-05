@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { AUDIT_PROMPT } from '@/lib/audit-prompt';
 import { findEventCoverage } from '@/lib/event-equivalence';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
+import { parseJsonLoose } from '@/lib/json-repair';
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -92,10 +93,16 @@ export async function POST(req: NextRequest) {
 
     const textBlock = message.content.find((b: any) => b.type === 'text');
     const responseText = textBlock?.type === 'text' ? textBlock.text : '';
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    const audit = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
 
-    if (!audit) throw new Error('Failed to parse audit response');
+    let audit: any;
+    try {
+      audit = parseJsonLoose(responseText);
+    } catch (err) {
+      console.error('[generate-audit] JSON parse failed even after repair:', (err as Error)?.message);
+      console.error('[generate-audit] raw response head:', responseText.slice(0, 500));
+      console.error('[generate-audit] raw response tail:', responseText.slice(-500));
+      throw new Error('AI response was malformed. Please try again.');
+    }
 
     // ─── SAFETY FILTER 1: Force real IDs from scrape data ───
     const liveAudit = websiteData?.homepage?.analyticsAudit || {};

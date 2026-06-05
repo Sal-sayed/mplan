@@ -3,6 +3,7 @@ import { getAnthropic } from '@/lib/anthropic';
 import { MEASUREMENT_PLAN_SYSTEM_PROMPT, MEASUREMENT_PLAN_USER } from '@/lib/prompts';
 import { sanitizePlan } from '@/lib/sanitize-plan';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
+import { parseJsonLoose } from '@/lib/json-repair';
 
 export const maxDuration = 60;
 
@@ -59,15 +60,19 @@ export async function POST(req: NextRequest) {
     const textBlock = message.content.find((b) => b.type === 'text');
     const responseText = textBlock?.type === 'text' ? textBlock.text : '';
 
-    const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    let plan;
+    try {
+      plan = parseJsonLoose(responseText);
+    } catch (err) {
+      console.error('[generate-plan] JSON parse failed even after repair:', (err as Error)?.message);
+      console.error('[generate-plan] raw response head:', responseText.slice(0, 500));
+      console.error('[generate-plan] raw response tail:', responseText.slice(-500));
       return NextResponse.json(
-        { success: false, error: 'Failed to parse AI response' },
+        { success: false, error: 'AI response was malformed. Please try again.' },
         { status: 500 }
       );
     }
 
-    let plan = JSON.parse(jsonMatch[0]);
     plan = sanitizePlan(plan);
     return NextResponse.json({ success: true, plan });
   } catch (error: unknown) {
