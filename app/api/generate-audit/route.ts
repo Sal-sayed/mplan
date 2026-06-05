@@ -1,20 +1,24 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
 import { AUDIT_PROMPT } from '@/lib/audit-prompt';
 import { findEventCoverage } from '@/lib/event-equivalence';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
-import { parseJsonLoose } from '@/lib/json-repair';
+import { buildClaudeSseStream, streamResponseHeaders } from '@/lib/claude-stream';
 
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (_anthropic) return _anthropic;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY must be set');
-  _anthropic = new Anthropic({ apiKey });
-  return _anthropic;
-}
-export const maxDuration = 90;
+export const maxDuration = 120;
+
+const AUDIT_MILESTONES = [
+  { keyword: '"websiteInfo"', emoji: '🔍', message: 'Analyzing current tracking...' },
+  { keyword: '"detectedSetup"', emoji: '🆔', message: 'Reviewing detected IDs and containers...' },
+  { keyword: '"currentlyFiringEvents"', emoji: '📡', message: 'Cataloging firing events...' },
+  { keyword: '"planVsReality"', emoji: '⚖️', message: 'Comparing plan vs reality...' },
+  { keyword: '"criticalIssues"', emoji: '🚨', message: 'Flagging critical issues...' },
+  { keyword: '"eventsToAdd"', emoji: '➕', message: 'Identifying missing events...' },
+  { keyword: '"eventsToFix"', emoji: '🔧', message: 'Suggesting event renames...' },
+  { keyword: '"quickWins"', emoji: '⚡', message: 'Finding quick wins...' },
+  { keyword: '"implementationRoadmap"', emoji: '🗺️', message: 'Building roadmap...' },
+  { keyword: '"executiveSummary"', emoji: '📝', message: 'Writing executive summary...' },
+];
 
 export async function POST(req: NextRequest) {
   const clientId = getClientIdentifier(req);
@@ -31,84 +35,47 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  try {
-    const { websiteData, score, existingPlan } = await req.json();
+  const { websiteData, score, existingPlan } = await req.json();
 
-    // Pull categorized event buckets from scrape data so Claude sees them as
-    // dedicated input — and so it never re-recommends an event already firing
-    // or already configured.
-    const eventAudit = websiteData?.eventAudit || {};
-    const siteType = websiteData?.siteType || 'ecommerce';
-    const firingEventsForPrompt = (eventAudit.firingEvents || []).map((e: any) => ({
-      eventName: e.eventName,
-      source: e.source,
-      confidenceSource: e.confidenceSource,
-      capturedFromPages: e.capturedFromPages || [],
-    }));
-    const configuredEventsForPrompt = (eventAudit.configuredEvents || []).map((e: any) => ({
-      eventName: e.eventName,
-      source: e.source,
-      gtmContainer: e.gtmContainer || null,
-    }));
-    const pagesScannedForPrompt = (eventAudit.pagesScanned || []).map((p: any) => ({
-      type: p.type,
-      url: p.url,
-      eventsFound: p.eventsFound,
-      success: p.success,
-    }));
-    const businessModel = websiteData?.businessModel || {
-      primaryType: 'unknown', reasoning: 'Not detected',
-      hasOwnCheckout: false, redirectsToRetailers: false, retailers: [],
-      hasShoppingCart: false, hasUserAccounts: false, hasLeadForms: false,
-    };
-    console.log(`[generate-audit] businessModel.primaryType = ${businessModel.primaryType}`);
-    if (businessModel.redirectsToRetailers) {
-      console.log(`[generate-audit] retailer redirects: ${(businessModel.retailers || []).join(', ') || 'detected via CTA text'}`);
-    }
+  // Pull categorized event buckets from scrape data so Claude sees them as
+  // dedicated input — and so it never re-recommends an event already firing
+  // or already configured.
+  const eventAudit = websiteData?.eventAudit || {};
+  const siteType = websiteData?.siteType || 'ecommerce';
+  const firingEventsForPrompt = (eventAudit.firingEvents || []).map((e: any) => ({
+    eventName: e.eventName,
+    source: e.source,
+    confidenceSource: e.confidenceSource,
+    capturedFromPages: e.capturedFromPages || [],
+  }));
+  const configuredEventsForPrompt = (eventAudit.configuredEvents || []).map((e: any) => ({
+    eventName: e.eventName,
+    source: e.source,
+    gtmContainer: e.gtmContainer || null,
+  }));
+  const pagesScannedForPrompt = (eventAudit.pagesScanned || []).map((p: any) => ({
+    type: p.type,
+    url: p.url,
+    eventsFound: p.eventsFound,
+    success: p.success,
+  }));
+  const businessModel = websiteData?.businessModel || {
+    primaryType: 'unknown', reasoning: 'Not detected',
+    hasOwnCheckout: false, redirectsToRetailers: false, retailers: [],
+    hasShoppingCart: false, hasUserAccounts: false, hasLeadForms: false,
+  };
+  console.log(`[generate-audit] businessModel.primaryType = ${businessModel.primaryType}`);
+  if (businessModel.redirectsToRetailers) {
+    console.log(`[generate-audit] retailer redirects: ${(businessModel.retailers || []).join(', ') || 'detected via CTA text'}`);
+  }
 
-    const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 16000,
-      messages: [{
-        role: 'user',
-        content: AUDIT_PROMPT(
-          JSON.stringify(websiteData),
-          JSON.stringify(score),
-          existingPlan ? JSON.stringify(existingPlan) : null,
-          {
-            siteType,
-            firingEvents: firingEventsForPrompt,
-            configuredEvents: configuredEventsForPrompt,
-            pagesScanned: pagesScannedForPrompt,
-            businessModel,
-          }
-        ),
-      }],
-    });
-
-    console.log('[generate-audit] usage:', {
-      input: message.usage.input_tokens,
-      output: message.usage.output_tokens,
-    });
-
-    const textBlock = message.content.find((b: any) => b.type === 'text');
-    const responseText = textBlock?.type === 'text' ? textBlock.text : '';
-
-    let audit: any;
-    try {
-      audit = parseJsonLoose(responseText);
-    } catch (err) {
-      console.error('[generate-audit] JSON parse failed even after repair:', (err as Error)?.message);
-      console.error('[generate-audit] raw response head:', responseText.slice(0, 500));
-      console.error('[generate-audit] raw response tail:', responseText.slice(-500));
-      throw new Error('AI response was malformed. Please try again.');
-    }
-
-    // ─── SAFETY FILTER 1: Force real IDs from scrape data ───
+  // Server-side audit post-processing. The full pipeline that used to run
+  // synchronously after JSON.parse(). Closes over all the request-scoped data
+  // it needs.
+  const postProcess = async (audit: any): Promise<any> => {
     const liveAudit = websiteData?.homepage?.analyticsAudit || {};
 
     audit.detectedSetup = audit.detectedSetup || {};
-
     audit.detectedSetup.ga4 = {
       installed: (liveAudit.ga4?.measurementIds || []).length > 0,
       measurementIds: liveAudit.ga4?.measurementIds || [],
@@ -116,12 +83,10 @@ export async function POST(req: NextRequest) {
         ? ((liveAudit.eventsCurrentlyFiring || []).filter((e: any) => e.source?.includes('GA4')).length > 0 ? 'Active' : 'Installed but few events firing')
         : 'Not installed',
     };
-
     audit.detectedSetup.gtm = {
       installed: (liveAudit.gtm?.containerIds || []).length > 0,
       containerIds: liveAudit.gtm?.containerIds || [],
     };
-
     audit.detectedSetup.universalAnalytics = {
       installed: (liveAudit.ua?.propertyIds || []).length > 0,
       propertyIds: liveAudit.ua?.propertyIds || [],
@@ -129,18 +94,15 @@ export async function POST(req: NextRequest) {
         ? 'Universal Analytics was deprecated July 2023 and stopped processing data. Remove or migrate.'
         : null,
     };
-
     audit.detectedSetup.metaPixel = {
       installed: liveAudit.pixels?.metaPixel?.installed || false,
       ids: liveAudit.pixels?.metaPixel?.ids || [],
     };
-
     audit.detectedSetup.googleAds = {
       installed: liveAudit.pixels?.googleAdsConversion?.installed || false,
       ids: liveAudit.pixels?.googleAdsConversion?.ids || [],
     };
 
-    // Consent: use new universal detection data if available, fallback to old format
     const cd = liveAudit.consentDetection || {};
     const gcm = cd.googleConsentMode || {};
     audit.detectedSetup.consentMode = {
@@ -152,8 +114,6 @@ export async function POST(req: NextRequest) {
           : 'No consent mode detected')
         : null,
     };
-
-    // Attach full consent detection data for UI
     audit.consentDetection = {
       bannerDetected: cd.bannerDetected || false,
       autoAccepted: cd.autoAccepted || false,
@@ -163,7 +123,6 @@ export async function POST(req: NextRequest) {
       googleConsentMode: gcm,
     };
 
-    // ─── SAFETY FILTER 2: Force full firing events list from scrape ───
     const liveEvents = liveAudit.eventsCurrentlyFiring || [];
     const uploadedEventNames = (existingPlan?.detectedEvents || []).map((e: string) => e.toLowerCase().trim());
 
@@ -177,7 +136,6 @@ export async function POST(req: NextRequest) {
       notes: evt.notes || evt.method || '',
     }));
 
-    // ─── SAFETY FILTER 3: Never recommend already-firing OR configured events ───
     const allKnownEvents = new Set([
       ...(audit.currentlyFiringEvents || []).map((e: any) => e.eventName?.toLowerCase().trim()),
       ...(liveAudit.eventsConfigured || []).map((e: any) => e.eventName?.toLowerCase().trim()),
@@ -197,11 +155,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ─── SAFETY FILTER 3.5: UNIVERSAL EQUIVALENCE — catch custom-named events ───
-    // After the cheap exact-name dedupe above, some recommendations remain
-    // because the site uses custom names (e.g. `event_buy_now` instead of
-    // `add_to_cart`). The 3-layer equivalence engine (normalize → keyword →
-    // AI fallback) catches these and converts them to rename suggestions.
     const detectedNamePool = Array.from(new Set<string>([
       ...(eventAudit.firingEvents || []).map((e: any) => e.eventName).filter(Boolean),
       ...(eventAudit.configuredEvents || []).map((e: any) => e.eventName).filter(Boolean),
@@ -219,7 +172,6 @@ export async function POST(req: NextRequest) {
       const candidateName = evt.eventName;
       if (!candidateName) continue;
       const description = evt.rationale || evt.whyMissing || evt.estimatedImpact || '';
-
       try {
         const coverage = await findEventCoverage(candidateName, description, detectedNamePool);
         if (coverage.isCovered && coverage.coveredByEvent) {
@@ -239,13 +191,11 @@ export async function POST(req: NextRequest) {
           filteredEventsToAdd.push(evt);
         }
       } catch (err) {
-        // Engine itself errored — keep the candidate to be safe.
         console.warn(`[universal-filter] coverage check threw for '${candidateName}':`, (err as Error)?.message);
         filteredEventsToAdd.push(evt);
       }
     }
 
-    // Also run universal filtering on missingEvents (the 3rd-bucket recommendations).
     const filteredMissingEvents: any[] = [];
     for (const evt of (audit.missingEvents || [])) {
       const candidateName = evt.eventName;
@@ -254,7 +204,6 @@ export async function POST(req: NextRequest) {
         const coverage = await findEventCoverage(candidateName, evt.whyMissing || '', detectedNamePool);
         if (coverage.isCovered && coverage.coveredByEvent) {
           console.log(`[universal-filter] ✗ missing '${candidateName}' covered by '${coverage.coveredByEvent}' (${coverage.method})`);
-          // Don't double-add to renameRecs if it was already added from eventsToAdd
           if (!renameRecs.some(r => r.currentName === coverage.coveredByEvent && r.recommendedName === candidateName)) {
             renameRecs.push({
               currentName: coverage.coveredByEvent,
@@ -285,10 +234,6 @@ export async function POST(req: NextRequest) {
     audit.missingEvents = filteredMissingEvents;
     audit.eventsToFix = [...(audit.eventsToFix || []), ...renameRecs];
 
-    // ─── SAFETY FILTER 6: BUSINESS-MODEL GUARDRAIL ───
-    // Even if Claude misclassifies, this strips events the business model
-    // physically cannot host (e.g. add_to_cart on a brand catalog that
-    // redirects to Amazon). Acts on BOTH eventsToAdd and missingEvents.
     const INVALID_BY_MODEL: Record<string, string[]> = {
       brand_catalog_with_retailers: [
         'add_to_cart', 'remove_from_cart', 'view_cart', 'begin_checkout',
@@ -346,10 +291,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Surface businessModel on the audit response so the UI can display it.
     audit.businessModel = businessModel;
-
-    // Also inject configured vs firing into the audit response
     audit.eventsConfigured = (liveAudit.eventsConfigured || []).map((e: any) => ({
       eventName: e.eventName, source: e.source, method: e.method,
       status: 'configured', notes: e.notes || 'Found in GTM container or HTML marker',
@@ -361,19 +303,14 @@ export async function POST(req: NextRequest) {
 
     const firingNames = new Set(audit.currentlyFiringEvents.map((e: any) => e.eventName?.toLowerCase().trim()));
 
-    // ─── SAFETY FILTER 4: Compute planVsReality server-side if upload provided ───
     if (existingPlan?.detectedEvents && uploadedEventNames.length > 0) {
       audit.planVsReality = audit.planVsReality || {};
-
-      // Documented but not firing
       const claudeDocMissing = new Set(
         (audit.planVsReality.documentedButNotFiring || []).map((e: any) => e.eventName?.toLowerCase().trim())
       );
-
       const missingFromPlan = uploadedEventNames.filter((docName: string) =>
         !firingNames.has(docName) && !claudeDocMissing.has(docName)
       );
-
       audit.planVsReality.documentedButNotFiring = [
         ...(audit.planVsReality.documentedButNotFiring || []),
         ...missingFromPlan.map((name: string) => ({
@@ -383,18 +320,13 @@ export async function POST(req: NextRequest) {
           businessImpact: 'Event documented in your plan but not firing on the live site',
         })),
       ];
-
-      // Firing but not documented
       const firingButNotDoc = audit.currentlyFiringEvents
         .filter((e: any) => !e.isStandard && !e.isDocumented)
         .map((e: any) => e.eventName);
-
       const claudeFiringUndoc = new Set(
         (audit.planVsReality.firingButNotDocumented || []).map((e: any) => e.eventName?.toLowerCase().trim())
       );
-
       const extraUndoc = firingButNotDoc.filter((name: string) => !claudeFiringUndoc.has(name?.toLowerCase().trim()));
-
       audit.planVsReality.firingButNotDocumented = [
         ...(audit.planVsReality.firingButNotDocumented || []),
         ...extraUndoc.map((name: string) => ({
@@ -404,7 +336,6 @@ export async function POST(req: NextRequest) {
       ];
     }
 
-    // ─── Map old field names for backward compatibility with UI ───
     audit.websiteInfo = audit.websiteInfo || {};
     audit.currentState = {
       summary: audit.executiveSummary,
@@ -420,11 +351,8 @@ export async function POST(req: NextRequest) {
       criticalIssues: audit.criticalIssues || [],
     };
 
-    // Attach verification data from scrape for UI display
     audit.verification = liveAudit.verification || null;
 
-    // ─── CATEGORIZED EVENT BUCKETS (3-section view) ───
-    // Pass through what scraper already computed, then sanitize missingEvents.
     audit.siteType = siteType;
     audit.eventAudit = {
       detectionMethod: eventAudit.detectionMethod || 'Playwright only',
@@ -435,7 +363,6 @@ export async function POST(req: NextRequest) {
       userSimulation: eventAudit.userSimulation || null,
     };
 
-    // ─── SAFETY FILTER 5: Strip any missingEvents that duplicate firing/configured ───
     const norm = (s: string) => (s || '').toLowerCase().trim().replace(/^(event_|ga_event_|gtm_event_|track_)/, '');
     const alreadyKnown = new Set<string>([
       ...(audit.eventAudit.firingEvents || []).map((e: any) => norm(e.eventName)),
@@ -449,7 +376,6 @@ export async function POST(req: NextRequest) {
         const n = norm(evt?.eventName);
         return n && !alreadyKnown.has(n);
       });
-      // Stamp sequential IDs if Claude didn't (or if filtering created gaps)
       audit.missingEvents.forEach((evt: any, i: number) => {
         if (!evt.id) evt.id = `MISS_${i + 1}`;
       });
@@ -458,10 +384,28 @@ export async function POST(req: NextRequest) {
       audit.missingEvents = [];
     }
 
-    return NextResponse.json({ success: true, audit });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : 'Audit generation failed';
-    console.error('Audit generation error:', err);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
-  }
+    return audit;
+  };
+
+  const stream = buildClaudeSseStream({
+    model: 'claude-sonnet-4-6',
+    userMessage: AUDIT_PROMPT(
+      JSON.stringify(websiteData),
+      JSON.stringify(score),
+      existingPlan ? JSON.stringify(existingPlan) : null,
+      {
+        siteType,
+        firingEvents: firingEventsForPrompt,
+        configuredEvents: configuredEventsForPrompt,
+        pagesScanned: pagesScannedForPrompt,
+        businessModel,
+      }
+    ),
+    maxTokens: 16000,
+    milestones: AUDIT_MILESTONES,
+    postProcess,
+    logLabel: 'generate-audit',
+  });
+
+  return new Response(stream, { headers: streamResponseHeaders() });
 }

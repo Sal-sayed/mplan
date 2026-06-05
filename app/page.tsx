@@ -6,6 +6,7 @@ import AnimatedBackground from '@/components/AnimatedBackground';
 import HeroScreen from '@/components/HeroScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import SuccessScreen from '@/components/SuccessScreen';
+import { useStreamingClaude } from '@/lib/stream-client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -21,6 +22,7 @@ export default function Home() {
   const [data, setData] = useState<any>(null);
   const [emailDelivered, setEmailDelivered] = useState(true);
   const [error, setError] = useState('');
+  const stream = useStreamingClaude();
 
   const handleSubmitNew = async ({ url: inputUrl, email: inputEmail }: { url: string; email: string }) => {
     setMode('new');
@@ -95,30 +97,26 @@ export default function Home() {
         }
       }
 
-      // Stage 3: Generate plan or audit
+      // Stage 3: Generate plan or audit (STREAMING)
       setStage('generating'); setProgress(65);
+      stream.reset();
 
-      let plan = null;
-      let audit = null;
+      let plan: any = null;
+      let audit: any = null;
 
       if (pipelineMode === 'audit') {
-        // EXISTING WEBSITE: run audit
-        const auditRes = await fetch('/api/generate-audit', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ websiteData: scrapeJson.data, score: scoreData, existingPlan: existingPlanData }),
+        audit = await stream.startStream<any>('/api/generate-audit', {
+          websiteData: scrapeJson.data,
+          score: scoreData,
+          existingPlan: existingPlanData,
         });
-        const auditJson = await auditRes.json();
-        if (!auditJson.success) throw new Error(auditJson.error || 'Failed to generate audit');
-        audit = auditJson.audit;
+        if (!audit) throw new Error(stream.error || 'Failed to generate audit');
       } else {
-        // NEW WEBSITE: generate plan
-        const planRes = await fetch('/api/generate-plan', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ websiteData: scrapeJson.data, score: scoreData }),
+        plan = await stream.startStream<any>('/api/generate-plan', {
+          websiteData: scrapeJson.data,
+          score: scoreData,
         });
-        const planJson = await planRes.json();
-        if (!planJson.success) throw new Error(planJson.error || 'Failed to generate plan');
-        plan = planJson.plan;
+        if (!plan) throw new Error(stream.error || 'Failed to generate plan');
       }
 
       // Stage 4: Send email
@@ -205,7 +203,17 @@ export default function Home() {
         {(stage === 'scraping' || stage === 'scoring' || stage === 'generating' || stage === 'delivering') && (
           <motion.div key="loading" className="absolute inset-0"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <LoadingScreen stage={stage} progress={progress} url={url} email={email} mode={mode} onCancel={reset} />
+            <LoadingScreen
+              stage={stage}
+              progress={progress}
+              url={url}
+              email={email}
+              mode={mode}
+              onCancel={reset}
+              streamCurrentEmoji={stage === 'generating' ? stream.currentEmoji : undefined}
+              streamCurrentMessage={stage === 'generating' ? stream.currentMessage : undefined}
+              streamMilestones={stage === 'generating' ? stream.milestones : undefined}
+            />
           </motion.div>
         )}
 

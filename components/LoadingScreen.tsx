@@ -43,6 +43,13 @@ function nextCheckpoint(stage: string): number {
   return next ? STAGE_CHECKPOINTS[next.key] : 100;
 }
 
+interface StreamMilestone {
+  emoji: string;
+  message: string;
+  progress: number;
+  timestamp: number;
+}
+
 interface Props {
   stage: string;
   progress: number;
@@ -50,9 +57,25 @@ interface Props {
   email: string;
   mode?: 'new' | 'audit';
   onCancel?: () => void;
+  // Live streaming updates from /api/generate-plan and /api/generate-audit.
+  // Only populated during the `generating` stage; we render the current
+  // milestone over the stage list so the wait feels active.
+  streamCurrentEmoji?: string;
+  streamCurrentMessage?: string;
+  streamMilestones?: StreamMilestone[];
 }
 
-export default function LoadingScreen({ stage, progress, url, email, mode, onCancel }: Props) {
+export default function LoadingScreen({
+  stage,
+  progress,
+  url,
+  email,
+  mode,
+  onCancel,
+  streamCurrentEmoji,
+  streamCurrentMessage,
+  streamMilestones,
+}: Props) {
   const currentIdx = STAGES.findIndex(s => s.key === stage);
   const [elapsedSec, setElapsedSec] = useState(0);
   const startTime = useRef<number>(Date.now());
@@ -129,6 +152,29 @@ export default function LoadingScreen({ stage, progress, url, email, mode, onCan
             <SpeedCoder />
           </div>
         </div>
+
+        {/* Streaming milestone — live update from Claude as it generates */}
+        {stage === 'generating' && streamCurrentMessage && (
+          <div className="w-full max-w-md mt-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.06] border border-white/[0.08]">
+            <motion.span
+              key={streamCurrentEmoji || 'pulse'}
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.25, ease: 'backOut' }}
+              className="text-2xl"
+            >
+              {streamCurrentEmoji || '✨'}
+            </motion.span>
+            <div className="min-w-0">
+              <div className="text-white text-sm font-medium truncate">{streamCurrentMessage}</div>
+              {streamMilestones && streamMilestones.length > 1 && (
+                <div className="text-white/50 text-[10px] mt-0.5">
+                  Step {streamMilestones.length} · live
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Stage progress list */}
         <div className="w-full max-w-md mt-6 space-y-3">
