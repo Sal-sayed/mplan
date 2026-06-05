@@ -50,6 +50,10 @@ export default function Home() {
           // selector here once the UI exposes one.
         }),
       });
+      if (scrapeRes.status === 429) {
+        const data = await scrapeRes.json().catch(() => ({}));
+        throw new Error(data.error || "You're submitting too fast. Please wait before trying again.");
+      }
       const scrapeJson = await scrapeRes.json();
       if (!scrapeJson.success) throw new Error(scrapeJson.error || 'Failed to analyze website');
 

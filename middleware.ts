@@ -4,8 +4,8 @@ import { verifyToken } from '@/lib/auth';
 export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
-  // Protect /leads page (redirect to login)
-  if (path === '/leads') {
+  // Protect /leads page tree (redirect to login). Skip /leads/login itself.
+  if (path === '/leads' || (path.startsWith('/leads/') && path !== '/leads/login')) {
     const token = req.cookies.get('admin_token')?.value;
     if (!token || !(await verifyToken(token))) {
       return NextResponse.redirect(new URL('/leads/login', req.url));
@@ -24,5 +24,5 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/leads', '/api/leads-admin/:path*'],
+  matcher: ['/leads', '/leads/:path*', '/api/leads-admin/:path*'],
 };

@@ -2,10 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropic } from '@/lib/anthropic';
 import { MEASUREMENT_PLAN_PROMPT } from '@/lib/prompts';
 import { sanitizePlan } from '@/lib/sanitize-plan';
+import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
+  const clientId = getClientIdentifier(req);
+  const rl = await checkRateLimit(clientId);
+  if (!rl.allowed) {
+    const resetMinutes = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000 / 60));
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Rate limit exceeded. You can submit ${rl.limit} requests per hour. Try again in ${resetMinutes} minute${resetMinutes === 1 ? '' : 's'}.`,
+        rateLimitInfo: { limit: rl.limit, remaining: rl.remaining, resetInMinutes: resetMinutes },
+      },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   try {
     const { websiteData, score } = await req.json();
 

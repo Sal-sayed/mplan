@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { AUDIT_PROMPT } from '@/lib/audit-prompt';
 import { findEventCoverage } from '@/lib/event-equivalence';
+import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 
 let _anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
@@ -15,6 +16,20 @@ function getAnthropic(): Anthropic {
 export const maxDuration = 90;
 
 export async function POST(req: NextRequest) {
+  const clientId = getClientIdentifier(req);
+  const rl = await checkRateLimit(clientId);
+  if (!rl.allowed) {
+    const resetMinutes = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000 / 60));
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Rate limit exceeded. You can submit ${rl.limit} requests per hour. Try again in ${resetMinutes} minute${resetMinutes === 1 ? '' : 's'}.`,
+        rateLimitInfo: { limit: rl.limit, remaining: rl.remaining, resetInMinutes: resetMinutes },
+      },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   try {
     const { websiteData, score, existingPlan } = await req.json();
 

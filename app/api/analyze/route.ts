@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { deepScrapeWebsite, type SiteType } from '@/lib/scraper';
 import { auditExistingSite, type AuditResult, type GA4Event, type PixelEvent, type GTMEvent } from '@/lib/existing-site-auditor';
+import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
@@ -10,6 +11,20 @@ type ScrapeMode = 'new' | 'existing';
 const VALID_SITE_TYPES: ReadonlyArray<SiteType> = ['ecommerce', 'lead-gen', 'saas', 'content', 'marketplace', 'other'];
 
 export async function POST(req: NextRequest) {
+  const clientId = getClientIdentifier(req);
+  const rl = await checkRateLimit(clientId);
+  if (!rl.allowed) {
+    const resetMinutes = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000 / 60));
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Rate limit exceeded. You can submit ${rl.limit} requests per hour. Try again in ${resetMinutes} minute${resetMinutes === 1 ? '' : 's'}.`,
+        rateLimitInfo: { limit: rl.limit, remaining: rl.remaining, resetInMinutes: resetMinutes },
+      },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
   try {
     const body = await req.json();
     const { url } = body;
