@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Mail, FileSpreadsheet, ArrowRight, RotateCcw, Search, ArrowLeft } from 'lucide-react';
+import { CheckCircle2, Mail, FileSpreadsheet, ArrowRight, RotateCcw, Search, ArrowLeft, Calendar } from 'lucide-react';
 import ResultsScreen from './ResultsScreen';
 import AuditResultsScreen from './AuditResultsScreen';
 
@@ -153,6 +153,21 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
               View audit findings <ArrowRight size={15} />
             </button>
           )}
+
+          {/* Post-success CTA (configurable via NEXT_PUBLIC_FOLLOWUP_CTA_URL) */}
+          {process.env.NEXT_PUBLIC_FOLLOWUP_CTA_URL && (
+            <a
+              href={process.env.NEXT_PUBLIC_FOLLOWUP_CTA_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 rounded-xl bg-white/[0.06] border border-emerald-400/30 text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
+            >
+              <Calendar size={14} />
+              {process.env.NEXT_PUBLIC_FOLLOWUP_CTA_LABEL || 'Book a 20-min review of your plan'}
+              <ArrowRight size={13} />
+            </a>
+          )}
+
           <button onClick={onReset}
             className="w-full py-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-400 text-sm hover:text-white hover:border-white/[0.15] transition flex items-center justify-center gap-2">
             <RotateCcw size={13} /> Analyze another website
