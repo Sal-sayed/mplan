@@ -4,6 +4,8 @@
 // We parse with the strict parser first, then fall back to repairs only if
 // that throws — so happy-path requests pay nothing extra.
 
+import { jsonrepair } from 'jsonrepair';
+
 export function parseJsonLoose<T = unknown>(raw: string): T {
   let text = extractJsonObject(raw);
 
@@ -33,7 +35,16 @@ export function parseJsonLoose<T = unknown>(raw: string): T {
   attempt = truncateToLastValid(text);
   attempt = attempt.replace(/,(\s*[}\]])/g, '$1');
   attempt = closeUnbalanced(attempt);
-  return JSON.parse(attempt) as T;
+  try {
+    return JSON.parse(attempt) as T;
+  } catch {
+    /* continue */
+  }
+
+  // 4. Last resort — the battle-tested jsonrepair library handles missing
+  // commas between elements, unquoted keys, unterminated strings, etc.
+  const repaired = jsonrepair(text);
+  return JSON.parse(repaired) as T;
 }
 
 function extractJsonObject(raw: string): string {
