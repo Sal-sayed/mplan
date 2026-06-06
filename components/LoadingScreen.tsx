@@ -1,19 +1,19 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { Check, ArrowLeft } from 'lucide-react';
-import SpeedCoder from './loading/SpeedCoder';
-import WhackABugGame from './loading/WhackABugGame';
+import { ArrowLeft } from 'lucide-react';
+import FeatureShowcase from './loading/FeatureShowcase';
+import ActivityLog, { type ActivityEntry } from './loading/ActivityLog';
+import StatsDashboard, { type LiveStats } from './loading/StatsDashboard';
 
 const STAGES = [
-  { key: 'scraping', label: 'Scanning website', desc: 'Reading buttons, forms, and CTAs' },
-  { key: 'scoring', label: 'Auditing tracking', desc: 'Detecting GA4, GTM, and pixels' },
-  { key: 'generating', label: 'Generating plan', desc: 'Writing events, KPIs, and dimensions' },
+  { key: 'scraping',   label: 'Scanning website',   desc: 'Reading buttons, forms, and CTAs' },
+  { key: 'scoring',    label: 'Auditing tracking',  desc: 'Detecting GA4, GTM, and pixels' },
+  { key: 'generating', label: 'Generating plan',    desc: 'Writing events, KPIs, and dimensions' },
   { key: 'delivering', label: 'Delivering to inbox', desc: 'Building Excel and sending email' },
 ];
 
-// Checkpoint progress each stage starts at (matches setProgress(...) calls in runPipeline)
 const STAGE_CHECKPOINTS: Record<string, number> = {
   scraping: 15,
   scoring: 30,
@@ -21,13 +21,8 @@ const STAGE_CHECKPOINTS: Record<string, number> = {
   delivering: 85,
 };
 
-// Heuristic expected duration per stage, in ms. Used to drive smooth creep — does
-// not affect actual work; only the visual bar. Existing-mode scrape is much heavier
-// (network interception, dataLayer extraction, GTM container fetch, sub-pages).
 function getExpectedDurationMs(stage: string, mode?: 'new' | 'audit'): number {
   switch (stage) {
-    // Existing-mode scrape: 45s sim on homepage + 25s sim × up to 3 sub-pages
-    // + consent/navigation/settle/GTM-fetch overhead → ~3-4 minutes.
     case 'scraping': return mode === 'audit' ? 420000 : 25000;
     case 'scoring': return 8000;
     case 'generating': return 60000;
@@ -43,6 +38,101 @@ function nextCheckpoint(stage: string): number {
   return next ? STAGE_CHECKPOINTS[next.key] : 100;
 }
 
+// Sum of remaining stages' expected durations — used to compute ETA.
+function remainingExpectedMs(stage: string, mode?: 'new' | 'audit', elapsedInStageMs = 0): number {
+  const idx = STAGES.findIndex(s => s.key === stage);
+  if (idx < 0) return 0;
+  const currentRemaining = Math.max(0, getExpectedDurationMs(stage, mode) - elapsedInStageMs);
+  let rest = 0;
+  for (let i = idx + 1; i < STAGES.length; i++) {
+    rest += getExpectedDurationMs(STAGES[i].key, mode);
+  }
+  return currentRemaining + rest;
+}
+
+// ─── ACTIVITY SCRIPTS ─────────────────────────────────────────
+type ScriptEntry = { delayMs: number; entry: Omit<ActivityEntry, 'id' | 'timestamp'> };
+
+const AUDIT_ACTIVITY: ScriptEntry[] = [
+  { delayMs: 500,    entry: { type: 'running', message: 'Launching headless browser' } },
+  { delayMs: 1500,   entry: { type: 'done',    message: 'Browser ready' } },
+  { delayMs: 2000,   entry: { type: 'running', message: 'Visiting homepage' } },
+  { delayMs: 4500,   entry: { type: 'done',    message: 'Page loaded successfully' } },
+  { delayMs: 5500,   entry: { type: 'running', message: 'Accepting consent banner' } },
+  { delayMs: 7500,   entry: { type: 'done',    message: 'Consent accepted' } },
+  { delayMs: 8500,   entry: { type: 'running', message: 'Extracting measurement IDs' } },
+  { delayMs: 10500,  entry: { type: 'done',    message: 'Detected GA4 property' } },
+  { delayMs: 11500,  entry: { type: 'done',    message: 'Detected GTM container' } },
+  { delayMs: 12500,  entry: { type: 'done',    message: 'Detected second GTM container' } },
+  { delayMs: 13500,  entry: { type: 'done',    message: 'Detected Meta Pixel' } },
+  { delayMs: 15000,  entry: { type: 'running', message: 'Parsing GTM containers' } },
+  { delayMs: 17000,  entry: { type: 'done',    message: 'Configured events extracted' } },
+  { delayMs: 18000,  entry: { type: 'running', message: 'Capturing live events' } },
+  { delayMs: 20000,  entry: { type: 'done',    message: 'Captured page_view (GA4)' } },
+  { delayMs: 21000,  entry: { type: 'done',    message: 'Captured user_engagement (GA4)' } },
+  { delayMs: 22500,  entry: { type: 'done',    message: 'Captured PageView (Meta Pixel)' } },
+  { delayMs: 24000,  entry: { type: 'running', message: 'Simulating user interactions' } },
+  { delayMs: 27000,  entry: { type: 'done',    message: 'Captured add_to_cart equivalent' } },
+  { delayMs: 28500,  entry: { type: 'done',    message: 'Captured view_more_details' } },
+  { delayMs: 30000,  entry: { type: 'info',    message: 'Discovering deep pages' } },
+  { delayMs: 32000,  entry: { type: 'done',    message: 'Found product page',  detail: '/products' } },
+  { delayMs: 33000,  entry: { type: 'done',    message: 'Found category page', detail: '/collections' } },
+  { delayMs: 35000,  entry: { type: 'running', message: 'Scanning product page' } },
+  { delayMs: 40000,  entry: { type: 'done',    message: 'view_item fired on product page' } },
+  { delayMs: 42000,  entry: { type: 'running', message: 'Scanning category page' } },
+  { delayMs: 46000,  entry: { type: 'done',    message: 'view_item_list fired' } },
+  { delayMs: 50000,  entry: { type: 'running', message: 'Detecting business model' } },
+  { delayMs: 53000,  entry: { type: 'done',    message: 'Business model classified' } },
+  { delayMs: 75000,  entry: { type: 'info',    message: 'Analyzing gaps with AI' } },
+  { delayMs: 130000, entry: { type: 'running', message: 'Building Excel workbook' } },
+  { delayMs: 150000, entry: { type: 'done',    message: 'Excel ready' } },
+];
+
+const NEW_ACTIVITY: ScriptEntry[] = [
+  { delayMs: 500,    entry: { type: 'running', message: 'Launching browser' } },
+  { delayMs: 1500,   entry: { type: 'done',    message: 'Browser ready' } },
+  { delayMs: 2000,   entry: { type: 'running', message: 'Visiting your site' } },
+  { delayMs: 5000,   entry: { type: 'done',    message: 'Page loaded' } },
+  { delayMs: 6000,   entry: { type: 'running', message: 'Analyzing site structure' } },
+  { delayMs: 9000,   entry: { type: 'done',    message: 'Industry detected' } },
+  { delayMs: 10500,  entry: { type: 'done',    message: 'Business model classified' } },
+  { delayMs: 12000,  entry: { type: 'running', message: 'Extracting content insights' } },
+  { delayMs: 15000,  entry: { type: 'done',    message: 'Identified product categories' } },
+  { delayMs: 17000,  entry: { type: 'running', message: 'AI generating measurement plan' } },
+  { delayMs: 25000,  entry: { type: 'done',    message: 'Business objectives defined' } },
+  { delayMs: 30000,  entry: { type: 'done',    message: 'KPIs mapped to objectives' } },
+  { delayMs: 40000,  entry: { type: 'done',    message: 'User journey flows created' } },
+  { delayMs: 55000,  entry: { type: 'done',    message: 'GA4 events configured' } },
+  { delayMs: 70000,  entry: { type: 'done',    message: 'Custom dimensions added' } },
+  { delayMs: 85000,  entry: { type: 'done',    message: 'Conversion goals defined' } },
+  { delayMs: 100000, entry: { type: 'done',    message: 'Implementation roadmap built' } },
+  { delayMs: 110000, entry: { type: 'running', message: 'Generating dataLayer schema' } },
+  { delayMs: 120000, entry: { type: 'done',    message: 'GTM configuration ready' } },
+  { delayMs: 130000, entry: { type: 'running', message: 'Building Excel workbook' } },
+  { delayMs: 145000, entry: { type: 'done',    message: 'Excel ready' } },
+];
+
+const AUDIT_STATS: Array<{ delayMs: number; stats: LiveStats }> = [
+  { delayMs: 11000, stats: { gtmContainers: 1, toolsActive: 1 } },
+  { delayMs: 12500, stats: { gtmContainers: 2, toolsActive: 2 } },
+  { delayMs: 13500, stats: { gtmContainers: 2, toolsActive: 3 } },
+  { delayMs: 17000, stats: { gtmContainers: 2, toolsActive: 3, eventsFound: 11 } },
+  { delayMs: 22500, stats: { gtmContainers: 2, toolsActive: 4, eventsFound: 14, pagesScanned: 1 } },
+  { delayMs: 30000, stats: { gtmContainers: 2, toolsActive: 4, eventsFound: 17, pagesScanned: 1 } },
+  { delayMs: 40000, stats: { gtmContainers: 2, toolsActive: 4, eventsFound: 22, pagesScanned: 2 } },
+  { delayMs: 46000, stats: { gtmContainers: 2, toolsActive: 4, eventsFound: 25, pagesScanned: 3 } },
+  { delayMs: 53000, stats: { gtmContainers: 2, toolsActive: 4, eventsFound: 27, pagesScanned: 4 } },
+];
+
+const NEW_STATS: Array<{ delayMs: number; stats: LiveStats }> = [
+  { delayMs: 9000,  stats: { objectives: 1 } },
+  { delayMs: 25000, stats: { objectives: 5, kpis: 4 } },
+  { delayMs: 30000, stats: { objectives: 5, kpis: 12 } },
+  { delayMs: 40000, stats: { objectives: 5, kpis: 12, events: 8 } },
+  { delayMs: 55000, stats: { objectives: 5, kpis: 12, events: 22 } },
+  { delayMs: 70000, stats: { objectives: 5, kpis: 12, events: 22, dimensions: 10 } },
+];
+
 interface StreamMilestone {
   emoji: string;
   message: string;
@@ -57,9 +147,6 @@ interface Props {
   email: string;
   mode?: 'new' | 'audit';
   onCancel?: () => void;
-  // Live streaming updates from /api/generate-plan and /api/generate-audit.
-  // Only populated during the `generating` stage; we render the current
-  // milestone over the stage list so the wait feels active.
   streamCurrentEmoji?: string;
   streamCurrentMessage?: string;
   streamMilestones?: StreamMilestone[];
@@ -72,23 +159,19 @@ export default function LoadingScreen({
   email,
   mode,
   onCancel,
-  streamCurrentEmoji,
   streamCurrentMessage,
   streamMilestones,
 }: Props) {
+  const effectiveMode: 'new' | 'audit' = mode ?? 'new';
   const currentIdx = STAGES.findIndex(s => s.key === stage);
-  const [elapsedSec, setElapsedSec] = useState(0);
-  const startTime = useRef<number>(Date.now());
 
-  // Smooth, asymptotic creep — display progress edges toward the next checkpoint
-  // over the stage's expected duration so the bar always appears to be moving.
+  // ── Smooth-creep progress (carried over from the previous LoadingScreen) ──
   const [displayProgress, setDisplayProgress] = useState(progress);
   const stageEnteredAt = useRef<number>(Date.now());
   const stageEntryProgress = useRef<number>(progress);
   const lastStage = useRef<string>(stage);
   const lastTargetProgress = useRef<number>(progress);
 
-  // Reset stage anchors when the real stage or backend checkpoint changes
   useEffect(() => {
     if (stage !== lastStage.current || progress !== lastTargetProgress.current) {
       stageEnteredAt.current = Date.now();
@@ -96,138 +179,238 @@ export default function LoadingScreen({
       lastStage.current = stage;
       lastTargetProgress.current = progress;
     }
-    // displayProgress intentionally excluded — we only re-anchor on real stage/checkpoint changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, progress]);
 
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(Date.now());
+
   useEffect(() => {
     const i = setInterval(() => {
-      setElapsedSec(Math.floor((Date.now() - startTime.current) / 1000));
+      setElapsed(Math.floor((Date.now() - startRef.current) / 1000));
 
-      const expected = getExpectedDurationMs(stage, mode);
+      const expected = getExpectedDurationMs(stage, effectiveMode);
       const elapsedInStage = Date.now() - stageEnteredAt.current;
       const ceiling = Math.max(nextCheckpoint(stage) - 0.5, progress);
       const start = stageEntryProgress.current;
-      // 1 - exp(-t / expected) gives a curve that approaches 1 but never reaches it,
-      // so the bar feels alive without lying about completion.
       const k = 1 - Math.exp(-elapsedInStage / (expected * 0.7));
       const target = start + (ceiling - start) * k;
-      // Never go backwards, never overtake the next checkpoint, always >= real progress
       setDisplayProgress(prev => Math.max(prev, Math.min(target, ceiling), progress));
     }, 200);
     return () => clearInterval(i);
-  }, [stage, mode, progress]);
+  }, [stage, effectiveMode, progress]);
 
-  const minutes = Math.floor(elapsedSec / 60);
-  const seconds = elapsedSec % 60;
-  const timeDisplay = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  // ── ETA: sum remaining expected time across stages ──
+  const elapsedInStageMs = elapsed * 1000 - (stageEnteredAt.current - startRef.current);
+  const etaSeconds = Math.floor(
+    remainingExpectedMs(stage, effectiveMode, Math.max(0, elapsedInStageMs)) / 1000
+  );
+
+  // ── Activity log: scripted entries + live streaming milestones ──
+  const [activities, setActivities] = useState<ActivityEntry[]>([]);
+  const sessionId = useMemo(() => Math.random().toString(36).slice(2, 8), []);
+  const seenMilestoneRefs = useRef<Set<number>>(new Set());
+
+  useEffect(() => {
+    const script = effectiveMode === 'audit' ? AUDIT_ACTIVITY : NEW_ACTIVITY;
+    const timers = script.map((item, idx) =>
+      setTimeout(() => {
+        setActivities(prev => [
+          ...prev,
+          { ...item.entry, id: `scripted-${sessionId}-${idx}`, timestamp: Date.now() },
+        ]);
+      }, item.delayMs)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [effectiveMode, sessionId]);
+
+  // Bridge real Claude streaming milestones into the activity log
+  useEffect(() => {
+    if (!streamMilestones || streamMilestones.length === 0) return;
+    streamMilestones.forEach(m => {
+      if (seenMilestoneRefs.current.has(m.timestamp)) return;
+      seenMilestoneRefs.current.add(m.timestamp);
+      setActivities(prev => [
+        ...prev,
+        {
+          id: `stream-${m.timestamp}`,
+          type: 'done',
+          message: m.message,
+          timestamp: m.timestamp,
+        },
+      ]);
+    });
+  }, [streamMilestones]);
+
+  // ── Stats: scripted progression ──
+  const [stats, setStats] = useState<LiveStats>({});
+  useEffect(() => {
+    const script = effectiveMode === 'audit' ? AUDIT_STATS : NEW_STATS;
+    const timers = script.map(item =>
+      setTimeout(() => {
+        setStats(prev => ({ ...prev, ...item.stats }));
+      }, item.delayMs)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [effectiveMode]);
+
+  // ── Header status text ──
+  const statusText =
+    stage === 'generating' && streamCurrentMessage
+      ? streamCurrentMessage
+      : STAGES.find(s => s.key === stage)?.label ??
+        (effectiveMode === 'audit' ? 'Auditing your site' : 'Building your plan');
+
+  const hostname = (() => {
+    try { return new URL(url).hostname; } catch { return url; }
+  })();
+
+  const formatTime = (s: number) => {
+    if (s <= 0) return '0s';
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return m > 0 ? `${m}m ${sec}s` : `${sec}s`;
+  };
+
+  const elapsedDisplay = formatTime(elapsed);
 
   return (
-    <div className="h-full w-full flex flex-col items-center justify-center p-6 overflow-hidden relative">
+    <div className="h-full w-full flex flex-col p-4 md:p-6 overflow-hidden relative">
+
+      {/* Ambient glow */}
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/8 rounded-full blur-3xl animate-pulse" />
+        <div
+          className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/8 rounded-full blur-3xl animate-pulse"
+          style={{ animationDelay: '1.5s' }}
+        />
+      </div>
 
       {/* Back button */}
       {onCancel && (
-        <button onClick={onCancel}
-          className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20 pointer-events-auto">
+        <button
+          onClick={onCancel}
+          className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20"
+        >
           <ArrowLeft size={14} /> Back
         </button>
       )}
 
-      {/* Interactive whack-a-bug game layer */}
-      <WhackABugGame />
-
-      {/* Main content — pointer-events-none so bugs behind are clickable */}
-      <div className="relative z-10 flex flex-col items-center justify-center w-full pointer-events-none">
-
-        {/* URL and Email */}
-        <div className="mb-6 text-center">
-          <p className="text-white text-sm font-medium truncate max-w-md">{url}</p>
-          <p className="text-white/70 text-xs mt-1 truncate max-w-md">&rarr; {email}</p>
+      {/* ═══ TOP: STATUS BAR ═══ */}
+      <motion.div
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-4 flex items-center justify-center flex-wrap gap-3 pl-16 md:pl-20 pr-2"
+      >
+        <div className="flex items-center gap-3 px-4 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+            className="w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent"
+          />
+          <span className="text-xs text-white">
+            {statusText}
+            <span className="text-white/50"> · {hostname}</span>
+          </span>
         </div>
-
-        {/* Speed Coder — the star of the show */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-blue-500/10 blur-3xl rounded-full" />
-          <div className="relative">
-            <SpeedCoder />
-          </div>
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/60 font-mono">
+            {Math.round(displayProgress)}%
+          </span>
+          <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/60 font-mono">
+            {elapsedDisplay}
+          </span>
         </div>
+      </motion.div>
 
-        {/* Streaming milestone — live update from Claude as it generates */}
-        {stage === 'generating' && streamCurrentMessage && (
-          <div className="w-full max-w-md mt-6 flex items-center gap-3 px-4 py-3 rounded-lg bg-white/[0.06] border border-white/[0.08]">
-            <motion.span
-              key={streamCurrentEmoji || 'pulse'}
-              initial={{ scale: 0.7, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.25, ease: 'backOut' }}
-              className="text-2xl"
-            >
-              {streamCurrentEmoji || '✨'}
-            </motion.span>
-            <div className="min-w-0">
-              <div className="text-white text-sm font-medium truncate">{streamCurrentMessage}</div>
-              {streamMilestones && streamMilestones.length > 1 && (
-                <div className="text-white/50 text-[10px] mt-0.5">
-                  Step {streamMilestones.length} · live
-                </div>
-              )}
+      {/* Email line (small, under top bar) */}
+      <div className="text-center text-[11px] text-white/40 mb-3 truncate">
+        → {email}
+      </div>
+
+      {/* ═══ MAIN: 3 COLUMNS ═══ */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.1fr_1.1fr_1fr] gap-3 md:gap-4 min-h-0">
+        <motion.div
+          initial={{ opacity: 0, x: -16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+          className="min-h-[280px] lg:min-h-0"
+        >
+          <ActivityLog entries={activities} />
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/[0.04] border border-white/[0.08] rounded-xl flex flex-col overflow-hidden min-h-[360px] lg:min-h-0"
+        >
+          <div className="px-4 py-3 border-b border-white/[0.08]">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-white/60 font-medium">
+              What you’re getting
             </div>
           </div>
-        )}
+          <div className="flex-1 p-4 md:p-6 min-h-0">
+            <FeatureShowcase mode={effectiveMode} cardDurationMs={7000} />
+          </div>
+        </motion.div>
 
-        {/* Stage progress list */}
-        <div className="w-full max-w-md mt-6 space-y-3">
+        <motion.div
+          initial={{ opacity: 0, x: 16 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.3 }}
+          className="min-h-[280px] lg:min-h-0"
+        >
+          <StatsDashboard stats={stats} mode={effectiveMode} />
+        </motion.div>
+      </div>
+
+      {/* ═══ BOTTOM: STAGE PROGRESS + BAR + ETA ═══ */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+        className="mt-4"
+      >
+        <div className="flex items-center gap-3 mb-2 overflow-x-auto no-scrollbar">
           {STAGES.map((s, idx) => {
             const isActive = s.key === stage;
             const isDone = currentIdx > idx;
             return (
-              <div key={s.key} className="flex items-start gap-3">
-                <div className="mt-0.5">
-                  {isDone ? (
-                    <div className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center">
-                      <Check size={10} className="text-white" />
-                    </div>
-                  ) : isActive ? (
-                    <div className="w-4 h-4 rounded-full bg-blue-500 animate-pulse" />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full border border-white/30" />
-                  )}
-                </div>
-                <div>
-                  <div className={
-                    isActive ? 'text-white font-medium text-sm'
-                    : isDone ? 'text-emerald-400 text-sm'
-                    : 'text-white/40 text-sm'
-                  }>
-                    {s.label}
-                  </div>
-                  <div className="text-white/60 text-xs">{s.desc}</div>
-                </div>
+              <div
+                key={s.key}
+                className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] whitespace-nowrap border ${
+                  isActive
+                    ? 'border-blue-500/40 bg-blue-500/10 text-blue-200'
+                    : isDone
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                    : 'border-white/[0.08] text-white/40'
+                }`}
+              >
+                <span>{isDone ? '✓' : isActive ? '●' : '○'}</span>
+                <span>{s.label}</span>
               </div>
             );
           })}
         </div>
-
-        {/* Progress bar */}
-        <div className="w-full max-w-md mt-6">
-          <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full bg-gradient-to-r from-blue-500 via-cyan-400 to-blue-400 relative"
-              initial={{ width: 0 }}
-              animate={{ width: `${displayProgress}%` }}
-              transition={{ duration: 0.4, ease: 'linear' }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
-            </motion.div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden border border-white/[0.06]">
+              <motion.div
+                className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative"
+                initial={{ width: 0 }}
+                animate={{ width: `${displayProgress}%` }}
+                transition={{ duration: 0.4, ease: 'linear' }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_2s_infinite]" />
+              </motion.div>
+            </div>
           </div>
-          <div className="flex items-center justify-between text-xs text-white/50 mt-1.5">
-            <span>{Math.round(displayProgress)}%</span>
-            <span className="font-mono">{timeDisplay}</span>
+          <div className="text-[11px] text-white/60 font-mono whitespace-nowrap">
+            {etaSeconds > 1 ? `~${formatTime(etaSeconds)} remaining` : 'Almost there…'}
           </div>
         </div>
-
-      </div>{/* end pointer-events-none wrapper */}
+      </motion.div>
     </div>
   );
 }
