@@ -36,6 +36,9 @@ yarn-error.log*
 # leads data (contains PII)
 /data/leads.json
 
+# monitor run history (local fallback store — Supabase is source of truth)
+/data/monitor-runs.json
+
 # vercel
 .vercel
 
