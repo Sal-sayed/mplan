@@ -3,7 +3,7 @@
 // halfway through a request.
 
 const REQUIRED_ALWAYS = [
-  'ANTHROPIC_API_KEY',
+  'GEMINI_API_KEY',
   'SUPABASE_URL',
   'SUPABASE_SERVICE_ROLE_KEY',
   'JWT_SECRET',

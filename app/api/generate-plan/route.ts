@@ -3,6 +3,7 @@ import { MEASUREMENT_PLAN_SYSTEM_PROMPT, MEASUREMENT_PLAN_USER } from '@/lib/pro
 import { sanitizePlan } from '@/lib/sanitize-plan';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { buildClaudeSseStream, streamResponseHeaders } from '@/lib/claude-stream';
+import { GEMINI_MODELS } from '@/lib/gemini';
 
 export const maxDuration = 90;
 
@@ -41,7 +42,8 @@ export async function POST(req: NextRequest) {
   }
 
   const stream = buildClaudeSseStream({
-    model: 'claude-haiku-4-5',
+    model: GEMINI_MODELS.flash,
+    thinkingBudget: 0, // flash: disable thinking — structured JSON task, faster/cheaper
     system: [
       {
         type: 'text',

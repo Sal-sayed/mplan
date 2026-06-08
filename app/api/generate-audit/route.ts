@@ -4,6 +4,7 @@ import { AUDIT_PROMPT } from '@/lib/audit-prompt';
 import { findEventCoverage } from '@/lib/event-equivalence';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { buildClaudeSseStream, streamResponseHeaders } from '@/lib/claude-stream';
+import { GEMINI_MODELS } from '@/lib/gemini';
 
 export const maxDuration = 120;
 
@@ -388,7 +389,10 @@ export async function POST(req: NextRequest) {
   };
 
   const stream = buildClaudeSseStream({
-    model: 'claude-sonnet-4-6',
+    // Free-tier Gemini keys 429 on 2.5-pro; flash works and produces the full
+    // audit JSON. Flip to GEMINI_MODELS.pro after enabling paid Gemini billing.
+    model: GEMINI_MODELS.flash,
+    thinkingBudget: 0, // large JSON output — give the whole budget to the response
     userMessage: AUDIT_PROMPT(
       JSON.stringify(websiteData),
       JSON.stringify(score),

@@ -17,16 +17,7 @@
  * keep memory bounded.
  */
 
-import Anthropic from '@anthropic-ai/sdk';
-
-let _anthropic: Anthropic | null = null;
-function getAnthropic(): Anthropic {
-  if (_anthropic) return _anthropic;
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY must be set');
-  _anthropic = new Anthropic({ apiKey });
-  return _anthropic;
-}
+import { geminiGenerate, GEMINI_MODELS } from '@/lib/gemini';
 
 export type CoverageMethod = 'no-events' | 'normalized-match' | 'keyword-match' | 'ai-check' | 'no-match';
 
@@ -151,12 +142,12 @@ async function aiCheckEquivalence(
     return { isCovered: false, coveredByEvent: null, method: 'no-events', reasoning: 'No events to compare against' };
   }
   try {
-    const response = await getAnthropic().messages.create({
-      model: 'claude-haiku-4-5',
-      max_tokens: 400,
-      messages: [{
-        role: 'user',
-        content: `You are an analytics expert. Decide whether a "missing" GA4 standard event is actually functionally covered by an existing custom event with a different name.
+    const { text } = await geminiGenerate({
+      model: GEMINI_MODELS.flash,
+      maxOutputTokens: 400,
+      json: true,
+      thinkingBudget: 0,
+      userMessage: `You are an analytics expert. Decide whether a "missing" GA4 standard event is actually functionally covered by an existing custom event with a different name.
 
 CANDIDATE MISSING EVENT:
 - Name: ${candidateMissingEvent}
@@ -176,10 +167,7 @@ NOT equivalence:
 
 Respond ONLY with this exact JSON (no other text, no markdown):
 { "isCovered": boolean, "coveredByEvent": "exact event name from the list" | null, "reasoning": "one short sentence" }`,
-      }],
     });
-    const textBlock = response.content.find((b: any) => b.type === 'text');
-    const text = textBlock?.type === 'text' ? textBlock.text : '';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       return { isCovered: false, coveredByEvent: null, method: 'ai-check', reasoning: 'Could not parse AI response' };
