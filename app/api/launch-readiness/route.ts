@@ -1,0 +1,100 @@
+// POST /api/launch-readiness — the pre-launch go/no-go gate (credential-free).
+//
+// Runs the deterministic plan-consistency checks and, when a deployedSiteUrl is
+// supplied, captures the live site ONCE and reconciles it (evaluateReadiness) to
+// fill the 4 deployed_site checks. The 5 GA4/GTM OAuth checks stay 'skipped'.
+//
+// Non-streaming JSON with a high maxDuration, mirroring /api/audit-existing-site
+// (the existing long-running browser route). The live capture launches a headless
+// browser, so this can take tens of seconds when deployedSiteUrl is set.
+//
+// Body: { plan: MeasurementPlan, deployedSiteUrl?, requireApproval?, strictOnSkipped? }
+// Returns: { success: true, report } | { success: false, error }.
+
+import { NextRequest, NextResponse } from 'next/server';
+import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
+import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
+import { runLaunchReadinessGate, type ReadinessCheckOptions } from '@/lib/measurement/launch-readiness';
+import type { MeasurementPlan } from '@/lib/measurement/types';
+
+export const maxDuration = 120; // live capture launches a headless browser
+
+function isHttpUrl(v: unknown): v is string {
+  return typeof v === 'string' && /^https?:\/\//.test(v.trim());
+}
+
+export async function POST(req: NextRequest) {
+  const clientId = getClientIdentifier(req);
+  const rl = await checkRateLimit(clientId);
+  if (!rl.allowed) {
+    const resetMinutes = Math.max(1, Math.ceil((rl.reset - Date.now()) / 1000 / 60));
+    return NextResponse.json(
+      {
+        success: false,
+        error: `Rate limit exceeded. You can submit ${rl.limit} requests per hour. Try again in ${resetMinutes} minute${resetMinutes === 1 ? '' : 's'}.`,
+        rateLimitInfo: { limit: rl.limit, remaining: rl.remaining, resetInMinutes: resetMinutes },
+      },
+      { status: 429, headers: rateLimitHeaders(rl) }
+    );
+  }
+
+  const body = await req.json().catch(() => null);
+
+  if (!body?.plan) {
+    return NextResponse.json({ success: false, error: 'Provide a generated plan to check.' }, { status: 400 });
+  }
+
+  // Reuse the pipeline's hand-rolled validator for the plan body...
+  try {
+    validateMeasurementPlan(body.plan);
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: `Invalid plan: ${(err as Error)?.message ?? 'unknown shape'}` },
+      { status: 400 }
+    );
+  }
+
+  // ...then guard meta — validateMeasurementPlan deliberately skips it, but the
+  // gate reads plan.meta.url / businessModel / schemaVersion.
+  const meta = body.plan.meta;
+  if (
+    !meta ||
+    typeof meta.url !== 'string' ||
+    typeof meta.businessModel !== 'string' ||
+    typeof meta.schemaVersion !== 'string'
+  ) {
+    return NextResponse.json(
+      { success: false, error: 'Plan is missing meta (url, businessModel, schemaVersion).' },
+      { status: 400 }
+    );
+  }
+
+  const plan = body.plan as MeasurementPlan;
+
+  let deployedSiteUrl: string | undefined;
+  if (body.deployedSiteUrl !== undefined && body.deployedSiteUrl !== null && body.deployedSiteUrl !== '') {
+    if (!isHttpUrl(body.deployedSiteUrl)) {
+      return NextResponse.json(
+        { success: false, error: 'deployedSiteUrl must start with http:// or https://' },
+        { status: 400 }
+      );
+    }
+    deployedSiteUrl = body.deployedSiteUrl.trim();
+  }
+
+  const opts: ReadinessCheckOptions = {};
+  if (typeof body.requireApproval === 'boolean') opts.requireApproval = body.requireApproval;
+  if (typeof body.strictOnSkipped === 'boolean') opts.strictOnSkipped = body.strictOnSkipped;
+
+  try {
+    const { report } = await runLaunchReadinessGate(
+      { url: meta.url, plan, connectors: deployedSiteUrl ? { deployedSiteUrl } : undefined },
+      opts
+    );
+    return NextResponse.json({ success: true, report }, { headers: rateLimitHeaders(rl) });
+  } catch (err) {
+    const message = (err as Error)?.message || 'Launch readiness check failed';
+    console.error('[launch-readiness] error:', err);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
+}
