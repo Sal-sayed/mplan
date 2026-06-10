@@ -7,6 +7,7 @@
     "build": "playwright install chromium && next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "node --test --experimental-test-module-mocks --import ./test/setup.mjs lib/measurement/classify.test.ts lib/measurement/generate-plan.test.ts lib/measurement/pipeline.test.ts app/api/generate-plan/route.test.ts",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {

@@ -45,8 +45,15 @@ export async function generatePlanExcel(plan: any, score: any, mode: 'new' | 'ex
   populateReportingCadence(wb, plan);
   populateRACI(wb, plan);
 
-  // Add Dashboard at position 1 for new website path
-  createDashboardSheet(wb, { websiteInfo: plan.websiteInfo, score, plan }, 'new');
+  // Add Dashboard at position 1 for new website path. The new MeasurementPlan
+  // carries site identity in `meta` rather than the legacy `websiteInfo`.
+  const dashInfo = {
+    url: plan.meta?.url || plan.websiteInfo?.url || '',
+    title: plan.meta?.url || plan.websiteInfo?.title || '',
+    industry: plan.meta?.vertical || plan.websiteInfo?.industry || '',
+    businessType: plan.meta?.businessModel || plan.websiteInfo?.businessType || '',
+  };
+  createDashboardSheet(wb, { websiteInfo: dashInfo, score, plan }, 'new');
 
   const buffer = await wb.xlsx.writeBuffer();
   return Buffer.from(buffer);
@@ -56,73 +63,35 @@ export async function generatePlanExcel(plan: any, score: any, mode: 'new' | 'ex
 function populateProjectOverview(wb: ExcelJS.Workbook, plan: any) {
   const sheet = wb.getWorksheet('2. Project Overview');
   if (!sheet) return;
-  const info = plan.websiteInfo || {};
-  writeValue(sheet, 'B3', info.title || info.url || '');
+  const meta = plan.meta || {};
+  writeValue(sheet, 'B3', meta.url || '');
   writeValue(sheet, 'B11', new Date().toLocaleDateString('en-US'));
-  writeValue(sheet, 'A14', info.description || `Measurement plan for ${info.url || 'the website'}. Industry: ${info.industry || 'N/A'}. Business type: ${info.businessType || 'N/A'}.`);
+  writeValue(sheet, 'A14', `Measurement plan for ${meta.url || 'the website'}. Business model: ${meta.businessModel || 'N/A'}. Vertical: ${meta.vertical || 'N/A'}.`);
 }
 
 // ─── SHEET 3: OBJECTIVES & KPIs (template data row = 5, 10 columns) ───
+// The new MeasurementPlan has no business objectives — each KPI is its own row,
+// linked to the events it measures.
 function populateObjectivesAndKPIs(wb: ExcelJS.Workbook, plan: any) {
   const sheet = wb.getWorksheet('3. Objectives & KPIs');
   if (!sheet) return;
   const TMPL_ROW = 5, COLS = 10;
-  const objectives = plan.businessObjectives || [];
   const kpis = plan.kpis || [];
-  let currentRow = 5;
 
-  const objTitle = (o: any) => o.objective || o.title || o.name || o.businessObjective || '';
-  const objGoal = (o: any) => o.description || o.smartGoal || o.goal || (o.timeframe ? `Achieve within ${o.timeframe}` : '');
-  const linksToObj = (k: any, oid: string) => (k.businessObjectiveId ?? k.objectiveId ?? k.objId) === oid;
-  const kpiDef = (k: any) => k.definition || (k.dataSource ? `Tracked via ${k.dataSource}` : (k.formula ? `Calculated from: ${k.formula}` : ''));
-  const kpiBaseline = (k: any) => k.baseline ?? k.currentValue ?? '';
-  const kpiTargetDate = (k: any) => k.targetDate || k.deadline || k.frequency || '';
-  const kpiPriority = (k: any, o: any) => k.priority || o.priority || 'High';
-
-  objectives.forEach((obj: any, objIdx: number) => {
-    const linked = kpis.filter((k: any) => linksToObj(k, obj.id));
-    if (linked.length === 0) {
-      if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
-      writeValue(sheet, `A${currentRow}`, obj.id || `BO${objIdx + 1}`);
-      writeValue(sheet, `B${currentRow}`, objTitle(obj));
-      writeValue(sheet, `C${currentRow}`, objGoal(obj));
-      currentRow++;
-    } else {
-      linked.forEach((kpi: any, ki: number) => {
-        if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
-        if (ki === 0) {
-          writeValue(sheet, `A${currentRow}`, obj.id || `BO${objIdx + 1}`);
-          writeValue(sheet, `B${currentRow}`, objTitle(obj));
-          writeValue(sheet, `C${currentRow}`, objGoal(obj));
-        }
-        writeValue(sheet, `D${currentRow}`, kpi.name || '');
-        writeValue(sheet, `E${currentRow}`, kpiDef(kpi));
-        writeValue(sheet, `F${currentRow}`, kpi.formula || '');
-        writeValue(sheet, `G${currentRow}`, kpiBaseline(kpi));
-        writeValue(sheet, `H${currentRow}`, kpi.target || '');
-        writeValue(sheet, `I${currentRow}`, kpiTargetDate(kpi));
-        writeValue(sheet, `J${currentRow}`, kpiPriority(kpi, obj));
-        currentRow++;
-      });
-    }
-  });
-
-  const usedKpiIds = new Set<string>();
-  objectives.forEach((obj: any) => kpis.filter((k: any) => linksToObj(k, obj.id)).forEach((k: any) => usedKpiIds.add(k.id)));
-  const orphanKpis = kpis.filter((k: any) => !usedKpiIds.has(k.id));
-  orphanKpis.forEach((kpi: any) => {
-    if (currentRow > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, currentRow, COLS);
-    writeValue(sheet, `A${currentRow}`, '');
-    writeValue(sheet, `B${currentRow}`, '');
-    writeValue(sheet, `C${currentRow}`, '');
-    writeValue(sheet, `D${currentRow}`, kpi.name || '');
-    writeValue(sheet, `E${currentRow}`, kpiDef(kpi));
-    writeValue(sheet, `F${currentRow}`, kpi.formula || '');
-    writeValue(sheet, `G${currentRow}`, kpiBaseline(kpi));
-    writeValue(sheet, `H${currentRow}`, kpi.target || '');
-    writeValue(sheet, `I${currentRow}`, kpiTargetDate(kpi));
-    writeValue(sheet, `J${currentRow}`, kpiPriority(kpi, {}));
-    currentRow++;
+  kpis.forEach((kpi: any, idx: number) => {
+    const row = 5 + idx;
+    if (row > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, row, COLS);
+    const linked = Array.isArray(kpi.linkedEventIds) ? kpi.linkedEventIds.join(', ') : '';
+    writeValue(sheet, `A${row}`, kpi.id || `KPI${idx + 1}`);
+    writeValue(sheet, `B${row}`, kpi.name || '');
+    writeValue(sheet, `C${row}`, kpi.description || '');
+    writeValue(sheet, `D${row}`, kpi.name || '');
+    writeValue(sheet, `E${row}`, kpi.description || '');
+    writeValue(sheet, `F${row}`, kpi.metric || '');
+    writeValue(sheet, `G${row}`, '');
+    writeValue(sheet, `H${row}`, '');
+    writeValue(sheet, `I${row}`, linked ? `Events: ${linked}` : '');
+    writeValue(sheet, `J${row}`, 'High');
   });
 }
 
@@ -152,15 +121,17 @@ function populateMetricsAndDimensions(wb: ExcelJS.Workbook, plan: any) {
   });
 
   const TMPL_ROW_D = 22, COLS_D = 5;
-  const dimensions = plan.customDimensions || [];
+  // New schema: GA4 custom dimensions live under tooling.ga4.customDimensions
+  // ({ name, scope, parameter }).
+  const dimensions = (plan.tooling?.ga4?.customDimensions || plan.customDimensions || []);
   dimensions.forEach((d: any, idx: number) => {
     const row = 22 + idx;
     if (row > TMPL_ROW_D) copyRowStyle(sheet, TMPL_ROW_D, row, COLS_D);
     writeValue(sheet, `A${row}`, d.id || `D${String(idx + 1).padStart(2, '0')}`);
     writeValue(sheet, `B${row}`, d.name);
-    writeValue(sheet, `C${row}`, d.description);
+    writeValue(sheet, `C${row}`, d.description || (d.parameter ? `GA4 ${d.scope || 'event'}-scoped dimension from parameter "${d.parameter}"` : ''));
     writeValue(sheet, `D${row}`, d.scope || 'Event');
-    writeValue(sheet, `E${row}`, d.examples || '');
+    writeValue(sheet, `E${row}`, d.examples || d.parameter || '');
   });
 }
 
@@ -169,7 +140,13 @@ function populateDataSources(wb: ExcelJS.Workbook, plan: any) {
   const sheet = wb.getWorksheet('5. Data Sources');
   if (!sheet) return;
   const TMPL_ROW = 4, COLS = 9;
-  const sources = plan.recommendedTools || plan.dataSources || [];
+  // New schema has no recommendedTools — synthesize the GA4 + GTM stack the plan
+  // is built around.
+  const gtmTags = plan.tooling?.gtm?.suggestedTagCount;
+  const sources = plan.recommendedTools || plan.dataSources || [
+    { name: 'Google Analytics 4', dataType: 'Behavioral', description: 'Primary web analytics — events, key events, audiences', refreshFrequency: 'Real-time', owner: 'Analytics Team', priority: 'Essential' },
+    { name: 'Google Tag Manager', dataType: 'Tag management', description: `Deploys tracking tags, triggers, and variables${typeof gtmTags === 'number' ? ` (~${gtmTags} tags)` : ''}`, refreshFrequency: 'On publish', owner: 'Analytics Team', priority: 'Essential' },
+  ];
   sources.forEach((src: any, idx: number) => {
     const row = 4 + idx;
     if (row > TMPL_ROW) copyRowStyle(sheet, TMPL_ROW, row, COLS);
@@ -357,8 +334,8 @@ export function createDashboardSheet(wb: ExcelJS.Workbook, data: any, mode: 'new
     metricDefs = [
       { col: 'B', label: 'EVENTS', value: (plan.events || []).length, color: 'FF1E40AF', bg: 'FFDBEAFE' },
       { col: 'C', label: 'KPIs', value: (plan.kpis || []).length, color: 'FF065F46', bg: 'FFD1FAE5' },
-      { col: 'D', label: 'OBJECTIVES', value: (plan.businessObjectives || []).length, color: 'FF92400E', bg: 'FFFEF3C7' },
-      { col: 'E', label: 'DIMENSIONS', value: (plan.customDimensions || []).length, color: 'FF6D28D9', bg: 'FFEDE9FE' },
+      { col: 'D', label: 'KEY EVENTS', value: (plan.events || []).filter((e: any) => e?.isKeyEvent).length, color: 'FF92400E', bg: 'FFFEF3C7' },
+      { col: 'E', label: 'DATA LAYER', value: (plan.dataLayer || []).length, color: 'FF6D28D9', bg: 'FFEDE9FE' },
     ];
   } else {
     const audit = data?.audit || {};
@@ -402,8 +379,10 @@ export function createDashboardSheet(wb: ExcelJS.Workbook, data: any, mode: 'new
   let priorities: string[] = [];
   if (mode === 'new') {
     const plan = data?.plan || {};
-    if (plan.implementationPlan?.[0]?.tasks?.length) priorities = plan.implementationPlan[0].tasks.slice(0, 3);
-    else if (plan.businessObjectives?.length) priorities = plan.businessObjectives.slice(0, 3).map((o: any) => o.title || o.goal || o.name || String(o));
+    const events = plan.events || [];
+    const keyEvents = events.filter((e: any) => e?.isKeyEvent);
+    const top = (keyEvents.length ? keyEvents : events).slice(0, 3);
+    priorities = top.map((e: any) => `Implement ${e.name || e.eventName || 'event'}`);
   } else {
     const audit = data?.audit || {};
     if (audit.criticalIssues?.length) priorities = audit.criticalIssues.slice(0, 3);

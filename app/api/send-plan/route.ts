@@ -28,7 +28,20 @@ export async function POST(req: NextRequest) {
     const { email, plan, audit, score, mode = 'new', existingPlanRawBuffer } = await req.json();
 
     const isAudit = mode === 'audit';
-    const planOrAudit = isAudit ? audit : plan;
+    // Audit keeps the legacy `websiteInfo` and original code path. The new
+    // measurement plan carries site identity in `meta` — project it onto a
+    // websiteInfo-shaped object so the rest of this shared handler is unchanged.
+    const planOrAudit = isAudit
+      ? audit
+      : {
+          ...plan,
+          websiteInfo: {
+            url: plan?.meta?.url || '',
+            title: plan?.meta?.url || '',
+            industry: plan?.meta?.vertical || '',
+            businessType: plan?.meta?.businessModel || '',
+          },
+        };
 
     if (!email || !planOrAudit) {
       return NextResponse.json({ success: false, error: 'Missing email or plan/audit data' }, { status: 400 });
@@ -51,9 +64,9 @@ export async function POST(req: NextRequest) {
             quickWins: audit?.quickWins?.length || 0,
           }
         : {
-            objectives: plan?.businessObjectives?.length || 0,
             kpis: plan?.kpis?.length || 0,
             events: plan?.events?.length || 0,
+            keyEvents: (plan?.events || []).filter((e: any) => e?.isKeyEvent).length,
           },
     });
 

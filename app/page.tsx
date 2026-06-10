@@ -6,12 +6,48 @@ import AnimatedBackground from '@/components/AnimatedBackground';
 import HeroScreen from '@/components/HeroScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import SuccessScreen from '@/components/SuccessScreen';
+import ConfirmBusinessModel from '@/components/ConfirmBusinessModel';
 import { useStreamingClaude } from '@/lib/stream-client';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-type Stage = 'idle' | 'scraping' | 'scoring' | 'generating' | 'delivering' | 'complete' | 'error';
+type Stage = 'idle' | 'scraping' | 'scoring' | 'generating' | 'confirm' | 'delivering' | 'complete' | 'error';
 type Mode = 'new' | 'audit';
+type BusinessModel = 'ecommerce' | 'saas' | 'lead_gen' | 'media_content' | 'marketplace';
+
+// Derive the new generate-plan request (url + pages + forms) from the scraper's
+// ScrapeResult. The new pipeline classifies and grounds the plan on these.
+function buildNewPlanRequest(scrapeData: any, businessModel?: BusinessModel) {
+  const homepage = scrapeData?.homepage || {};
+  const subPages = scrapeData?.subPages || {};
+
+  const pageTitle = (p: any) => p?.meta?.title || p?.headings?.h1?.[0] || undefined;
+  const pages = [
+    { path: '/', title: pageTitle(homepage) },
+    ...Object.entries(subPages).map(([path, p]: [string, any]) => ({ path, title: pageTitle(p) })),
+  ];
+
+  const collectForms = (p: any) =>
+    (p?.forms || []).map((f: any) => ({
+      action: f.action || undefined,
+      fields: (f.fields || [])
+        .map((field: any) => field?.name || field?.label || field?.placeholder || field?.type)
+        .filter(Boolean),
+      purpose: f.submitText || f.name || f.id || undefined,
+    }));
+  const forms = [
+    ...collectForms(homepage),
+    ...Object.values(subPages).flatMap((p: any) => collectForms(p)),
+  ];
+
+  return {
+    url: scrapeData?.url || '',
+    pages,
+    forms,
+    detectedStack: homepage?.tech ? Object.keys(homepage.tech) : undefined,
+    ...(businessModel ? { businessModel } : {}),
+  };
+}
 
 export default function Home() {
   const [stage, setStage] = useState<Stage>('idle');
@@ -22,6 +58,8 @@ export default function Home() {
   const [data, setData] = useState<any>(null);
   const [emailDelivered, setEmailDelivered] = useState(true);
   const [error, setError] = useState('');
+  // Stashed context for the low-confidence confirmation step (409 flow).
+  const [confirmCtx, setConfirmCtx] = useState<{ genBody: any; downstream: any; classification: any } | null>(null);
   const stream = useStreamingClaude();
 
   const handleSubmitNew = async ({ url: inputUrl, email: inputEmail }: { url: string; email: string }) => {
@@ -101,56 +139,111 @@ export default function Home() {
       setStage('generating'); setProgress(65);
       stream.reset();
 
-      let plan: any = null;
-      let audit: any = null;
-
       if (pipelineMode === 'audit') {
-        audit = await stream.startStream<any>('/api/generate-audit', {
+        // ── AUDIT PATH — unchanged from the original implementation ──
+        const audit = await stream.startStream<any>('/api/generate-audit', {
           websiteData: scrapeJson.data,
           score: scoreData,
           existingPlan: existingPlanData,
         });
         if (!audit) throw new Error(stream.error || 'Failed to generate audit');
+
+        setStage('delivering'); setProgress(85);
+        try {
+          const deliverRes = await fetch('/api/send-plan', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email: inputEmail,
+              mode: 'audit',
+              plan: null,
+              audit,
+              score: scoreData,
+              scrapeData: scrapeJson.data,
+              existingPlanRawBuffer,
+            }),
+          });
+          const deliverJson = await deliverRes.json();
+          setEmailDelivered(deliverJson.success);
+        } catch {
+          setEmailDelivered(false);
+        }
+
+        setData({ plan: null, audit, score: scoreData, scrapeData: scrapeJson.data, mode: 'audit', existingPlanData });
+        setProgress(100);
+        setTimeout(() => setStage('complete'), 500);
       } else {
-        plan = await stream.startStream<any>('/api/generate-plan', {
-          websiteData: scrapeJson.data,
-          score: scoreData,
-        });
-        if (!plan) throw new Error(stream.error || 'Failed to generate plan');
+        // ── NEW PATH ──
+        const downstream = { email: inputEmail, scoreData, scrapeData: scrapeJson.data, existingPlanData, existingPlanRawBuffer };
+        const genBody = buildNewPlanRequest(scrapeJson.data);
+        await generateNewPlan(genBody, downstream);
       }
-
-      // Stage 4: Send email
-      setStage('delivering'); setProgress(85);
-      try {
-        const deliverRes = await fetch('/api/send-plan', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            email: inputEmail,
-            mode: pipelineMode === 'audit' ? 'audit' : 'new',
-            plan,
-            audit,
-            score: scoreData,
-            scrapeData: scrapeJson.data,
-            existingPlanRawBuffer,
-          }),
-        });
-        const deliverJson = await deliverRes.json();
-        setEmailDelivered(deliverJson.success);
-      } catch {
-        setEmailDelivered(false);
-      }
-
-      setData({ plan, audit, score: scoreData, scrapeData: scrapeJson.data, mode: pipelineMode, existingPlanData });
-      setProgress(100);
-      setTimeout(() => setStage('complete'), 500);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : err?.message || 'An unexpected error occurred');
       setStage('error');
     }
   };
 
+  // 'new' path generation — streams the plan, or pauses for confirmation when
+  // the server returns 409 (low-confidence classification).
+  const generateNewPlan = async (genBody: any, downstream: any) => {
+    setStage('generating'); setProgress(65); stream.reset();
+    const out = await stream.startStream<any>('/api/generate-plan', genBody);
+    if (!out) {
+      if (stream.outcome.current.needsConfirmation) {
+        setConfirmCtx({ genBody, downstream, classification: stream.outcome.current.classification });
+        setStage('confirm');
+        return;
+      }
+      throw new Error(stream.error || 'Failed to generate plan');
+    }
+    // The new route returns { success, classification, plan }.
+    const plan = out?.plan ?? out;
+    await deliverNewPlan(plan, downstream);
+  };
+
+  // User picked a business model on the confirmation screen — retry with it as
+  // an override, which bypasses the low-confidence gate server-side.
+  const confirmBusinessModel = async (model: BusinessModel) => {
+    if (!confirmCtx) return;
+    const { genBody, downstream } = confirmCtx;
+    setConfirmCtx(null);
+    try {
+      await generateNewPlan({ ...genBody, businessModel: model }, downstream);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : err?.message || 'An unexpected error occurred');
+      setStage('error');
+    }
+  };
+
+  // Stage 4 (NEW path only): email delivery + final state.
+  const deliverNewPlan = async (plan: any, downstream: any) => {
+    setStage('delivering'); setProgress(85);
+    try {
+      const deliverRes = await fetch('/api/send-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: downstream.email,
+          mode: 'new',
+          plan,
+          audit: null,
+          score: downstream.scoreData,
+          scrapeData: downstream.scrapeData,
+          existingPlanRawBuffer: downstream.existingPlanRawBuffer,
+        }),
+      });
+      const deliverJson = await deliverRes.json();
+      setEmailDelivered(deliverJson.success);
+    } catch {
+      setEmailDelivered(false);
+    }
+
+    setData({ plan, audit: null, score: downstream.scoreData, scrapeData: downstream.scrapeData, mode: 'new', existingPlanData: downstream.existingPlanData });
+    setProgress(100);
+    setTimeout(() => setStage('complete'), 500);
+  };
+
   const reset = () => {
-    setStage('idle'); setData(null); setUrl(''); setEmail(''); setProgress(0); setError(''); setEmailDelivered(true);
+    setStage('idle'); setData(null); setUrl(''); setEmail(''); setProgress(0); setError(''); setEmailDelivered(true); setConfirmCtx(null);
   };
 
   // Browser tab title
@@ -213,6 +306,17 @@ export default function Home() {
               streamCurrentEmoji={stage === 'generating' ? stream.currentEmoji : undefined}
               streamCurrentMessage={stage === 'generating' ? stream.currentMessage : undefined}
               streamMilestones={stage === 'generating' ? stream.milestones : undefined}
+            />
+          </motion.div>
+        )}
+
+        {stage === 'confirm' && confirmCtx && (
+          <motion.div key="confirm" className="absolute inset-0"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <ConfirmBusinessModel
+              classification={confirmCtx.classification}
+              onConfirm={confirmBusinessModel}
+              onCancel={reset}
             />
           </motion.div>
         )}

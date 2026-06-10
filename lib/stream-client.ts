@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+
+export interface StreamOutcome {
+  needsConfirmation: boolean;
+  classification: any | null;
+}
 
 export interface StreamMilestone {
   emoji: string;
@@ -25,6 +30,12 @@ export interface UseStreamingClaudeResult {
   tokenCount: number;
   isStreaming: boolean;
   error: string | null;
+  // Populated synchronously by startStream. When the server returns 409
+  // (low-confidence classification) instead of a stream, `needsConfirmation`
+  // is set true with the guessed `classification`. Exposed as a ref so it can
+  // be read reliably right after `await startStream(...)` without a stale
+  // closure on React state.
+  outcome: { current: StreamOutcome };
   startStream: <T = any>(url: string, body: any) => Promise<T | null>;
   reset: () => void;
 }
@@ -37,6 +48,7 @@ export function useStreamingClaude(): UseStreamingClaudeResult {
   const [tokenCount, setTokenCount] = useState(0);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const outcome = useRef<StreamOutcome>({ needsConfirmation: false, classification: null });
 
   const reset = useCallback(() => {
     setMilestones([]);
@@ -46,6 +58,7 @@ export function useStreamingClaude(): UseStreamingClaudeResult {
     setTokenCount(0);
     setIsStreaming(false);
     setError(null);
+    outcome.current = { needsConfirmation: false, classification: null };
   }, []);
 
   const startStream = useCallback(async <T = any>(url: string, body: any): Promise<T | null> => {
@@ -54,6 +67,7 @@ export function useStreamingClaude(): UseStreamingClaudeResult {
     setProgress(0);
     setTokenCount(0);
     setError(null);
+    outcome.current = { needsConfirmation: false, classification: null };
 
     try {
       const res = await fetch(url, {
@@ -66,6 +80,15 @@ export function useStreamingClaude(): UseStreamingClaudeResult {
       if (res.status === 429) {
         const data = await res.json().catch(() => ({}));
         setError(data?.error || 'Rate limit exceeded');
+        setIsStreaming(false);
+        return null;
+      }
+
+      // Low-confidence classification (409) is non-streaming — server returns
+      // the guessed classification and asks the caller to confirm.
+      if (res.status === 409) {
+        const data = await res.json().catch(() => ({}));
+        outcome.current = { needsConfirmation: true, classification: data?.classification ?? null };
         setIsStreaming(false);
         return null;
       }
@@ -149,6 +172,7 @@ export function useStreamingClaude(): UseStreamingClaudeResult {
     tokenCount,
     isStreaming,
     error,
+    outcome,
     startStream,
     reset,
   };

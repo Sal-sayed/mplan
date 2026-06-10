@@ -7,13 +7,24 @@
 //   • geminiGenerate()    — one-shot JSON generation (non-streaming)
 //   • geminiStreamText()  — async generator of text deltas (for SSE re-emit)
 
-const BASE = "https://generativelanguage.googleapis.com/v1beta";
+const DEFAULT_BASE = "https://generativelanguage.googleapis.com/v1beta";
+
+// Endpoint is env-overridable (GEMINI_BASE_URL) for proxies / regional
+// endpoints / test stubs. Read per-call so env changes are respected.
+export function getGeminiBaseUrl(): string {
+  return process.env.GEMINI_BASE_URL || DEFAULT_BASE;
+}
 
 // Centralized model ids so callers don't scatter magic strings.
 export const GEMINI_MODELS = {
   pro: "gemini-2.5-pro",
   flash: "gemini-2.5-flash",
 } as const;
+
+// The default model for plan generation, overridable via GEMINI_MODEL.
+export function getGeminiModel(): string {
+  return process.env.GEMINI_MODEL || GEMINI_MODELS.flash;
+}
 
 export function getGeminiKey(): string {
   const key = process.env.GEMINI_API_KEY;
@@ -80,7 +91,7 @@ function usageFrom(obj: any, prev?: GeminiUsage): GeminiUsage {
 export async function geminiGenerate(
   args: GeminiArgs
 ): Promise<{ text: string; usage: GeminiUsage }> {
-  const url = `${BASE}/models/${encodeURIComponent(args.model)}:generateContent?key=${getGeminiKey()}`;
+  const url = `${getGeminiBaseUrl()}/models/${encodeURIComponent(args.model)}:generateContent?key=${getGeminiKey()}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -98,7 +109,7 @@ export async function* geminiStreamText(
   args: GeminiArgs,
   usageOut: GeminiUsage
 ): AsyncGenerator<string, void, void> {
-  const url = `${BASE}/models/${encodeURIComponent(args.model)}:streamGenerateContent?alt=sse&key=${getGeminiKey()}`;
+  const url = `${getGeminiBaseUrl()}/models/${encodeURIComponent(args.model)}:streamGenerateContent?alt=sse&key=${getGeminiKey()}`;
   const resp = await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },

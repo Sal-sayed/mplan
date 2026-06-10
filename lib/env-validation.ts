@@ -17,6 +17,14 @@ const REQUIRED_IN_PRODUCTION = [
 // deliver email. Either Resend (preferred) or n8n is fine.
 const EMAIL_PROVIDERS_ANY = ['RESEND_API_KEY', 'N8N_WEBHOOK_URL'];
 
+// Optional Gemini overrides. Both have safe defaults in lib/gemini.ts
+// (GEMINI_MODELS.flash and the public generativelanguage endpoint), so we
+// only warn — never fail boot — when they're unset.
+const OPTIONAL_WITH_DEFAULTS = [
+  { key: 'GEMINI_MODEL', fallback: 'gemini-2.5-flash' },
+  { key: 'GEMINI_BASE_URL', fallback: 'https://generativelanguage.googleapis.com/v1beta' },
+];
+
 let _validated = false;
 
 export function validateEnv(): void {
@@ -64,6 +72,11 @@ export function validateEnv(): void {
   }
   if (!process.env.UPSTASH_REDIS_REST_URL) {
     warnings.push('UPSTASH_REDIS_REST_URL not set — rate limiting disabled');
+  }
+  for (const { key, fallback } of OPTIONAL_WITH_DEFAULTS) {
+    if (!process.env[key]) {
+      warnings.push(`${key} not set — using default "${fallback}"`);
+    }
   }
   warnings.forEach(w => console.warn(`⚠ ${w}`));
 

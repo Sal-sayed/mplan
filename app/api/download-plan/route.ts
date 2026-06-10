@@ -8,7 +8,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   try {
     const { format, plan, score, scrapeData } = await req.json();
-    const safeUrl = (plan.websiteInfo?.url || 'site')
+    const safeUrl = (plan.meta?.url || plan.websiteInfo?.url || 'site')
       .replace(/^https?:\/\//, '')
       .replace(/[^a-z0-9]/gi, '-')
       .slice(0, 40);

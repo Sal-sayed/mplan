@@ -41,7 +41,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
   const isAudit = mode === 'audit';
   const websiteTitle = isAudit
     ? (audit?.websiteInfo?.title || audit?.websiteInfo?.url)
-    : (plan?.websiteInfo?.title || plan?.websiteInfo?.url);
+    : (plan?.meta?.url);
 
   return (
     <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden bg-[#0b1120] relative">
@@ -124,9 +124,9 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           ) : (
             <div className="grid grid-cols-4 gap-2 pt-4 border-t border-white/[0.06]">
               {[
-                { label: 'Objectives', value: plan?.businessObjectives?.length || 0 },
                 { label: 'KPIs', value: plan?.kpis?.length || 0 },
                 { label: 'Events', value: plan?.events?.length || 0 },
+                { label: 'Key events', value: (plan?.events || []).filter((e: any) => e?.isKeyEvent).length },
                 { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-400' : score?.total >= 50 ? 'text-yellow-400' : score?.total ? 'text-red-400' : 'text-slate-400' },
               ].map(s => (
                 <div key={s.label} className="text-center">
