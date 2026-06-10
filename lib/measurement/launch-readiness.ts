@@ -11,7 +11,8 @@
 // Pure and hand-rolled in the style of classify.ts / validateMeasurementPlan —
 // no validation library. The plan shape is owned by types.ts; never redefined.
 
-import type { BusinessModel, MeasurementPlan } from './types.ts';
+import { evaluateReadiness } from './readiness.ts';
+import type { BusinessModel, MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
 
 export const LAUNCH_READINESS_SCHEMA_VERSION = '0.1.0';
 
@@ -112,6 +113,10 @@ export interface LaunchReadinessContext {
 export interface ReadinessCheckOptions {
   requireApproval?: boolean; // default true
   strictOnSkipped?: boolean; // treat a blocking skipped check as a no-go
+  // Test/DI seam for the live-capture step. Defaults to the real Playwright
+  // capture, dynamically imported so this pure module never loads a browser
+  // unless a deployed-site URL is actually being checked.
+  captureObservedSignals?: (url: string) => Promise<ObservedSignals>;
 }
 
 // ─── Plan index (built once, shared by the resolve checks) ───
@@ -321,6 +326,140 @@ function skippedLiveCheck(
   };
 }
 
+// ─── Deployed-site checks: thin projections of one ReadinessReport ───
+//
+// These read evaluateReadiness's output — they do NOT re-capture or re-reconcile.
+// The check identity (id / category / dependsOn / blocking) stays identical to
+// the skipped versions; only status + summary + evidence come from the report.
+
+// "Do the planned events fire?" — non-blocking, so gaps surface as 'warn' (the
+// summary still calls out any KEY-event gap loudly). A total capture miss is the
+// blocking tracking_snippet_present check's job, not this one.
+export function projectPlannedEventsFire(report: ReadinessReport): ReadinessCheck {
+  const gaps = report.events.filter((e) => e.status !== 'implemented');
+  const keyGaps = gaps.filter((e) => e.isKeyEvent).map((e) => `${e.eventName} (${e.status})`);
+  const pct = Math.round(report.scores.keyEventCoverage * 100);
+  const status: CheckStatus = gaps.length === 0 ? 'pass' : 'warn';
+  const summary =
+    gaps.length === 0
+      ? `All ${report.events.length} planned events are firing (key-event coverage ${pct}%).`
+      : keyGaps.length > 0
+        ? `${gaps.length}/${report.events.length} planned events not firing — including KEY event(s): ${keyGaps.join(', ')}. Key-event coverage ${pct}%.`
+        : `${gaps.length}/${report.events.length} supporting events not firing; all key events fire (coverage ${pct}%).`;
+  return {
+    id: 'planned_events_fire',
+    category: 'events',
+    name: 'Planned events fire on the live site',
+    status,
+    blocking: false,
+    dependsOn: 'deployed_site',
+    summary,
+    evidence: gaps.length === 0 ? undefined : gaps.map((e) => `${e.eventName} (${e.status})`),
+    remediation: gaps.length === 0 ? undefined : 'Implement/trigger the missing events so they fire with their required parameters.',
+  };
+}
+
+// "Is tracking present?" — blocking. A clean capture with no signals at all means
+// the GA4/GTM snippet is missing or blocked → fail (→ no_go).
+export function projectTrackingSnippetPresent(report: ReadinessReport): ReadinessCheck {
+  const noSignals = report.issues.filter((i) => i.code === 'no_signals_captured');
+  const raw = report.observedSummary.rawHitCount;
+  const status: CheckStatus = noSignals.length > 0 ? 'fail' : 'pass';
+  return {
+    id: 'tracking_snippet_present',
+    category: 'deployment',
+    name: 'Tracking snippet present on the site',
+    status,
+    blocking: true,
+    dependsOn: 'deployed_site',
+    summary:
+      status === 'fail'
+        ? 'No tracking signals were captured — the GA4/GTM snippet appears missing, blocked, or not firing.'
+        : `Tracking is firing on the site (${report.observedSummary.totalObservedEvents} recognized event(s)${raw != null ? `, ${raw} raw hit(s)` : ''}).`,
+    evidence: status === 'fail' ? noSignals.map((i) => i.message) : undefined,
+    remediation: status === 'fail' ? 'Confirm the GTM/GA4 snippet is installed on the deployed page and not blocked by consent or an ad-blocker.' : undefined,
+  };
+}
+
+// PARTIAL by nature: the spy sees a consent BANNER, not granular Consent Mode
+// state (consent_default/update are filtered). Never a confident green — always
+// 'warn', scoped in the summary. Blocking only when the plan requires Consent Mode.
+export function projectConsentModeConfigured(report: ReadinessReport, consentModeRequired: boolean): ReadinessCheck {
+  const detected = report.observedSummary.consentBannerDetected;
+  const accepted = report.observedSummary.consentAccepted;
+  const bannerNote =
+    detected === true
+      ? `a consent banner was detected${accepted ? ' and accepted' : ''}`
+      : detected === false
+        ? 'no consent banner was detected'
+        : 'consent banner state is unknown';
+  return {
+    id: 'consent_mode_configured',
+    category: 'consent',
+    name: 'Consent Mode configured on the site',
+    status: 'warn',
+    blocking: consentModeRequired,
+    dependsOn: 'deployed_site',
+    summary: `Partial check: ${bannerNote}, but Google Consent Mode configuration is NOT verifiable from page capture (the spy filters consent_default/update). Verify Consent Mode manually or via the GA4/GTM checks in the next phase.`,
+    evidence: [
+      `consentBannerDetected=${detected ?? 'unknown'}`,
+      `consentAccepted=${accepted ?? 'unknown'}`,
+      `consentReady=${report.scores.consentReady}`,
+    ],
+    remediation: 'Manually confirm Consent Mode v2 default/update signals on the deployed site; full verification arrives with the GA4/GTM OAuth checks.',
+  };
+}
+
+// PARTIAL by nature: we observe parameter keys on events that actually fired, not
+// a standalone inventory of every planned dataLayer variable. Report honestly as
+// 'warn' rather than overclaim; list any required params missing on fired events.
+export function projectDataLayerVariablesPresent(report: ReadinessReport): ReadinessCheck {
+  const missing = report.events
+    .filter((e) => e.missingRequiredParameters.length > 0)
+    .map((e) => `${e.eventName}: ${e.missingRequiredParameters.join(', ')}`);
+  return {
+    id: 'datalayer_variables_present',
+    category: 'dataLayer',
+    name: 'dataLayer variables present at runtime',
+    status: 'warn',
+    blocking: false,
+    dependsOn: 'deployed_site',
+    summary:
+      missing.length > 0
+        ? `Partial check: required parameter(s) missing on fired events: ${missing.join('; ')}. (Observed-param presence only — not a full dataLayer-variable inventory.)`
+        : 'Partial check: dataLayer-sourced parameters on the events that fired were present, but a full dataLayer-variable inventory is not verifiable from page capture.',
+    evidence: missing.length > 0 ? missing : undefined,
+    remediation: 'Verify each planned dataLayer variable is pushed at runtime; capture only confirms parameters on events that actually fired.',
+  };
+}
+
+// Build the 4 deployed-site checks from one ReadinessReport (one capture, one reconcile).
+function projectDeployedSiteChecks(report: ReadinessReport, consentModeRequired: boolean): ReadinessCheck[] {
+  return [
+    projectPlannedEventsFire(report),
+    projectTrackingSnippetPresent(report),
+    projectDataLayerVariablesPresent(report),
+    projectConsentModeConfigured(report, consentModeRequired),
+  ];
+}
+
+// The 4 deployed-site checks, still 'skipped' (no deployed-site URL supplied).
+function skippedDeployedSiteChecks(consentModeRequired: boolean): ReadinessCheck[] {
+  return [
+    skippedLiveCheck('planned_events_fire', 'events', 'deployed_site', 'Planned events fire on the live site', false),
+    skippedLiveCheck('tracking_snippet_present', 'deployment', 'deployed_site', 'Tracking snippet present on the site', true),
+    skippedLiveCheck('datalayer_variables_present', 'dataLayer', 'deployed_site', 'dataLayer variables present at runtime', false),
+    skippedLiveCheck('consent_mode_configured', 'consent', 'deployed_site', 'Consent Mode configured on the site', consentModeRequired),
+  ];
+}
+
+// Lazily load the real Playwright capture only when actually checking a deployed
+// site — keeps the browser/scraper out of this pure module's static graph.
+async function loadDefaultCapture(): Promise<(url: string) => Promise<ObservedSignals>> {
+  const mod = await import('./live-capture.ts');
+  return mod.captureObservedSignals;
+}
+
 // ─── Decision engine + report assembly ───
 
 export async function runLaunchReadinessGate(
@@ -341,22 +480,32 @@ export async function runLaunchReadinessGate(
     checkConsentCoherent(plan),
   ];
 
-  // Live checks gate a launch when listed blocking below. consent_mode_configured
-  // only blocks when the plan actually requires Consent Mode.
   const consentModeRequired = plan.consent.consentModeRequired === true;
-  const live: ReadinessCheck[] = [
+
+  // Deployed-site checks: when a deployed/staging URL is supplied, capture ONCE,
+  // reconcile ONCE (evaluateReadiness), and project that single report into the 4
+  // deployed_site checks. Without a URL they stay 'skipped' exactly as before.
+  const deployedSiteUrl = ctx.connectors?.deployedSiteUrl;
+  let deployedSiteChecks: ReadinessCheck[];
+  if (deployedSiteUrl) {
+    const capture = opts.captureObservedSignals ?? (await loadDefaultCapture());
+    const observed = await capture(deployedSiteUrl);
+    const report = evaluateReadiness(plan, observed);
+    deployedSiteChecks = projectDeployedSiteChecks(report, consentModeRequired);
+  } else {
+    deployedSiteChecks = skippedDeployedSiteChecks(consentModeRequired);
+  }
+
+  // The 5 GA4/GTM OAuth checks ALWAYS stay skipped this phase.
+  const oauthChecks: ReadinessCheck[] = [
     skippedLiveCheck('ga4_property_exists', 'ga4', 'ga4_oauth', 'GA4 property exists', true),
     skippedLiveCheck('ga4_key_events_registered', 'ga4', 'ga4_oauth', 'GA4 key events registered', true),
     skippedLiveCheck('ga4_custom_dimensions_created', 'ga4', 'ga4_oauth', 'GA4 custom dimensions created', true),
     skippedLiveCheck('gtm_container_exists', 'gtm', 'gtm_oauth', 'GTM container exists', true),
     skippedLiveCheck('gtm_tags_configured', 'gtm', 'gtm_oauth', 'GTM tags configured', false),
-    skippedLiveCheck('tracking_snippet_present', 'deployment', 'deployed_site', 'Tracking snippet present on the site', true),
-    skippedLiveCheck('datalayer_variables_present', 'dataLayer', 'deployed_site', 'dataLayer variables present at runtime', false),
-    skippedLiveCheck('planned_events_fire', 'events', 'deployed_site', 'Planned events fire on the live site', false),
-    skippedLiveCheck('consent_mode_configured', 'consent', 'deployed_site', 'Consent Mode configured on the site', consentModeRequired),
   ];
 
-  const checks = [...deterministic, ...live];
+  const checks = [...deterministic, ...deployedSiteChecks, ...oauthChecks];
 
   const blockingFailures = checks.filter((c) => c.blocking && c.status === 'fail').map((c) => c.id);
   const warnings = checks.filter((c) => c.status === 'warn').map((c) => c.id);

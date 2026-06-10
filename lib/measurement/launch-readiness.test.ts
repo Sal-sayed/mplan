@@ -4,9 +4,20 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { runLaunchReadinessGate, LAUNCH_READINESS_SCHEMA_VERSION } from './launch-readiness.ts';
-import type { LaunchReadinessReport, ReadinessCheckOptions } from './launch-readiness.ts';
-import type { MeasurementPlan } from './types.ts';
+import {
+  runLaunchReadinessGate,
+  LAUNCH_READINESS_SCHEMA_VERSION,
+  projectPlannedEventsFire,
+  projectTrackingSnippetPresent,
+  projectConsentModeConfigured,
+  projectDataLayerVariablesPresent,
+} from './launch-readiness.ts';
+import type {
+  LaunchReadinessReport,
+  ReadinessCheckOptions,
+  ReadinessCheckId,
+} from './launch-readiness.ts';
+import type { MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
 
 // A coherent ecommerce plan (consentModeRequired false) — every deterministic
 // check passes. events: [0] page_view (non-key), [1] purchase (key, consent-gated).
@@ -146,4 +157,130 @@ test('requireApproval false → approval not required on go_with_warnings', asyn
   const r = await run(goodPlan(), { requireApproval: false });
   assert.equal(r.decision, 'go_with_warnings');
   assert.equal(r.approval.required, false);
+});
+
+// ─── Deployed-site projections (pure: hand-built ReadinessReport) ───
+
+function baseReport(): ReadinessReport {
+  return {
+    meta: {
+      url: 'https://staging.example.com',
+      planSchemaVersion: '1.0.0',
+      readinessSchemaVersion: '1.0.0',
+      evaluatedAt: '2026-06-10T12:00:00.000Z',
+    },
+    verdict: 'pass',
+    scores: { overall: 1, eventCoverage: 1, keyEventCoverage: 1, consentReady: true },
+    events: [
+      { eventId: 'e_pv', eventName: 'page_view', isKeyEvent: false, status: 'implemented', matchedObservedName: 'page_view', observedCount: 1, missingRequiredParameters: [], detail: '' },
+      { eventId: 'e_pur', eventName: 'purchase', isKeyEvent: true, status: 'implemented', matchedObservedName: 'purchase', observedCount: 1, missingRequiredParameters: [], detail: '' },
+    ],
+    issues: [],
+    observedSummary: {
+      totalObservedEvents: 2,
+      matchedObservedEvents: 2,
+      unplannedObservedEvents: [],
+      skippedObservedEvents: 0,
+      rawHitCount: 10,
+      consentBannerDetected: true,
+      consentAccepted: true,
+    },
+  };
+}
+
+test('projectPlannedEventsFire: all implemented → pass (non-blocking)', () => {
+  const c = projectPlannedEventsFire(baseReport());
+  assert.equal(c.status, 'pass');
+  assert.equal(c.blocking, false);
+});
+
+test('projectPlannedEventsFire: missing KEY event → warn, flagged in summary + evidence', () => {
+  const r = baseReport();
+  r.events[1].status = 'missing';
+  r.scores.keyEventCoverage = 0;
+  const c = projectPlannedEventsFire(r);
+  assert.equal(c.status, 'warn');
+  assert.match(c.summary, /KEY/);
+  assert.ok(c.evidence?.some((e) => e.includes('purchase')));
+});
+
+test('projectTrackingSnippetPresent: no signals → fail (blocking)', () => {
+  const r = baseReport();
+  r.issues = [{ severity: 'blocking', code: 'no_signals_captured', message: 'nothing fired' }];
+  const c = projectTrackingSnippetPresent(r);
+  assert.equal(c.status, 'fail');
+  assert.equal(c.blocking, true);
+});
+
+test('projectTrackingSnippetPresent: signals present → pass', () => {
+  assert.equal(projectTrackingSnippetPresent(baseReport()).status, 'pass');
+});
+
+test('projectConsentModeConfigured: PARTIAL → warn, scoped summary, blocking follows consentModeRequired', () => {
+  const required = projectConsentModeConfigured(baseReport(), true);
+  assert.equal(required.status, 'warn'); // never a confident green
+  assert.equal(required.blocking, true);
+  assert.match(required.summary, /not verifiable|Consent Mode/i);
+  assert.equal(projectConsentModeConfigured(baseReport(), false).blocking, false);
+});
+
+test('projectDataLayerVariablesPresent: PARTIAL → warn; lists missing required params', () => {
+  const r = baseReport();
+  r.events[1].status = 'misconfigured';
+  r.events[1].missingRequiredParameters = ['value'];
+  const c = projectDataLayerVariablesPresent(r);
+  assert.equal(c.status, 'warn');
+  assert.equal(c.blocking, false);
+  assert.ok(c.evidence?.some((e) => e.includes('value')));
+});
+
+// ─── Wiring: deployedSiteUrl drives a single capture→reconcile→project ───
+
+function check(report: LaunchReadinessReport, id: ReadinessCheckId) {
+  const c = report.checks.find((x) => x.id === id);
+  assert.ok(c, `check ${id} present`);
+  return c;
+}
+
+test('no deployedSiteUrl → the 4 deployed-site checks stay skipped (9 skipped total)', async () => {
+  const r = await run(goodPlan());
+  for (const id of ['planned_events_fire', 'tracking_snippet_present', 'datalayer_variables_present', 'consent_mode_configured'] as const) {
+    assert.equal(check(r, id).status, 'skipped');
+  }
+  assert.equal(r.skipped.length, 9);
+});
+
+test('deployedSiteUrl present (injected capture) → 4 deployed checks come from the ReadinessReport', async () => {
+  const observed: ObservedSignals = {
+    url: 'https://staging.example.com',
+    rawHitCount: 5,
+    consentBannerDetected: true,
+    consentAccepted: true,
+    events: [
+      { name: 'page_view', vendor: 'GA4', parameters: [], count: 1 },
+      { name: 'purchase', vendor: 'GA4', destinationId: 'G-X', parameters: ['value'], count: 1 },
+    ],
+  };
+  const { report } = await runLaunchReadinessGate(
+    { url: 'https://staging.example.com', plan: goodPlan(), connectors: { deployedSiteUrl: 'https://staging.example.com' } },
+    { captureObservedSignals: async () => observed }
+  );
+  assert.equal(check(report, 'planned_events_fire').status, 'pass');
+  assert.equal(check(report, 'tracking_snippet_present').status, 'pass');
+  assert.equal(check(report, 'consent_mode_configured').status, 'warn');
+  assert.equal(check(report, 'datalayer_variables_present').status, 'warn');
+  assert.ok(!report.skipped.includes('planned_events_fire'));
+  assert.equal(report.skipped.length, 5); // only the 5 OAuth checks remain skipped
+  assert.equal(report.decision, 'go_with_warnings');
+});
+
+test('deployedSiteUrl present but no signals → tracking_snippet_present fail → no_go', async () => {
+  const observed: ObservedSignals = { url: 'x', events: [], rawHitCount: 0 };
+  const { report } = await runLaunchReadinessGate(
+    { url: 'x', plan: goodPlan(), connectors: { deployedSiteUrl: 'x' } },
+    { captureObservedSignals: async () => observed }
+  );
+  assert.equal(check(report, 'tracking_snippet_present').status, 'fail');
+  assert.ok(report.blockingFailures.includes('tracking_snippet_present'));
+  assert.equal(report.decision, 'no_go');
 });
