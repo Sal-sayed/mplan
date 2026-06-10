@@ -28,6 +28,9 @@ const mockModule = (mock as unknown as { module: MockModuleFn }).module.bind(moc
 // ─── Spy state for the stream seam (reset per test, not re-registered) ───
 let streamCalls = 0;
 let lastStreamOpts: any = null;
+// Spy state for the server-side regenerate seam (geminiGenerate).
+let geminiCalls = 0;
+let geminiRetryBody: any = null; // what a regenerate returns; null → goodPlanBody()
 
 // ─── Mock ONLY the boundaries, ONCE at module top level ───
 
@@ -58,10 +61,12 @@ mockModule('@/lib/claude-stream', {
 mockModule('@/lib/gemini', {
   namedExports: {
     getGeminiModel: () => 'gemini-2.5-flash',
-    // Must exist (URL-keyed mock also feeds generate-plan.ts) but must never run
-    // on the route path — the route streams via buildClaudeSseStream instead.
+    // Reachable on the route path now: finalizeStreamedOrRetry does a quiet
+    // server-side regenerate via geminiGenerate when the streamed body fails
+    // validation. Returns { text, usage } (like the real one); counts calls.
     geminiGenerate: async () => {
-      throw new Error('geminiGenerate must not be called in the route integration test');
+      geminiCalls += 1;
+      return { text: JSON.stringify(geminiRetryBody ?? goodPlanBody()), usage: { input: 0, output: 0 } };
     },
   },
 });
@@ -122,6 +127,8 @@ const ECOMMERCE_BODY = {
 beforeEach(() => {
   streamCalls = 0;
   lastStreamOpts = null;
+  geminiCalls = 0;
+  geminiRetryBody = null;
 });
 
 // ─── a) Confident path: 200, real prompt + real finalize through postProcess ───
@@ -139,10 +146,12 @@ test('confident ecommerce → 200, streams, real buildPlanPrompt + finalize/stam
   assert.match(lastStreamOpts.userMessage, /shop\.example\.com/);
 
   // Calling postProcess runs the REAL finalize (validate + server-stamped meta).
-  const out = lastStreamOpts.postProcess(goodPlanBody());
+  // postProcess is async now (it awaits finalizeStreamedOrRetry).
+  const out = await lastStreamOpts.postProcess(goodPlanBody());
   assert.equal(out.success, true);
   assert.equal(out.classification.businessModel, 'ecommerce');
   assert.equal(out.plan.events[0].name, 'purchase');
+  assert.equal(geminiCalls, 0, 'a valid streamed body needs no server-side regenerate');
 
   // meta is authoritative / server-stamped — never trusted from the model.
   assert.equal(out.plan.meta.url, 'https://shop.example.com');
@@ -151,14 +160,32 @@ test('confident ecommerce → 200, streams, real buildPlanPrompt + finalize/stam
   assert.ok(!Number.isNaN(Date.parse(out.plan.meta.generatedAt)), 'generatedAt is ISO');
 });
 
-// ─── b) Real validator fires through the route's postProcess ───
-test('postProcess rejects a non-snake_case event name (real validator)', async () => {
+// ─── b) Real validator still fires — surfaces after the capped regenerate ───
+test('postProcess surfaces a non-snake_case validation error after one regenerate', async () => {
   await POST(makeReq(ECOMMERCE_BODY));
   assert.ok(lastStreamOpts, 'stream opts captured');
 
   const bad = goodPlanBody();
   bad.events[0].name = 'AddToCart';
-  assert.throws(() => lastStreamOpts.postProcess(bad), /snake_case/);
+  geminiRetryBody = bad; // the one server-side regenerate is also invalid
+  await assert.rejects(() => lastStreamOpts.postProcess(bad), /snake_case/);
+  assert.equal(geminiCalls, 1, 'exactly one server-side regenerate, then surfaces');
+});
+
+// ─── b2) Streamed body invalid → one quiet server-side regenerate → resolves ───
+test('postProcess regenerates once when the streamed body is invalid, then resolves', async () => {
+  await POST(makeReq(ECOMMERCE_BODY));
+  assert.ok(lastStreamOpts, 'stream opts captured');
+
+  geminiRetryBody = goodPlanBody(); // the server-side regenerate returns a good plan
+  const badStreamed = goodPlanBody();
+  badStreamed.events = []; // the first (streamed + parsed) body fails validation
+
+  const out = await lastStreamOpts.postProcess(badStreamed);
+  assert.equal(out.success, true);
+  assert.equal(out.plan.events[0].name, 'purchase');
+  assert.equal(out.plan.meta.businessModel, 'ecommerce');
+  assert.equal(geminiCalls, 1, 'exactly one server-side regenerate');
 });
 
 // ─── c) Low confidence: 409 confirm branch, stream NOT called ───
@@ -180,7 +207,7 @@ test('businessModel override → 200, classification forced to saas at confidenc
 
   assert.equal(res.status, 200);
   assert.equal(streamCalls, 1);
-  const out = lastStreamOpts.postProcess(goodPlanBody());
+  const out = await lastStreamOpts.postProcess(goodPlanBody());
   assert.equal(out.classification.businessModel, 'saas');
   assert.equal(out.classification.confidence, 1);
 });

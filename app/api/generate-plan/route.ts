@@ -3,7 +3,7 @@ import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rat
 import { buildClaudeSseStream, streamResponseHeaders } from '@/lib/claude-stream';
 import { getGeminiModel } from '@/lib/gemini';
 import { resolveClassification, LowConfidenceError } from '@/lib/measurement/pipeline';
-import { buildPlanPrompt, finalizePlan } from '@/lib/measurement/generate-plan';
+import { buildPlanPrompt, finalizeStreamedOrRetry } from '@/lib/measurement/generate-plan';
 import type { BusinessModel, FormInfo, PageInfo, SiteContext } from '@/lib/measurement/types';
 
 export const maxDuration = 90;
@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Confident (or overridden): stream the Gemini generation. We reuse the
-  // pipeline's generation stages (buildPlanPrompt + finalizePlan) as stream
+  // pipeline's generation stages (buildPlanPrompt + finalize) as stream
   // post-processing so token streaming and the SSE event protocol are preserved.
   const { system, user } = buildPlanPrompt(ctx, classification);
 
@@ -128,10 +128,13 @@ export async function POST(req: NextRequest) {
     userMessage: user,
     maxTokens: 16000,
     milestones: PLAN_MILESTONES,
-    postProcess: (parsed) => ({
+    // finalizeStreamedOrRetry does ONE quiet server-side regenerate if the
+    // streamed body fails validation; buildClaudeSseStream awaits this and turns
+    // a final throw into the graceful error SSE.
+    postProcess: async (parsed) => ({
       success: true,
       classification,
-      plan: finalizePlan(parsed, ctx, classification),
+      plan: await finalizeStreamedOrRetry(parsed, ctx, classification),
     }),
     logLabel: 'generate-plan',
   });

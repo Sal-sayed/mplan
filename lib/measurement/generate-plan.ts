@@ -24,6 +24,11 @@ const GA4_EVENT_NAME = /^[a-z0-9_]+$/;
 // Generous ceiling — the schema is large but bounded.
 const MAX_OUTPUT_TOKENS = 16000;
 
+// Gemini Flash intermittently emits schema-non-conforming JSON. Allow exactly
+// ONE capped regenerate (2 attempts total) on an output-quality failure — enough
+// to absorb the flake without unbounded looping that would mask a real outage.
+const PLAN_GENERATION_ATTEMPTS = 2;
+
 // ─── Prompt ───
 
 export function buildPlanPrompt(
@@ -36,6 +41,7 @@ export function buildPlanPrompt(
     'You are a senior digital-analytics consultant producing a Google Analytics 4 + Google Tag Manager measurement plan for a PRE-LAUNCH website.',
     'You are given a proven base template for the business model. TAILOR it to the specific site — keep the standard GA4 events, add site-specific events/parameters where justified, and drop nothing essential.',
     'All event names MUST be GA4 snake_case (lowercase letters, digits, underscores only).',
+    'REQUIRED shape: "events" MUST be a non-empty array of event objects; "kpis" MUST be an array; "dataLayer" MUST be an array (use [] if there are none); the "consent" and "tooling" objects MUST always be present. Never omit a field or send the wrong type.',
     'Return ONLY a single JSON object that matches the requested schema. No markdown, no prose, no code fences.',
     '',
     'JSON schema (TypeScript shape):',
@@ -120,7 +126,21 @@ export function validateMeasurementPlan(raw: unknown): void {
   }
 }
 
-// ─── Finalize: validate + stamp authoritative meta ───
+// ─── Finalize: coerce true absences, validate + stamp authoritative meta ───
+
+// Coerce ONLY genuinely-absent optional arrays (kpis / dataLayer) to []. A true
+// absence is a harmless omission Gemini occasionally makes; everything else stays
+// fatal so it triggers a regenerate rather than being faked into a valid plan:
+//   • empty events ([])              → left untouched → validator throws
+//   • a present-but-wrong-typed field → left untouched → validator throws
+//   • absent consent / tooling        → left untouched → validator throws
+function coerceOptionalArrays(raw: unknown): unknown {
+  if (!isObject(raw)) return raw; // let validateMeasurementPlan throw on non-objects
+  const out: Record<string, unknown> = { ...raw };
+  if (out.kpis === null || out.kpis === undefined) out.kpis = [];
+  if (out.dataLayer === null || out.dataLayer === undefined) out.dataLayer = [];
+  return out;
+}
 
 export function finalizePlan(
   raw: unknown,
@@ -128,8 +148,9 @@ export function finalizePlan(
   classification: Classification,
   now: string = new Date().toISOString()
 ): MeasurementPlan {
-  validateMeasurementPlan(raw);
-  const body = raw as Omit<MeasurementPlan, 'meta'>;
+  const coerced = coerceOptionalArrays(raw);
+  validateMeasurementPlan(coerced);
+  const body = coerced as Omit<MeasurementPlan, 'meta'>;
   return {
     ...body,
     meta: {
@@ -143,14 +164,16 @@ export function finalizePlan(
   };
 }
 
-// ─── Non-streaming generation (pipeline + tests) ───
+// ─── Generation — transport and output-quality concerns kept separable ───
 
-export async function generateMeasurementPlan(
+// One Gemini generation. Transport/auth failures (fetch reject, non-2xx) PROPAGATE
+// out of here untouched — they are not an output-quality problem, so callers must
+// keep this call OUTSIDE their retry try/catch and never regenerate on them.
+async function generatePlanText(
   ctx: SiteContext,
   classification: Classification
-): Promise<MeasurementPlan> {
+): Promise<string> {
   const { system, user } = buildPlanPrompt(ctx, classification);
-
   const { text } = await geminiGenerate({
     model: getGeminiModel(),
     system,
@@ -159,7 +182,54 @@ export async function generateMeasurementPlan(
     json: true, // -> generationConfig.responseMimeType = "application/json"
     thinkingBudget: 0, // structured JSON task; disable thinking for speed/cost
   });
+  return text;
+}
 
+// Turn raw model text into a finalized plan. Throws ONLY output-quality errors
+// (loose-parse failure or schema validation) — exactly the failures worth a retry.
+export function buildPlanFromText(
+  text: string,
+  ctx: SiteContext,
+  classification: Classification
+): MeasurementPlan {
   const parsed = parseJsonLoose(text);
   return finalizePlan(parsed, ctx, classification);
+}
+
+// Non-streaming generation (pipeline + tests). A single capped regenerate absorbs
+// Gemini Flash's occasional schema-non-conforming output: a transport error from
+// generatePlanText propagates immediately (never retried), while a persistent
+// output-quality failure still surfaces its clear error after the last attempt.
+export async function generateMeasurementPlan(
+  ctx: SiteContext,
+  classification: Classification
+): Promise<MeasurementPlan> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= PLAN_GENERATION_ATTEMPTS; attempt++) {
+    const text = await generatePlanText(ctx, classification); // transport errors propagate
+    try {
+      return buildPlanFromText(text, ctx, classification);
+    } catch (err) {
+      lastError = err; // output-quality failure — regenerate (up to the cap)
+    }
+  }
+  throw lastError;
+}
+
+// Streaming-path finalize. The route already streamed + parsed the first attempt,
+// so try to finalize THAT; on an output-quality failure do ONE quiet server-side
+// regenerate (a plain non-streaming call — we do NOT re-stream a second round of
+// tokens to the client). If that also fails, let it throw — the route turns it
+// into the existing graceful error SSE.
+export async function finalizeStreamedOrRetry(
+  parsed: unknown,
+  ctx: SiteContext,
+  classification: Classification
+): Promise<MeasurementPlan> {
+  try {
+    return finalizePlan(parsed, ctx, classification);
+  } catch {
+    const text = await generatePlanText(ctx, classification); // transport errors propagate
+    return buildPlanFromText(text, ctx, classification);
+  }
 }
