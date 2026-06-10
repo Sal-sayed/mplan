@@ -172,6 +172,10 @@ test('deployedSiteUrl present → capture mocked, 4 deployed checks projected (5
   assert.equal(planned.status, 'pass');
   const snippet = body.report.checks.find((c: any) => c.id === 'tracking_snippet_present');
   assert.equal(snippet.status, 'pass');
+  // observed evidence surfaces through the route for the UI to render.
+  assert.ok(body.report.observed, 'observed evidence present on the live path');
+  assert.equal(body.report.observed.summary.rawHitCount, 5);
+  assert.equal(body.report.observed.events.length, 2);
 });
 
 test('deployedSiteUrl present but capture sees nothing → no_go (tracking_snippet_present fail)', async () => {

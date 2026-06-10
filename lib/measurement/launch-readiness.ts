@@ -12,7 +12,7 @@
 // no validation library. The plan shape is owned by types.ts; never redefined.
 
 import { evaluateReadiness } from './readiness.ts';
-import type { BusinessModel, MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
+import type { BusinessModel, MeasurementPlan, ObservedEvent, ObservedSignals, ReadinessReport } from './types.ts';
 
 export const LAUNCH_READINESS_SCHEMA_VERSION = '0.1.0';
 
@@ -82,6 +82,16 @@ export interface ApprovalState {
   note?: string;
 }
 
+// Observed evidence, attached ONLY when a deployed-site capture ran — lets a UI
+// render captured-vs-planned (what fired, rawHitCount, orphan events) without
+// re-capturing. Sourced from the single ReadinessReport/ObservedSignals already
+// produced; never a second browser run. `summary` reuses the evaluator's exact
+// observedSummary shape rather than redefining it.
+export interface LaunchObservedEvidence {
+  summary: ReadinessReport['observedSummary'];
+  events: ObservedEvent[];
+}
+
 export interface LaunchReadinessReport {
   meta: ReadinessMeta;
   decision: LaunchDecision;
@@ -90,6 +100,9 @@ export interface LaunchReadinessReport {
   warnings: ReadinessCheckId[];
   skipped: ReadinessCheckId[];
   approval: ApprovalState;
+  // Present only when deployedSiteUrl was supplied and capture+reconcile ran;
+  // omitted entirely on the deterministic-only path.
+  observed?: LaunchObservedEvidence;
 }
 
 export interface LaunchReadinessResult {
@@ -487,11 +500,14 @@ export async function runLaunchReadinessGate(
   // deployed_site checks. Without a URL they stay 'skipped' exactly as before.
   const deployedSiteUrl = ctx.connectors?.deployedSiteUrl;
   let deployedSiteChecks: ReadinessCheck[];
+  let observedEvidence: LaunchObservedEvidence | undefined;
   if (deployedSiteUrl) {
     const capture = opts.captureObservedSignals ?? (await loadDefaultCapture());
     const observed = await capture(deployedSiteUrl);
     const report = evaluateReadiness(plan, observed);
     deployedSiteChecks = projectDeployedSiteChecks(report, consentModeRequired);
+    // Same report/observed we just produced — no re-capture, no re-reconcile.
+    observedEvidence = { summary: report.observedSummary, events: observed.events };
   } else {
     deployedSiteChecks = skippedDeployedSiteChecks(consentModeRequired);
   }
@@ -542,6 +558,7 @@ export async function runLaunchReadinessGate(
     warnings,
     skipped,
     approval,
+    ...(observedEvidence ? { observed: observedEvidence } : {}),
   };
 
   return { report };

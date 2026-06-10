@@ -248,6 +248,7 @@ test('no deployedSiteUrl → the 4 deployed-site checks stay skipped (9 skipped 
     assert.equal(check(r, id).status, 'skipped');
   }
   assert.equal(r.skipped.length, 9);
+  assert.equal(r.observed, undefined); // omitted on the deterministic-only path
 });
 
 test('deployedSiteUrl present (injected capture) → 4 deployed checks come from the ReadinessReport', async () => {
@@ -272,6 +273,15 @@ test('deployedSiteUrl present (injected capture) → 4 deployed checks come from
   assert.ok(!report.skipped.includes('planned_events_fire'));
   assert.equal(report.skipped.length, 5); // only the 5 OAuth checks remain skipped
   assert.equal(report.decision, 'go_with_warnings');
+
+  // Observed evidence is attached on the live path (sourced from the same
+  // capture/reconcile — no second browser run) so a UI can show what fired.
+  const ev = report.observed;
+  assert.ok(ev, 'observed evidence attached on the live path');
+  assert.equal(ev.summary.rawHitCount, 5);
+  assert.equal(ev.summary.totalObservedEvents, 2);
+  assert.equal(ev.events.length, 2);
+  assert.deepEqual(ev.events.map((e) => e.name), ['page_view', 'purchase']);
 });
 
 test('deployedSiteUrl present but no signals → tracking_snippet_present fail → no_go', async () => {
