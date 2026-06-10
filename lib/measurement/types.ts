@@ -159,3 +159,84 @@ export interface PipelineResult {
   classification: Classification;
   plan: MeasurementPlan;
 }
+
+// ─── Launch readiness (gate) ───
+//
+// Inputs/outputs for the deterministic readiness evaluator (readiness.ts).
+// ObservedSignals is a capture-agnostic view of what actually fired on a
+// (pre-launch / staging) URL — the live-capture adapter maps the tracking-spy
+// output into this shape so the evaluator never depends on Playwright or the
+// spy internals. The evaluator reconciles a MeasurementPlan against it and
+// returns a go/no-go ReadinessReport.
+
+export const READINESS_SCHEMA_VERSION = '1.0.0';
+
+// A single tracking event observed firing on the page.
+export interface ObservedEvent {
+  name: string; // event name as fired (e.g. 'purchase', 'add_to_cart')
+  vendor?: string; // canonical destination key, e.g. 'GA4', 'MetaPixel'
+  destinationId?: string; // GA4 measurementId / pixel id that received it
+  parameters?: string[]; // observed parameter KEYS (best-effort; capture is lossy)
+  count?: number; // how many times it fired during capture
+}
+
+// What actually fired on the page, normalized away from the spy's internals.
+export interface ObservedSignals {
+  url: string;
+  events: ObservedEvent[];
+  rawHitCount?: number; // total raw hits seen — a capture-health sanity check
+  consentBannerDetected?: boolean;
+  consentAccepted?: boolean;
+}
+
+export type EventReadinessStatus = 'implemented' | 'missing' | 'misconfigured';
+export type ReadinessVerdict = 'pass' | 'warn' | 'fail';
+export type ReadinessSeverity = 'blocking' | 'warning' | 'info';
+
+// Per-planned-event reconciliation outcome.
+export interface EventReadiness {
+  eventId: string;
+  eventName: string;
+  isKeyEvent: boolean;
+  status: EventReadinessStatus;
+  matchedObservedName: string | null; // the observed name that satisfied it
+  observedCount: number;
+  missingRequiredParameters: string[]; // populated when status === 'misconfigured'
+  detail: string;
+}
+
+export interface ReadinessIssue {
+  severity: ReadinessSeverity;
+  code: string; // stable machine code, e.g. 'key_event_missing'
+  message: string;
+  eventId?: string;
+}
+
+export interface ReadinessScores {
+  overall: number; // 0..1 weighted coverage (key events weighted heavier)
+  eventCoverage: number; // 0..1 implemented / total events
+  keyEventCoverage: number; // 0..1 implemented / total key events (1 if none)
+  consentReady: boolean;
+}
+
+export interface ReadinessReport {
+  meta: {
+    url: string;
+    planSchemaVersion: string;
+    readinessSchemaVersion: string;
+    evaluatedAt: string; // ISO 8601
+  };
+  verdict: ReadinessVerdict;
+  scores: ReadinessScores;
+  events: EventReadiness[];
+  issues: ReadinessIssue[];
+  observedSummary: {
+    totalObservedEvents: number; // distinct recognized events (= matched + unplanned)
+    matchedObservedEvents: number;
+    unplannedObservedEvents: string[]; // observed but not in the plan ("orphans")
+    skippedObservedEvents: number; // rows dropped as malformed / un-nameable
+    rawHitCount: number | null;
+    consentBannerDetected: boolean | null;
+    consentAccepted: boolean | null;
+  };
+}
