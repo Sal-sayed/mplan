@@ -7,7 +7,9 @@ import {
   ShieldCheck, Settings2, Copy, Check, ChevronDown, FileSpreadsheet, Loader2, Star,
 } from 'lucide-react';
 import KPICard from './KPICard';
+import LaunchReadinessScreen from './LaunchReadinessScreen';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
+import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -44,6 +46,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
   const [activeTab, setActiveTab] = useState('overview');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
+
+  // Launch-readiness gate (additive): idle → form → loading → done | error.
+  const [rdPhase, setRdPhase] = useState<'idle' | 'form' | 'loading' | 'done' | 'error'>('idle');
+  const [rdReport, setRdReport] = useState<LaunchReadinessReport | null>(null);
+  const [rdUrl, setRdUrl] = useState('');
+  const [rdError, setRdError] = useState('');
+
+  const runReadiness = async () => {
+    setRdPhase('loading'); setRdError('');
+    try {
+      const body: Record<string, unknown> = { plan };
+      const u = rdUrl.trim();
+      if (u) body.deployedSiteUrl = u;
+      const res = await fetch('/api/launch-readiness', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Launch readiness check failed');
+      setRdReport(json.report as LaunchReadinessReport);
+      setRdPhase('done');
+    } catch (e) {
+      setRdError(e instanceof Error ? e.message : 'Launch readiness check failed');
+      setRdPhase('error');
+    }
+  };
 
   const copySection = useCallback((key: string, data: unknown) => {
     navigator.clipboard.writeText(JSON.stringify(data, null, 2));
@@ -239,6 +266,11 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
     }
   };
 
+  // Full-screen takeover once the gate has run.
+  if (rdPhase === 'done' && rdReport) {
+    return <LaunchReadinessScreen report={rdReport} onReset={() => { setRdPhase('idle'); setRdReport(null); }} />;
+  }
+
   return (
     <div className="h-full w-full flex flex-col overflow-hidden bg-[#0b1120]">
       <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-white/[0.08] bg-[#0d1525] z-10">
@@ -246,7 +278,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
           <button onClick={onReset} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 transition shrink-0"><ArrowLeft size={18} /></button>
           <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-white truncate">Measurement Plan</div><div className="text-xs text-slate-400 truncate">{meta.url}</div></div>
         </div>
-        <div className="flex items-center gap-2 shrink-0"><ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} /></div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button onClick={() => { setRdUrl(''); setRdError(''); setRdPhase('form'); }}
+            className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
+            <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
+          </button>
+          <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
+        </div>
       </header>
 
       <div className="flex-1 flex overflow-hidden">
@@ -276,6 +314,50 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
           </div>
         </div>
       </div>
+
+      {(rdPhase === 'form' || rdPhase === 'loading' || rdPhase === 'error') && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/60 backdrop-blur-sm">
+          <motion.div initial={{ opacity: 0, scale: 0.97 }} animate={{ opacity: 1, scale: 1 }}
+            className="w-full max-w-md bg-[#0d1525] border border-white/[0.1] rounded-2xl p-6">
+            {rdPhase === 'loading' ? (
+              <div className="text-center py-4">
+                <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
+                <p className="text-white font-semibold">Running launch readiness…</p>
+                <p className="text-slate-400 text-sm mt-1">
+                  {rdUrl.trim() ? 'Capturing the live site — this can take up to a minute.' : 'Checking plan consistency…'}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-1">
+                  <ShieldCheck className="w-5 h-5 text-blue-400" />
+                  <h3 className="text-lg font-bold text-white">Launch readiness check</h3>
+                </div>
+                <p className="text-slate-400 text-sm mb-4">
+                  Verify the plan is ready to go live. Optionally point it at a staging/live URL with GA4/GTM deployed to check what actually fires.
+                </p>
+                <label className="block text-xs text-slate-400 mb-1">
+                  Staging / live URL <span className="text-slate-600">(optional)</span>
+                </label>
+                <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
+                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
+                <p className="text-[11px] text-slate-500 mb-4">Leave blank to run plan-consistency checks only.</p>
+                {rdPhase === 'error' && <p className="text-sm text-rose-400 mb-3">{rdError}</p>}
+                <div className="flex gap-2">
+                  <button onClick={runReadiness}
+                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                    Run check
+                  </button>
+                  <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
+                    className="px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
+                    Cancel
+                  </button>
+                </div>
+              </>
+            )}
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
