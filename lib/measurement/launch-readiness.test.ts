@@ -11,12 +11,16 @@ import {
   projectTrackingSnippetPresent,
   projectConsentModeConfigured,
   projectDataLayerVariablesPresent,
+  projectGa4Checks,
+  projectGtmChecks,
 } from './launch-readiness.ts';
 import type {
   LaunchReadinessReport,
   ReadinessCheckOptions,
   ReadinessCheckId,
 } from './launch-readiness.ts';
+import type { Ga4ConfigData } from './ga4-config.ts';
+import type { GtmConfigData } from './gtm-config.ts';
 import type { MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
 
 // A coherent ecommerce plan (consentModeRequired false) — every deterministic
@@ -293,4 +297,96 @@ test('deployedSiteUrl present but no signals → tracking_snippet_present fail �
   assert.equal(check(report, 'tracking_snippet_present').status, 'fail');
   assert.ok(report.blockingFailures.includes('tracking_snippet_present'));
   assert.equal(report.decision, 'no_go');
+});
+
+// ─── GA4 / GTM projections (pure) ───
+
+function ga4Cfg(over: Partial<Ga4ConfigData> = {}): Ga4ConfigData {
+  return { propertyExists: true, displayName: 'My GA4', keyEventNames: ['purchase'], customDimensionParameters: [], ...over };
+}
+
+test('projectGa4Checks: property + key events + dims present → 3 pass', () => {
+  const checks = projectGa4Checks(ga4Cfg(), goodPlan());
+  assert.deepEqual(checks.map((c) => c.status), ['pass', 'pass', 'pass']);
+  assert.ok(checks.every((c) => c.dependsOn === 'ga4_oauth'));
+});
+
+test('projectGa4Checks: planned key event not registered → key-events fail (matched by NAME not id)', () => {
+  const checks = projectGa4Checks(ga4Cfg({ keyEventNames: [] }), goodPlan());
+  const ke = checks.find((c) => c.id === 'ga4_key_events_registered')!;
+  assert.equal(ke.status, 'fail');
+  assert.ok(ke.evidence?.includes('purchase')); // evt_purchase id → 'purchase' name
+});
+
+test('projectGa4Checks: missing custom dimension → dims fail', () => {
+  const p = goodPlan();
+  p.tooling.ga4.customDimensions = [{ name: 'Item ID', scope: 'event', parameter: 'item_id' }];
+  const checks = projectGa4Checks(ga4Cfg({ customDimensionParameters: [] }), p);
+  const cd = checks.find((c) => c.id === 'ga4_custom_dimensions_created')!;
+  assert.equal(cd.status, 'fail');
+  assert.ok(cd.evidence?.includes('item_id'));
+});
+
+test('projectGa4Checks: property not found → all 3 fail', () => {
+  const checks = projectGa4Checks(ga4Cfg({ propertyExists: false }), goodPlan());
+  assert.deepEqual(checks.map((c) => c.status), ['fail', 'fail', 'fail']);
+});
+
+test('projectGtmChecks: container found with enough live tags → both pass', () => {
+  const checks = projectGtmChecks({ containerExists: true, containerName: 'Web', liveTagCount: 5 }, goodPlan());
+  assert.deepEqual(checks.map((c) => c.status), ['pass', 'pass']);
+});
+
+test('projectGtmChecks: fewer live tags than suggested → tags warn (non-blocking)', () => {
+  const checks = projectGtmChecks({ containerExists: true, liveTagCount: 1 }, goodPlan());
+  const tags = checks.find((c) => c.id === 'gtm_tags_configured')!;
+  assert.equal(tags.status, 'warn');
+  assert.equal(tags.blocking, false);
+});
+
+test('projectGtmChecks: container not found → exists fail, tags warn', () => {
+  const checks = projectGtmChecks({ containerExists: false, liveTagCount: 0 }, goodPlan());
+  assert.equal(checks.find((c) => c.id === 'gtm_container_exists')!.status, 'fail');
+  assert.equal(checks.find((c) => c.id === 'gtm_tags_configured')!.status, 'warn');
+});
+
+// ─── Gate wiring: GA4/GTM connectors + Google token (injected seams) ───
+
+test('ga4 connector + token + fetch → GA4 checks become real (skipped drops to 6)', async () => {
+  const { report } = await runLaunchReadinessGate(
+    { url: goodPlan().meta.url, plan: goodPlan(), connectors: { ga4: { propertyId: '123456789' } } },
+    { getGoogleAccessToken: async () => 'tok', fetchGa4Config: async () => ga4Cfg() }
+  );
+  assert.equal(check(report, 'ga4_property_exists').status, 'pass');
+  assert.equal(check(report, 'ga4_key_events_registered').status, 'pass');
+  assert.equal(report.skipped.length, 6); // 4 deployed + 2 gtm
+});
+
+test('ga4 connector but Google not connected → GA4 checks stay skipped (9 skipped)', async () => {
+  const { report } = await runLaunchReadinessGate(
+    { url: goodPlan().meta.url, plan: goodPlan(), connectors: { ga4: { propertyId: '123456789' } } },
+    { getGoogleAccessToken: async () => { throw new Error('not connected'); }, fetchGa4Config: async () => ga4Cfg() }
+  );
+  assert.equal(check(report, 'ga4_property_exists').status, 'skipped');
+  assert.equal(report.skipped.length, 9);
+});
+
+test('ga4 connector + token but fetch throws → GA4 checks fail → no_go', async () => {
+  const { report } = await runLaunchReadinessGate(
+    { url: goodPlan().meta.url, plan: goodPlan(), connectors: { ga4: { propertyId: 'bad' } } },
+    { getGoogleAccessToken: async () => 'tok', fetchGa4Config: async () => { throw new Error('boom'); } }
+  );
+  assert.equal(check(report, 'ga4_property_exists').status, 'fail');
+  assert.ok(report.blockingFailures.includes('ga4_property_exists'));
+  assert.equal(report.decision, 'no_go');
+});
+
+test('gtm connector + token + fetch → GTM checks become real (skipped drops to 7)', async () => {
+  const { report } = await runLaunchReadinessGate(
+    { url: goodPlan().meta.url, plan: goodPlan(), connectors: { gtm: { containerId: 'GTM-XYZ' } } },
+    { getGoogleAccessToken: async () => 'tok', fetchGtmConfig: async () => ({ containerExists: true, liveTagCount: 9 }) }
+  );
+  assert.equal(check(report, 'gtm_container_exists').status, 'pass');
+  assert.equal(check(report, 'gtm_tags_configured').status, 'pass');
+  assert.equal(report.skipped.length, 7); // 4 deployed + 3 ga4
 });

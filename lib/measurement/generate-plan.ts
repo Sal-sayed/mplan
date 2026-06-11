@@ -146,7 +146,8 @@ export function finalizePlan(
   raw: unknown,
   ctx: SiteContext,
   classification: Classification,
-  now: string = new Date().toISOString()
+  now: string = new Date().toISOString(),
+  source: 'gemini' | 'template' = 'gemini'
 ): MeasurementPlan {
   const coerced = coerceOptionalArrays(raw);
   validateMeasurementPlan(coerced);
@@ -160,6 +161,7 @@ export function finalizePlan(
       generatedAt: now,
       schemaVersion: PLAN_SCHEMA_VERSION,
       classificationConfidence: classification.confidence,
+      source,
     },
   };
 }

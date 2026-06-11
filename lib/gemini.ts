@@ -74,6 +74,29 @@ function extractGeminiError(status: number, raw: string): string {
   }
 }
 
+// Transport-level retry for transient Gemini overloads — SEPARATE from
+// generate-plan's output-quality retry. Retries ONLY 503 ("high demand") and
+// 429 (rate limit). 401/403/other statuses and network errors propagate at
+// once; after the cap it THROWS so a genuine outage surfaces (never loops).
+const GEMINI_TRANSPORT_RETRIES = 2;
+const TRANSPORT_RETRY_STATUS = new Set([429, 503]);
+
+async function geminiPostWithRetry(url: string, bodyJson: string): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: bodyJson,
+    });
+    if (resp.ok) return resp;
+    if (!TRANSPORT_RETRY_STATUS.has(resp.status) || attempt >= GEMINI_TRANSPORT_RETRIES) {
+      throw new Error(extractGeminiError(resp.status, await resp.text()));
+    }
+    await resp.text().catch(() => {}); // drain the body so the socket frees
+    await new Promise((r) => setTimeout(r, 500 * 2 ** attempt)); // 500ms, then 1000ms
+  }
+}
+
 function textFromCandidate(obj: any): string {
   const parts = obj?.candidates?.[0]?.content?.parts || [];
   return parts.map((p: any) => p?.text || "").join("");
@@ -92,14 +115,7 @@ export async function geminiGenerate(
   args: GeminiArgs
 ): Promise<{ text: string; usage: GeminiUsage }> {
   const url = `${getGeminiBaseUrl()}/models/${encodeURIComponent(args.model)}:generateContent?key=${getGeminiKey()}`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildBody(args)),
-  });
-  if (!resp.ok) {
-    throw new Error(extractGeminiError(resp.status, await resp.text()));
-  }
+  const resp = await geminiPostWithRetry(url, JSON.stringify(buildBody(args)));
   const data = await resp.json();
   return { text: textFromCandidate(data), usage: usageFrom(data) };
 }
@@ -110,14 +126,7 @@ export async function* geminiStreamText(
   usageOut: GeminiUsage
 ): AsyncGenerator<string, void, void> {
   const url = `${getGeminiBaseUrl()}/models/${encodeURIComponent(args.model)}:streamGenerateContent?alt=sse&key=${getGeminiKey()}`;
-  const resp = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(buildBody(args)),
-  });
-  if (!resp.ok) {
-    throw new Error(extractGeminiError(resp.status, await resp.text()));
-  }
+  const resp = await geminiPostWithRetry(url, JSON.stringify(buildBody(args)));
   if (!resp.body) throw new Error("Gemini API returned no response body");
 
   const reader = resp.body.getReader();

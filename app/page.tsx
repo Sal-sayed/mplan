@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AnimatedBackground from '@/components/AnimatedBackground';
 import HeroScreen from '@/components/HeroScreen';
@@ -183,9 +183,14 @@ export default function Home() {
     }
   };
 
+  // Remembers the last generation request so "Regenerate with AI" (shown on a
+  // template-fallback plan) can re-run it forcing the AI path.
+  const lastGenRef = useRef<{ genBody: any; downstream: any } | null>(null);
+
   // 'new' path generation — streams the plan, or pauses for confirmation when
   // the server returns 409 (low-confidence classification).
   const generateNewPlan = async (genBody: any, downstream: any) => {
+    lastGenRef.current = { genBody, downstream };
     setStage('generating'); setProgress(65); stream.reset();
     const out = await stream.startStream<any>('/api/generate-plan', genBody);
     if (!out) {
@@ -209,6 +214,35 @@ export default function Home() {
     setConfirmCtx(null);
     try {
       await generateNewPlan({ ...genBody, businessModel: model }, downstream);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : err?.message || 'An unexpected error occurred');
+      setStage('error');
+    }
+  };
+
+  // No-AI path: build the plan deterministically from the template for the chosen
+  // business model — instant, zero Gemini calls.
+  const confirmBusinessModelTemplate = async (model: BusinessModel) => {
+    if (!confirmCtx) return;
+    const { genBody, downstream } = confirmCtx;
+    setConfirmCtx(null);
+    try {
+      await generateNewPlan({ ...genBody, businessModel: model, templateOnly: true }, downstream);
+    } catch (err: any) {
+      setError(err instanceof Error ? err.message : err?.message || 'An unexpected error occurred');
+      setStage('error');
+    }
+  };
+
+  // Re-run the last generation forcing the AI path (shown on a template-fallback
+  // plan via the "Regenerate with AI" banner CTA).
+  const regenerateWithAi = async () => {
+    const last = lastGenRef.current;
+    if (!last) { reset(); return; }
+    try {
+      const { templateOnly: _omit, ...aiBody } = last.genBody;
+      void _omit;
+      await generateNewPlan(aiBody, last.downstream);
     } catch (err: any) {
       setError(err instanceof Error ? err.message : err?.message || 'An unexpected error occurred');
       setStage('error');
@@ -316,6 +350,7 @@ export default function Home() {
             <ConfirmBusinessModel
               classification={confirmCtx.classification}
               onConfirm={confirmBusinessModel}
+              onConfirmTemplate={confirmBusinessModelTemplate}
               onCancel={reset}
             />
           </motion.div>
@@ -333,6 +368,7 @@ export default function Home() {
               email={email}
               emailDelivered={emailDelivered}
               onReset={reset}
+              onRegenerate={regenerateWithAi}
             />
           </motion.div>
         )}

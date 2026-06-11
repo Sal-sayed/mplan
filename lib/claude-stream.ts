@@ -31,6 +31,12 @@ export interface StreamConfig {
   // `complete` event. Use this for the existing server-side post-processing
   // (sanitize, override detectedSetup, filter false-positives, etc.).
   postProcess?: (parsed: any) => any | Promise<any>;
+  // Last-resort result producer. If generation fails at ANY point (stream error,
+  // JSON parse, or postProcess), this is called WITH the error to produce a
+  // result emitted as `complete` instead of `error`. The generate-plan route
+  // uses it to return a fresh, valid, flagged TEMPLATE plan — it never returns
+  // the malformed model output. Returning falsy/throwing → the normal error path.
+  fallback?: (err: unknown) => any | Promise<any>;
   // Tag for log lines.
   logLabel?: string;
   // Gemini 2.5 thinking budget. 0 disables thinking (flash); omit to use the
@@ -69,6 +75,26 @@ export function buildClaudeSseStream(config: StreamConfig): ReadableStream<Uint8
       let outputTokens = 0;
       let lastProgressAt = Date.now();
       const usage: GeminiUsage = { input: 0, output: 0 };
+
+      // On any generation failure, hand the error to config.fallback to still
+      // return a usable result (a fresh, valid template plan) instead of erroring.
+      const finishWithFallback = async (err: unknown): Promise<boolean> => {
+        if (!config.fallback) return false;
+        try {
+          const result = await config.fallback(err);
+          if (!result) return false;
+          send('milestone', { emoji: '🧩', message: 'AI was unavailable — built a template starting point.', progress: 98 });
+          send('complete', {
+            result,
+            usage: { input: usage.input, output: usage.output, cacheRead: 0, cacheWrite: 0 },
+          });
+          controller.close();
+          return true;
+        } catch (e) {
+          console.error(`[${label}] fallback failed:`, (e as Error)?.message);
+          return false;
+        }
+      };
 
       try {
         send('milestone', { emoji: '🚀', message: 'Starting AI analysis...', progress: 5 });
@@ -130,6 +156,7 @@ export function buildClaudeSseStream(config: StreamConfig): ReadableStream<Uint8
           console.error(`[${label}] JSON parse failed even after repair:`, (err as Error)?.message);
           console.error(`[${label}] raw head:`, fullText.slice(0, 500));
           console.error(`[${label}] raw tail:`, fullText.slice(-500));
+          if (await finishWithFallback(err)) return;
           send('error', { message: 'AI response was malformed. Please try again.' });
           controller.close();
           return;
@@ -141,6 +168,7 @@ export function buildClaudeSseStream(config: StreamConfig): ReadableStream<Uint8
             parsed = await config.postProcess(parsed);
           } catch (err) {
             console.error(`[${label}] postProcess threw:`, (err as Error)?.message);
+            if (await finishWithFallback(err)) return;
             send('error', { message: 'Failed to finalize result. Please try again.' });
             controller.close();
             return;
@@ -160,9 +188,25 @@ export function buildClaudeSseStream(config: StreamConfig): ReadableStream<Uint8
       } catch (err) {
         const msg = (err as Error)?.message || 'AI generation failed';
         console.error(`[${label}] stream error:`, msg);
+        if (await finishWithFallback(err)) return;
         send('error', { message: msg });
         controller.close();
       }
+    },
+  });
+}
+
+// One-shot SSE for the no-AI path: emit a quick milestone then the final result,
+// using the same event protocol the frontend stream client already consumes.
+export function streamInstantResult(result: unknown): ReadableStream<Uint8Array> {
+  const encoder = new TextEncoder();
+  return new ReadableStream({
+    start(controller) {
+      const send = (event: string, data: unknown) =>
+        controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      send('milestone', { emoji: '🧩', message: 'Building template plan (no AI)…', progress: 60 });
+      send('complete', { result, usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 } });
+      controller.close();
     },
   });
 }

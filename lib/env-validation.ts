@@ -73,6 +73,15 @@ export function validateEnv(): void {
   if (!process.env.UPSTASH_REDIS_REST_URL) {
     warnings.push('UPSTASH_REDIS_REST_URL not set — rate limiting disabled');
   }
+  // Optional Google OAuth (single-operator GA4/GTM launch-readiness checks).
+  // Additive: absent creds just means the "Connect Google" button is hidden and
+  // the GA4/GTM checks stay skipped. Warn, never fail boot.
+  const googleSet = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'].filter(k => process.env[k]);
+  if (googleSet.length === 1) {
+    warnings.push('Google OAuth half-configured — set BOTH GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET for GA4/GTM checks');
+  } else if (googleSet.length === 0) {
+    warnings.push('GOOGLE_CLIENT_ID/SECRET not set — GA4/GTM launch-readiness checks disabled');
+  }
   for (const { key, fallback } of OPTIONAL_WITH_DEFAULTS) {
     if (!process.env[key]) {
       warnings.push(`${key} not set — using default "${fallback}"`);

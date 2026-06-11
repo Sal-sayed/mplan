@@ -17,9 +17,10 @@ interface Props {
   email: string;
   emailDelivered: boolean;
   onReset: () => void;
+  onRegenerate?: () => void;
 }
 
-export default function SuccessScreen({ mode, plan, audit, score, scrapeData, email, emailDelivered, onReset }: Props) {
+export default function SuccessScreen({ mode, plan, audit, score, scrapeData, email, emailDelivered, onReset, onRegenerate }: Props) {
   const [showPlan, setShowPlan] = useState(false);
   const [gameScore, setGameScore] = useState(0);
 
@@ -31,7 +32,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
   }, []);
 
   if (showPlan && mode === 'new' && plan) {
-    return <ResultsScreen plan={plan} score={score} scrapeData={scrapeData} onReset={onReset} />;
+    return <ResultsScreen plan={plan} score={score} scrapeData={scrapeData} onReset={onReset} onRegenerate={onRegenerate} />;
   }
 
   if (showPlan && mode === 'audit' && audit) {

@@ -108,7 +108,7 @@ function CheckRow({ check }: { check: ReadinessCheck }) {
   );
 }
 
-function CheckGroup({ title, status, checks, defaultOpen }: { title: string; status: CheckStatus; checks: ReadinessCheck[]; defaultOpen: boolean }) {
+function CheckGroup({ title, hint, status, checks, defaultOpen }: { title: string; hint?: string; status: CheckStatus; checks: ReadinessCheck[]; defaultOpen: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   if (checks.length === 0) return null;
   const chip = STATUS[status].chip;
@@ -121,7 +121,12 @@ function CheckGroup({ title, status, checks, defaultOpen }: { title: string; sta
         </div>
         <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {open && <div className="space-y-2.5">{checks.map((c) => <CheckRow key={c.id} check={c} />)}</div>}
+      {open && (
+        <div className="space-y-2.5">
+          {hint && <p className="text-xs text-slate-500 -mt-1 mb-1">{hint}</p>}
+          {checks.map((c) => <CheckRow key={c.id} check={c} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -233,6 +238,11 @@ export default function LaunchReadinessScreen({ report, onReset }: { report: Lau
   const warns = report.checks.filter((c) => c.status === 'warn');
   const passes = report.checks.filter((c) => c.status === 'pass');
   const skips = report.checks.filter((c) => c.status === 'skipped');
+  // Split "not verified" by what each check is actually waiting on, so it's clear
+  // WHY it couldn't run (a Google sign-in vs a deployed URL) rather than a vague pile.
+  const needsGoogle = skips.filter((c) => c.dependsOn === 'ga4_oauth' || c.dependsOn === 'gtm_oauth');
+  const needsUrl = skips.filter((c) => c.dependsOn === 'deployed_site');
+  const otherSkips = skips.filter((c) => c.dependsOn !== 'ga4_oauth' && c.dependsOn !== 'gtm_oauth' && c.dependsOn !== 'deployed_site');
 
   return (
     <div className="h-full w-full flex flex-col bg-[#0b1120] overflow-hidden">
@@ -285,7 +295,17 @@ export default function LaunchReadinessScreen({ report, onReset }: { report: Lau
           <CheckGroup title="Must fix before launch" status="fail" checks={fails} defaultOpen />
           <CheckGroup title="Review" status="warn" checks={warns} defaultOpen />
           <CheckGroup title="Passing" status="pass" checks={passes} defaultOpen />
-          <CheckGroup title="Not yet verified" status="skipped" checks={skips} defaultOpen={false} />
+          <CheckGroup
+            title="Needs Google connection"
+            hint="These verify your live GA4 property and GTM container. They need a one-time, read-only Google sign-in — coming soon."
+            status="skipped" checks={needsGoogle} defaultOpen={false}
+          />
+          <CheckGroup
+            title="Needs a deployed URL"
+            hint="Re-run the check with a staging/live URL where GA4/GTM is installed to capture what actually fires."
+            status="skipped" checks={needsUrl} defaultOpen={false}
+          />
+          <CheckGroup title="Not yet verified" status="skipped" checks={otherSkips} defaultOpen={false} />
 
           {/* 3 — Evidence, only when a live capture ran */}
           {report.observed && <ObservedEvidence observed={report.observed} />}

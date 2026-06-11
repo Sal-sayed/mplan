@@ -142,6 +142,9 @@ export interface PlanMeta {
   generatedAt: string; // ISO 8601
   schemaVersion: string;
   classificationConfidence: number;
+  // Provenance — 'gemini' = AI-tailored, 'template' = deterministic baseline
+  // fallback (AI unavailable or no-AI path). Optional/additive; absence = gemini.
+  source?: 'gemini' | 'template';
 }
 
 export interface MeasurementPlan {

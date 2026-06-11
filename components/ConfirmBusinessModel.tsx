@@ -19,10 +19,11 @@ const MODELS: { key: BusinessModel; label: string; blurb: string; Icon: any }[] 
 interface Props {
   classification: any;
   onConfirm: (model: BusinessModel) => void;
+  onConfirmTemplate?: (model: BusinessModel) => void;
   onCancel: () => void;
 }
 
-export default function ConfirmBusinessModel({ classification, onConfirm, onCancel }: Props) {
+export default function ConfirmBusinessModel({ classification, onConfirm, onConfirmTemplate, onCancel }: Props) {
   const guess: BusinessModel = (classification?.businessModel as BusinessModel) || 'lead_gen';
   const [selected, setSelected] = useState<BusinessModel>(guess);
   const confidencePct = Math.round((classification?.confidence ?? 0) * 100);
@@ -78,6 +79,18 @@ export default function ConfirmBusinessModel({ classification, onConfirm, onCanc
           className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20 transition-all">
           Generate the plan <ArrowRight size={15} />
         </button>
+
+        {onConfirmTemplate && (
+          <>
+            <button onClick={() => onConfirmTemplate(selected)}
+              className="w-full mt-2.5 py-3 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm font-medium hover:bg-white/[0.1] transition">
+              Generate instantly without AI (template)
+            </button>
+            <p className="text-center text-[11px] text-slate-600 mt-2">
+              A standards-based GA4/GTM baseline — instant, and works even if AI is unavailable.
+            </p>
+          </>
+        )}
       </div>
     </div>
   );

@@ -13,6 +13,8 @@
 
 import { evaluateReadiness } from './readiness.ts';
 import type { BusinessModel, MeasurementPlan, ObservedEvent, ObservedSignals, ReadinessReport } from './types.ts';
+import type { Ga4ConfigData } from './ga4-config.ts';
+import type { GtmConfigData } from './gtm-config.ts';
 
 export const LAUNCH_READINESS_SCHEMA_VERSION = '0.1.0';
 
@@ -130,6 +132,11 @@ export interface ReadinessCheckOptions {
   // capture, dynamically imported so this pure module never loads a browser
   // unless a deployed-site URL is actually being checked.
   captureObservedSignals?: (url: string) => Promise<ObservedSignals>;
+  // Same DI pattern for the Google-backed GA4/GTM checks — each defaults to a
+  // dynamically-imported real implementation (token store + REST readers).
+  getGoogleAccessToken?: () => Promise<string>;
+  fetchGa4Config?: (propertyId: string, accessToken: string) => Promise<Ga4ConfigData>;
+  fetchGtmConfig?: (containerId: string, accessToken: string) => Promise<GtmConfigData>;
 }
 
 // ─── Plan index (built once, shared by the resolve checks) ───
@@ -473,6 +480,110 @@ async function loadDefaultCapture(): Promise<(url: string) => Promise<ObservedSi
   return mod.captureObservedSignals;
 }
 
+// ─── GA4 / GTM checks: real when a connector id + Google token are present ───
+//
+// Mirrors the deployed-site pattern: pure projections fed by dynamically-imported
+// fetchers, with injectable opts seams for tests. Each output check keeps the
+// SAME id/category/dependsOn/blocking as its skipped version, so the UI grouping
+// and the decision engine are unchanged.
+
+function ga4Check(id: ReadinessCheckId, name: string, blocking: boolean, status: CheckStatus, summary: string, evidence?: string[], remediation?: string): ReadinessCheck {
+  return { id, category: 'ga4', name, status, blocking, dependsOn: 'ga4_oauth', summary, evidence, remediation };
+}
+function gtmCheck(id: ReadinessCheckId, name: string, blocking: boolean, status: CheckStatus, summary: string, evidence?: string[], remediation?: string): ReadinessCheck {
+  return { id, category: 'gtm', name, status, blocking, dependsOn: 'gtm_oauth', summary, evidence, remediation };
+}
+
+function skippedGa4Checks(): ReadinessCheck[] {
+  return [
+    skippedLiveCheck('ga4_property_exists', 'ga4', 'ga4_oauth', 'GA4 property exists', true),
+    skippedLiveCheck('ga4_key_events_registered', 'ga4', 'ga4_oauth', 'GA4 key events registered', true),
+    skippedLiveCheck('ga4_custom_dimensions_created', 'ga4', 'ga4_oauth', 'GA4 custom dimensions created', true),
+  ];
+}
+function skippedGtmChecks(): ReadinessCheck[] {
+  return [
+    skippedLiveCheck('gtm_container_exists', 'gtm', 'gtm_oauth', 'GTM container exists', true),
+    skippedLiveCheck('gtm_tags_configured', 'gtm', 'gtm_oauth', 'GTM tags configured', false),
+  ];
+}
+
+// When the GA4/GTM API call throws (bad id, revoked access, network), degrade to
+// fail with a clear reason rather than crashing the whole gate.
+function failedGa4Checks(message: string): ReadinessCheck[] {
+  const remediation = 'Check the GA4 property ID and that your connected Google account has access to it.';
+  return [
+    ga4Check('ga4_property_exists', 'GA4 property exists', true, 'fail', `Couldn't verify the GA4 property: ${message}`, undefined, remediation),
+    ga4Check('ga4_key_events_registered', 'GA4 key events registered', true, 'fail', 'Not verified — the GA4 property could not be read.', undefined, remediation),
+    ga4Check('ga4_custom_dimensions_created', 'GA4 custom dimensions created', true, 'fail', 'Not verified — the GA4 property could not be read.', undefined, remediation),
+  ];
+}
+function failedGtmChecks(message: string): ReadinessCheck[] {
+  const remediation = 'Check the GTM container ID (GTM-XXXX) and that your connected Google account has access to it.';
+  return [
+    gtmCheck('gtm_container_exists', 'GTM container exists', true, 'fail', `Couldn't verify the GTM container: ${message}`, undefined, remediation),
+    gtmCheck('gtm_tags_configured', 'GTM tags configured', false, 'warn', 'Not verified — the GTM container could not be read.', undefined, remediation),
+  ];
+}
+
+// Project a GA4 Admin API read into the 3 GA4 checks.
+export function projectGa4Checks(cfg: Ga4ConfigData, plan: MeasurementPlan): ReadinessCheck[] {
+  if (!cfg.propertyExists) return failedGa4Checks('property not found.');
+
+  const propName = cfg.displayName ? ` "${cfg.displayName}"` : '';
+  const exists = ga4Check('ga4_property_exists', 'GA4 property exists', true, 'pass', `GA4 property${propName} found.`);
+
+  // tooling.ga4.keyEvents holds event IDs; GA4 registers key events by event
+  // NAME, so map ids → names through the plan's events before comparing.
+  const keyEventIds = new Set(plan.tooling.ga4.keyEvents);
+  const expectedNames = plan.events.filter((e) => keyEventIds.has(e.id)).map((e) => e.name);
+  const missingKE = expectedNames.filter((name) => !cfg.keyEventNames.includes(name));
+  const keReg = missingKE.length === 0
+    ? ga4Check('ga4_key_events_registered', 'GA4 key events registered', true, 'pass', `All ${expectedNames.length} planned key event(s) are registered in GA4.`)
+    : ga4Check('ga4_key_events_registered', 'GA4 key events registered', true, 'fail', `Not registered as GA4 key events: ${missingKE.join(', ')}.`, missingKE, 'Mark these events as Key events in GA4 Admin → Events.');
+
+  const planParams = plan.tooling.ga4.customDimensions.map((d) => d.parameter);
+  const missingCD = planParams.filter((p) => !cfg.customDimensionParameters.includes(p));
+  const cdCreated = missingCD.length === 0
+    ? ga4Check('ga4_custom_dimensions_created', 'GA4 custom dimensions created', true, 'pass', planParams.length === 0 ? 'No custom dimensions required by the plan.' : `All ${planParams.length} planned custom dimension(s) exist in GA4.`)
+    : ga4Check('ga4_custom_dimensions_created', 'GA4 custom dimensions created', true, 'fail', `Custom dimensions not created in GA4 for: ${missingCD.join(', ')}.`, missingCD, 'Create a custom dimension for each parameter in GA4 Admin → Custom definitions.');
+
+  return [exists, keReg, cdCreated];
+}
+
+// Project a Tag Manager API read into the 2 GTM checks.
+export function projectGtmChecks(cfg: GtmConfigData, plan: MeasurementPlan): ReadinessCheck[] {
+  const planGtm = plan.tooling.gtm;
+  if (!cfg.containerExists) {
+    return [
+      gtmCheck('gtm_container_exists', 'GTM container exists', true, 'fail', 'Container not found in your Tag Manager account.', undefined, 'Check the GTM container ID (GTM-XXXX) and that your connected Google account can access it.'),
+      gtmCheck('gtm_tags_configured', 'GTM tags configured', false, 'warn', 'Not verified — container not found.'),
+    ];
+  }
+  const name = cfg.containerName ? ` "${cfg.containerName}"` : '';
+  const exists = gtmCheck('gtm_container_exists', 'GTM container exists', true, 'pass', `GTM container${name} found.`);
+  const suggested = planGtm.suggestedTagCount ?? 0;
+  const tags = cfg.liveTagCount >= suggested
+    ? gtmCheck('gtm_tags_configured', 'GTM tags configured', false, 'pass', `Live container has ${cfg.liveTagCount} tag(s) (plan suggests ~${suggested}).`)
+    : gtmCheck('gtm_tags_configured', 'GTM tags configured', false, 'warn', `Live container has ${cfg.liveTagCount} tag(s); the plan suggests ~${suggested}. Some tags may not be published yet.`, undefined, 'Publish the remaining tags in the GTM container, or confirm the suggested count.');
+  return [exists, tags];
+}
+
+// Lazily load the real readers/token only when GA4/GTM is actually being checked
+// — keeps the Supabase client and REST readers out of this pure module's graph.
+async function loadGa4ConfigDefault(): Promise<(propertyId: string, accessToken: string) => Promise<Ga4ConfigData>> {
+  const mod = await import('./ga4-config.ts');
+  return mod.fetchGa4Config;
+}
+async function loadGtmConfigDefault(): Promise<(containerId: string, accessToken: string) => Promise<GtmConfigData>> {
+  const mod = await import('./gtm-config.ts');
+  return mod.fetchGtmConfig;
+}
+async function loadGoogleTokenDefault(): Promise<() => Promise<string>> {
+  const mod = await import('../google/token-store.ts');
+  return mod.getValidAccessToken;
+}
+
 // ─── Decision engine + report assembly ───
 
 export async function runLaunchReadinessGate(
@@ -512,14 +623,46 @@ export async function runLaunchReadinessGate(
     deployedSiteChecks = skippedDeployedSiteChecks(consentModeRequired);
   }
 
-  // The 5 GA4/GTM OAuth checks ALWAYS stay skipped this phase.
-  const oauthChecks: ReadinessCheck[] = [
-    skippedLiveCheck('ga4_property_exists', 'ga4', 'ga4_oauth', 'GA4 property exists', true),
-    skippedLiveCheck('ga4_key_events_registered', 'ga4', 'ga4_oauth', 'GA4 key events registered', true),
-    skippedLiveCheck('ga4_custom_dimensions_created', 'ga4', 'ga4_oauth', 'GA4 custom dimensions created', true),
-    skippedLiveCheck('gtm_container_exists', 'gtm', 'gtm_oauth', 'GTM container exists', true),
-    skippedLiveCheck('gtm_tags_configured', 'gtm', 'gtm_oauth', 'GTM tags configured', false),
-  ];
+  // GA4/GTM checks: real when a connector id AND a Google token are present;
+  // otherwise skipped. An API error degrades to fail (never crashes the gate).
+  const ga4PropertyId = ctx.connectors?.ga4?.propertyId;
+  const gtmContainerId = ctx.connectors?.gtm?.containerId;
+
+  let googleAccessToken: string | undefined;
+  if (ga4PropertyId || gtmContainerId) {
+    try {
+      const getToken = opts.getGoogleAccessToken ?? (await loadGoogleTokenDefault());
+      googleAccessToken = await getToken();
+    } catch {
+      googleAccessToken = undefined; // not connected → checks stay skipped
+    }
+  }
+
+  let ga4Checks: ReadinessCheck[];
+  if (ga4PropertyId && googleAccessToken) {
+    try {
+      const fetchGa4 = opts.fetchGa4Config ?? (await loadGa4ConfigDefault());
+      ga4Checks = projectGa4Checks(await fetchGa4(ga4PropertyId, googleAccessToken), plan);
+    } catch (err) {
+      ga4Checks = failedGa4Checks((err as Error)?.message || 'GA4 API error');
+    }
+  } else {
+    ga4Checks = skippedGa4Checks();
+  }
+
+  let gtmChecks: ReadinessCheck[];
+  if (gtmContainerId && googleAccessToken) {
+    try {
+      const fetchGtm = opts.fetchGtmConfig ?? (await loadGtmConfigDefault());
+      gtmChecks = projectGtmChecks(await fetchGtm(gtmContainerId, googleAccessToken), plan);
+    } catch (err) {
+      gtmChecks = failedGtmChecks((err as Error)?.message || 'Tag Manager API error');
+    }
+  } else {
+    gtmChecks = skippedGtmChecks();
+  }
+
+  const oauthChecks: ReadinessCheck[] = [...ga4Checks, ...gtmChecks];
 
   const checks = [...deterministic, ...deployedSiteChecks, ...oauthChecks];
 

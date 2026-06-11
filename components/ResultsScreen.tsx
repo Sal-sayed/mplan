@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Target, BarChart3, MousePointerClick, Database,
   ShieldCheck, Settings2, Copy, Check, ChevronDown, FileSpreadsheet, Loader2, Star,
+  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, RefreshCw,
 } from 'lucide-react';
 import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
@@ -22,7 +23,18 @@ const TABS = [
   { key: 'tooling', label: 'Tooling', icon: Settings2 },
 ];
 
-interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; }
+// Inline plan-consistency verdict (the 7 credential-free `plan` checks only).
+// Deliberately NOT the report's overall decision — that's always dragged to
+// "go_with_warnings" by the 9 skipped live checks, which says nothing about
+// whether the plan itself is sound. Live verification is its own step.
+type Verdict = 'clean' | 'review' | 'issues';
+const VERDICT: Record<Verdict, { label: string; sub: string; Icon: typeof CheckCircle2; text: string; ring: string; bg: string; iconBg: string; iconText: string }> = {
+  clean:  { label: 'Plan is consistent', sub: 'All plan-consistency checks pass. Run the full check to verify live tracking.', Icon: CheckCircle2, text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-400' },
+  review: { label: 'Review recommended', sub: 'Launchable, but some plan items are worth reviewing first.', Icon: AlertTriangle, text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', iconBg: 'bg-amber-500/15', iconText: 'text-amber-400' },
+  issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-400' },
+};
+
+interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; onRegenerate?: () => void; }
 
 function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; scrapeData: any }) {
   const [dl, setDl] = useState(false);
@@ -42,7 +54,7 @@ function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; 
   );
 }
 
-export default function ResultsScreen({ plan, score, scrapeData, onReset }: ResultsScreenProps) {
+export default function ResultsScreen({ plan, score, scrapeData, onReset, onRegenerate }: ResultsScreenProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
@@ -52,6 +64,65 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
   const [rdReport, setRdReport] = useState<LaunchReadinessReport | null>(null);
   const [rdUrl, setRdUrl] = useState('');
   const [rdError, setRdError] = useState('');
+  // Google connection (GA4/GTM checks) — admin-only, single-operator.
+  const [rdGa4, setRdGa4] = useState('');
+  const [rdGtm, setRdGtm] = useState('');
+  const [gStatus, setGStatus] = useState<{ configured: boolean; connected: boolean; isAdmin: boolean; scopes?: string[]; expiresAt?: string } | null>(null);
+  const [gLoading, setGLoading] = useState(false);
+
+  // Inline plan-consistency badge: run the credential-free gate once on mount so
+  // the verdict shows on the plan screen itself (no URL, no browser, fast).
+  const [consistency, setConsistency] = useState<LaunchReadinessReport | null>(null);
+  const [consistencyState, setConsistencyState] = useState<'loading' | 'done' | 'error'>('loading');
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setConsistencyState('loading');
+      try {
+        const res = await fetch('/api/launch-readiness', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }),
+        });
+        const json = await res.json();
+        if (cancelled) return;
+        if (!res.ok || !json.success) { setConsistencyState('error'); return; }
+        setConsistency(json.report as LaunchReadinessReport);
+        setConsistencyState('done');
+      } catch {
+        if (!cancelled) setConsistencyState('error');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [plan]);
+
+  // Google connection helpers for the readiness modal's Full layer.
+  const fetchGoogleStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/google/status');
+      if (res.ok) setGStatus(await res.json());
+    } catch { /* ignore — section just stays hidden */ }
+  }, []);
+
+  // Fetch status when the modal opens (an event handler, not an effect).
+  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdPhase('form'); fetchGoogleStatus(); };
+
+  // The OAuth popup posts back here when it finishes, so we refresh status
+  // without navigating the main window away from the plan.
+  useEffect(() => {
+    function onMsg(e: MessageEvent) {
+      if (e.origin !== window.location.origin || e.data?.source !== 'google-oauth') return;
+      if (e.data.status === 'connected') fetchGoogleStatus();
+    }
+    window.addEventListener('message', onMsg);
+    return () => window.removeEventListener('message', onMsg);
+  }, [fetchGoogleStatus]);
+
+  const connectGoogle = () => window.open('/api/google/oauth/start', 'google_oauth', 'width=520,height=680');
+  const disconnectGoogle = async () => {
+    setGLoading(true);
+    try { await fetch('/api/google/disconnect', { method: 'POST' }); await fetchGoogleStatus(); }
+    finally { setGLoading(false); }
+  };
 
   const runReadiness = async () => {
     setRdPhase('loading'); setRdError('');
@@ -59,6 +130,10 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
       const body: Record<string, unknown> = { plan };
       const u = rdUrl.trim();
       if (u) body.deployedSiteUrl = u;
+      if (gStatus?.connected) {
+        if (rdGa4.trim()) body.ga4 = { propertyId: rdGa4.trim() };
+        if (rdGtm.trim()) body.gtm = { containerId: rdGtm.trim() };
+      }
       const res = await fetch('/api/launch-readiness', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
@@ -87,6 +162,16 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
   const meta = plan.meta || ({} as MeasurementPlan['meta']);
   const keyEventCount = events.filter((e) => e.isKeyEvent).length;
 
+  // Plan-consistency verdict derived from the credential-free `plan` checks only.
+  const planChecks = consistency?.checks.filter((c) => c.dependsOn === 'plan') ?? [];
+  const planFails = planChecks.filter((c) => c.status === 'fail').length;
+  const planWarns = planChecks.filter((c) => c.status === 'warn').length;
+  const planPass = planChecks.filter((c) => c.status === 'pass').length;
+  const liveCount = consistency?.checks.filter((c) => c.status === 'skipped').length ?? 0;
+  const verdict: Verdict = planFails > 0 ? 'issues' : planWarns > 0 ? 'review' : 'clean';
+  const v = VERDICT[verdict];
+  const VIcon = v.Icon;
+
   const SH = ({ title, k, data, count }: { title: string; k: string; data: unknown; count?: number }) => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
@@ -112,6 +197,41 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
     switch (activeTab) {
       case 'overview': return (
         <div className="space-y-6">
+          {/* Plan-consistency badge — answers "is this plan correct?" right here,
+              without needing the separate Launch readiness screen. */}
+          {consistencyState === 'loading' && (
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+              <p className="text-sm text-slate-300">Checking plan consistency…</p>
+            </div>
+          )}
+          {consistencyState === 'done' && consistency && (
+            <div className={`rounded-2xl border ${v.ring} ${v.bg} p-5`}>
+              <div className="flex items-start gap-4">
+                <div className={`w-11 h-11 rounded-xl ${v.iconBg} flex items-center justify-center shrink-0`}>
+                  <VIcon className={v.iconText} size={22} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className={`text-lg font-bold ${v.text}`}>{v.label}</h3>
+                    <span className="text-[11px] text-slate-500 uppercase tracking-wide">plan consistency</span>
+                  </div>
+                  <p className="text-sm text-slate-400 mt-0.5">{v.sub}</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-300 border-rose-500/20"><b>{planFails}</b> must fix</span>}
+                    {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-300 border-amber-500/20"><b>{planWarns}</b> to review</span>}
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/20"><b>{planPass}</b> passing</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-white/[0.04] text-slate-400 border-white/[0.08]"><b>{liveCount}</b> need live verification</span>
+                  </div>
+                </div>
+                <button onClick={openReadiness}
+                  className="shrink-0 self-start px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/[0.1] text-slate-100 text-sm font-medium flex items-center gap-1.5 hover:bg-white/[0.12] transition">
+                  Full check <ArrowRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 rounded-2xl border border-blue-500/25 p-6">
             <h3 className="text-lg font-bold text-white mb-4">Plan Overview</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -279,13 +399,28 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
           <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-white truncate">Measurement Plan</div><div className="text-xs text-slate-400 truncate">{meta.url}</div></div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => { setRdUrl(''); setRdError(''); setRdPhase('form'); }}
+          <button onClick={openReadiness}
             className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
         </div>
       </header>
+
+      {plan.meta?.source === 'template' && (
+        <div className="shrink-0 px-4 lg:px-6 py-2.5 bg-amber-500/[0.08] border-b border-amber-500/20 flex items-center gap-3">
+          <AlertTriangle size={15} className="text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-200/90 flex-1 min-w-0">
+            <span className="font-semibold">Template starting point.</span> AI tailoring was unavailable, so this is a standards-based GA4/GTM baseline — solid to build from, but not customized to your site.
+          </p>
+          {onRegenerate && (
+            <button onClick={onRegenerate}
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-medium hover:bg-amber-500/25 transition flex items-center gap-1.5">
+              <RefreshCw size={12} /> Regenerate with AI
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden">
         <aside className="hidden lg:block shrink-0 w-52 border-r border-white/[0.08] bg-[#0b1120]">
@@ -334,14 +469,74 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset }: Resu
                   <h3 className="text-lg font-bold text-white">Launch readiness check</h3>
                 </div>
                 <p className="text-slate-400 text-sm mb-4">
-                  Verify the plan is ready to go live. Optionally point it at a staging/live URL with GA4/GTM deployed to check what actually fires.
+                  Two layers of verification. The quick one already ran from your plan; the full one opens your deployed site to see what actually fires.
                 </p>
-                <label className="block text-xs text-slate-400 mb-1">
-                  Staging / live URL <span className="text-slate-600">(optional)</span>
-                </label>
-                <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
-                <p className="text-[11px] text-slate-500 mb-4">Leave blank to run plan-consistency checks only.</p>
+
+                {/* Layer 1 — plan consistency (already done, no URL) */}
+                <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 mb-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
+                    <span className="text-sm text-white font-medium">Plan consistency</span>
+                    <span className="ml-auto text-[11px] text-slate-500">instant · no URL</span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1.5">
+                    Already analyzed from <code className="text-slate-300 break-all">{meta.url}</code> — no need to re-enter it. Running the check below refreshes this.
+                  </p>
+                </div>
+
+                {/* Layer 2 — live verification (optional URL) */}
+                <div className="rounded-xl border border-blue-500/20 bg-blue-500/[0.05] p-3 mb-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
+                    <span className="text-sm text-white font-medium">Live verification</span>
+                    <span className="ml-auto text-[11px] text-slate-500">~1 min</span>
+                  </div>
+                  <label className="block text-xs text-slate-400 mb-1">
+                    Staging / live URL <span className="text-slate-600">(optional)</span>
+                  </label>
+                  <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
+                  <p className="text-[11px] text-slate-500">
+                    Point at a URL where GA4/GTM is deployed to capture what fires. Leave blank to re-run plan consistency only.
+                  </p>
+
+                  {/* Google connection — turns the 5 GA4/GTM "not verified" checks into real pass/fail. */}
+                  <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                    {!gStatus ? (
+                      <p className="text-[11px] text-slate-500">Checking Google connection…</p>
+                    ) : !gStatus.configured ? (
+                      <p className="text-[11px] text-slate-500">GA4/GTM account checks aren&apos;t configured on the server.</p>
+                    ) : !gStatus.isAdmin ? (
+                      <p className="text-[11px] text-slate-500">
+                        Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
+                        <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-400 underline">Sign in as admin</a>, then reopen this.
+                      </p>
+                    ) : !gStatus.connected ? (
+                      <div>
+                        <p className="text-[11px] text-slate-500 mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
+                        <button type="button" onClick={connectGoogle}
+                          className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-slate-100 text-xs font-medium hover:bg-white/[0.12] transition flex items-center gap-1.5">
+                          <ShieldCheck size={12} /> Connect Google
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
+                          <button type="button" onClick={disconnectGoogle} disabled={gLoading}
+                            className="ml-auto text-[11px] text-slate-500 hover:text-slate-300 underline disabled:opacity-50">Disconnect</button>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <input value={rdGa4} onChange={(e) => setRdGa4(e.target.value)} placeholder="GA4 property ID"
+                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                          <input value={rdGtm} onChange={(e) => setRdGtm(e.target.value)} placeholder="GTM-XXXXXXX"
+                            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                        </div>
+                        <p className="text-[10px] text-slate-600">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
                 {rdPhase === 'error' && <p className="text-sm text-rose-400 mb-3">{rdError}</p>}
                 <div className="flex gap-2">
                   <button onClick={runReadiness}

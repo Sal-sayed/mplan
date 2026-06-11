@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
-import { buildClaudeSseStream, streamResponseHeaders } from '@/lib/claude-stream';
+import { buildClaudeSseStream, streamResponseHeaders, streamInstantResult } from '@/lib/claude-stream';
 import { getGeminiModel } from '@/lib/gemini';
 import { resolveClassification, LowConfidenceError } from '@/lib/measurement/pipeline';
 import { buildPlanPrompt, finalizeStreamedOrRetry } from '@/lib/measurement/generate-plan';
+import { buildPlanFromTemplate } from '@/lib/measurement/template-plan';
 import type { BusinessModel, FormInfo, PageInfo, SiteContext } from '@/lib/measurement/types';
+
+// Classify a generation failure for the transparent fallback flag: transient
+// Gemini overload (retries exhausted) vs an output-quality failure.
+function isTransientTransport(err: unknown): boolean {
+  const m = (err as Error)?.message || '';
+  return /\b(503|429)\b/.test(m) || /high demand|overloaded|temporarily|unavailable|rate limit/i.test(m);
+}
 
 export const maxDuration = 90;
 
@@ -116,6 +124,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 
+  // No-AI path: build a deterministic, flagged template plan and return it over
+  // the same SSE protocol — zero Gemini calls, immune to model outages.
+  if (body?.templateOnly === true) {
+    const plan = buildPlanFromTemplate(classification.businessModel, ctx);
+    return new Response(
+      streamInstantResult({ success: true, classification, plan, templateOnly: true }),
+      { headers: streamResponseHeaders() }
+    );
+  }
+
   // Confident (or overridden): stream the Gemini generation. We reuse the
   // pipeline's generation stages (buildPlanPrompt + finalize) as stream
   // post-processing so token streaming and the SSE event protocol are preserved.
@@ -135,6 +153,15 @@ export async function POST(req: NextRequest) {
       success: true,
       classification,
       plan: await finalizeStreamedOrRetry(parsed, ctx, classification),
+    }),
+    // INVARIANT: the malformed/failed Gemini output is DISCARDED. On any
+    // generation failure (transport exhausted or output-quality exhausted) we
+    // return a freshly-built, valid, flagged TEMPLATE plan — never the bad output.
+    fallback: (err) => ({
+      success: true,
+      classification,
+      plan: buildPlanFromTemplate(classification.businessModel, ctx),
+      fallback: isTransientTransport(err) ? 'gemini_unavailable' : 'generation_failed',
     }),
     logLabel: 'generate-plan',
   });

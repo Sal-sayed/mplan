@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { runLaunchReadinessGate, type ReadinessCheckOptions } from '@/lib/measurement/launch-readiness';
+import { isOperatorRequest } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
 export const maxDuration = 120; // live capture launches a headless browser
@@ -82,13 +83,33 @@ export async function POST(req: NextRequest) {
     deployedSiteUrl = body.deployedSiteUrl.trim();
   }
 
+  // GA4/GTM identifiers drive the Google-backed checks. Admin-gated so an
+  // anonymous visitor can't use the operator's stored Google token. Without
+  // admin (or ids), those 5 checks simply stay 'skipped'.
+  let ga4Connector: { propertyId: string } | undefined;
+  let gtmConnector: { containerId: string } | undefined;
+  if (await isOperatorRequest(req)) {
+    if (typeof body.ga4?.propertyId === 'string' && body.ga4.propertyId.trim()) {
+      ga4Connector = { propertyId: body.ga4.propertyId.trim() };
+    }
+    if (typeof body.gtm?.containerId === 'string' && body.gtm.containerId.trim()) {
+      gtmConnector = { containerId: body.gtm.containerId.trim() };
+    }
+  }
+
+  const connectors = {
+    ...(deployedSiteUrl ? { deployedSiteUrl } : {}),
+    ...(ga4Connector ? { ga4: ga4Connector } : {}),
+    ...(gtmConnector ? { gtm: gtmConnector } : {}),
+  };
+
   const opts: ReadinessCheckOptions = {};
   if (typeof body.requireApproval === 'boolean') opts.requireApproval = body.requireApproval;
   if (typeof body.strictOnSkipped === 'boolean') opts.strictOnSkipped = body.strictOnSkipped;
 
   try {
     const { report } = await runLaunchReadinessGate(
-      { url: meta.url, plan, connectors: deployedSiteUrl ? { deployedSiteUrl } : undefined },
+      { url: meta.url, plan, connectors: Object.keys(connectors).length ? connectors : undefined },
       opts
     );
     return NextResponse.json({ success: true, report }, { headers: rateLimitHeaders(rl) });
