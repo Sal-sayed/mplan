@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
+import MetricHealthScreen from './MetricHealthScreen';
+import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
 import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
 import type { GovernanceDrift } from '@/lib/measurement/governance-diff';
@@ -69,8 +71,11 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Which action produced the current run (drives loading copy + the first-run
   // baseline note); a governance run with no drift = baseline saved, nothing to
   // compare yet.
-  const [rdKind, setRdKind] = useState<'readiness' | 'governance'>('readiness');
+  const [rdKind, setRdKind] = useState<'readiness' | 'governance' | 'metrics'>('readiness');
   const [rdBaseline, setRdBaseline] = useState(false);
+  // Metric-health results (threshold Data Validation), shown on its own screen.
+  const [mhResults, setMhResults] = useState<MetricHealthEntry[]>([]);
+  const [mhChecked, setMhChecked] = useState(false);
   const [rdUrl, setRdUrl] = useState('');
   const [rdError, setRdError] = useState('');
   // Google connection (GA4/GTM checks) — admin-only, single-operator.
@@ -113,7 +118,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }, []);
 
   // Fetch status when the modal opens (an event handler, not an effect).
-  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setRdPhase('form'); fetchGoogleStatus(); };
+  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setRdPhase('form'); fetchGoogleStatus(); };
 
   // The OAuth popup posts back here when it finishes, so we refresh status
   // without navigating the main window away from the plan.
@@ -187,6 +192,26 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       setRdPhase('done');
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Governance check failed');
+      setRdPhase('error');
+    }
+  };
+
+  // Metric health: runs the threshold Data Validation agent over the plan's key
+  // events for the entered GA4 property (operator-gated server-side). Reads the
+  // already-collected metric history — no Google call. Renders MetricHealthScreen.
+  const runMetricHealth = async () => {
+    setRdKind('metrics'); setRdPhase('loading'); setRdError('');
+    try {
+      const res = await fetch('/api/metrics/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, ...connectorBody() }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Metric validation failed');
+      setMhResults((json.results as MetricHealthEntry[] | undefined) ?? []);
+      setMhChecked(json.propertyChecked === true);
+      setRdPhase('done');
+    } catch (e) {
+      setRdError(e instanceof Error ? e.message : 'Metric validation failed');
       setRdPhase('error');
     }
   };
@@ -430,7 +455,11 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     }
   };
 
-  // Full-screen takeover once the gate has run.
+  // Full-screen takeover once a check has run. Metric health has its own screen
+  // (no readiness report), so it's checked first.
+  if (rdPhase === 'done' && rdKind === 'metrics') {
+    return <MetricHealthScreen results={mhResults} propertyChecked={mhChecked} onReset={() => { setRdPhase('idle'); setMhResults([]); setMhChecked(false); }} />;
+  }
   if (rdPhase === 'done' && rdReport) {
     return <LaunchReadinessScreen report={rdReport} drift={rdDrift ?? undefined} baselineNote={rdBaseline} onReset={() => { setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false); }} />;
   }
@@ -502,12 +531,14 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               <div className="text-center py-4">
                 <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
                 <p className="text-white font-semibold">
-                  {rdKind === 'governance' ? 'Checking for drift…' : 'Running launch readiness…'}
+                  {rdKind === 'governance' ? 'Checking for drift…' : rdKind === 'metrics' ? 'Checking metric health…' : 'Running launch readiness…'}
                 </p>
                 <p className="text-slate-400 text-sm mt-1">
                   {rdKind === 'governance'
                     ? 'Re-checking your plan setup and comparing it to your last saved run.'
-                    : rdUrl.trim() ? 'Capturing the live site — this can take up to a minute.' : 'Checking plan consistency…'}
+                    : rdKind === 'metrics'
+                      ? 'Judging each key event’s recent firing against its trailing baseline.'
+                      : rdUrl.trim() ? 'Capturing the live site — this can take up to a minute.' : 'Checking plan consistency…'}
                 </p>
               </div>
             ) : (
@@ -603,8 +634,14 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                     className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
                     <History size={14} className="text-slate-400" /> Check for drift since last run
                   </button>
+                  {/* Additive metric-health action — judges each key event's recent
+                      firing against its trailing baseline (collected metric history). */}
+                  <button onClick={runMetricHealth}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
+                    <BarChart3 size={14} className="text-cyan-400" /> Check metric health
+                  </button>
                   <p className="text-[11px] text-slate-500 text-center">
-                    Re-checks this plan&apos;s setup and compares it to your last saved governance run.
+                    Drift compares your setup to the last saved run; metric health checks your key events are still firing.
                   </p>
                 </div>
               </>

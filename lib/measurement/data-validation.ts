@@ -37,6 +37,12 @@ export interface MetricValidationResult {
   summary: string;
 }
 
+// A validation result tagged with the event it's for — what the validate
+// endpoint returns per key event and what the metric-health UI renders.
+export interface MetricHealthEntry extends MetricValidationResult {
+  eventName: string;
+}
+
 export interface ValidateOptions {
   // Fraction below the trailing average that counts as a drop. 0.5 = a 50% fall.
   dropThreshold?: number;
