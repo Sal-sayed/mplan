@@ -1,0 +1,25 @@
+# Build the image from source — never copy local artifacts or secrets.
+node_modules
+.next
+out
+.git
+.gitignore
+
+# Secrets / local env — must NOT be baked into the image.
+.env
+.env.*
+
+# Runtime data (leads PII + Google OAuth token) — never ship it.
+data
+
+# Local scratch / notes
+SESSION_HANDOFF.md
+WORK_SUMMARY.md
+*.log
+npm-debug.log*
+.DS_Store
+
+# Editor / OS
+.vscode
+.idea
+Thumbs.db

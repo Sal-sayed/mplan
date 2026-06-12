@@ -1,0 +1,59 @@
+# Render Blueprint — deploy measurement-plan-agent as a Dockerized web service.
+# Apply via Render Dashboard → New → Blueprint (point it at this repo). Secrets
+# are NEVER stored here: every `sync: false` var must be set in the dashboard.
+services:
+  - type: web
+    name: measurement-plan-agent
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Chromium is memory-hungry: the free tier (512MB) can OOM when a browser
+    # feature (site scraping / launch-readiness site checks) runs. The core
+    # Gemini plan flow fits on free. Bump to `starter`+ if browser features OOM.
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # ── Required: server refuses to boot without these (lib/env-validation.ts) ──
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: JWT_SECRET            # >= 32 chars; roots admin JWT + Google token encryption
+        sync: false
+      - key: ADMIN_PASSWORD_HASH   # raw bcrypt hash — Render injects it literally, so "$" survives
+        sync: false
+      - key: RESEND_API_KEY        # email delivery — OR set N8N_WEBHOOK_URL instead
+        sync: false
+
+      # ── Admin login (functionally required for the operator dashboard) ──
+      - key: ADMIN_USERNAME
+        sync: false
+
+      # ── Optional: rate limiting (disabled if unset) ──
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+
+      # ── Optional: Google GA4/GTM launch-readiness checks ──
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # MUST be the live URL + add it to Google Cloud → Authorized redirect URIs:
+      #   https://<your-render-domain>/api/google/oauth/callback
+      - key: GOOGLE_OAUTH_REDIRECT_URI
+        sync: false
+
+      # ── Optional: Gemini overrides (safe defaults in lib/gemini.ts) ──
+      - key: GEMINI_MODEL
+        sync: false
+      - key: GEMINI_BASE_URL
+        sync: false
