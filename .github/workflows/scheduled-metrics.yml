@@ -1,0 +1,43 @@
+# Scheduled metric collection + governance drift sweep.
+#
+# Free alternative to a Render Cron Job: the /api/metrics/fetch-scheduled and
+# /api/governance/run-scheduled endpoints are MONITOR_SECRET-gated HTTP POSTs, so
+# a scheduled GitHub Action can trigger them at no extra cost.
+#
+# SETUP (one-time): in the repo → Settings → Secrets and variables → Actions,
+# add a repository secret named MONITOR_SECRET with the SAME value as the Render
+# web service's MONITOR_SECRET. (APP_BASE_URL is hard-coded below; change it if
+# the deployment URL changes.)
+#
+# Runs daily at 08:00 UTC. Use the "Run workflow" button (workflow_dispatch) on
+# the Actions tab to trigger it manually any time.
+
+name: scheduled-metrics-and-governance
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # 08:00 UTC daily (GA4 "yesterday" data is settled by then)
+  workflow_dispatch: {}
+
+env:
+  APP_BASE_URL: https://mplan-1.onrender.com
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Collect GA4 metrics (starts/advances the data clock)
+        run: |
+          curl -fsS -X POST "$APP_BASE_URL/api/metrics/fetch-scheduled" \
+            -H "Authorization: Bearer ${{ secrets.MONITOR_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
+
+      - name: Governance drift sweep (re-runs + diffs persisted plans)
+        # Independent of the metrics step — always run it even if metrics errored.
+        if: always()
+        run: |
+          curl -fsS -X POST "$APP_BASE_URL/api/governance/run-scheduled" \
+            -H "Authorization: Bearer ${{ secrets.MONITOR_SECRET }}" \
+            -H "Content-Type: application/json" \
+            -d '{}'
