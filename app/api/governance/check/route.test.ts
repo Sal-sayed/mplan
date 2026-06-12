@@ -16,6 +16,11 @@ const mockModule = (mock as unknown as { module: MockModuleFn }).module.bind(moc
 let operator = false;
 let ga4Config: any = { propertyExists: true, displayName: 'MYNTRA', keyEventNames: ['purchase'], customDimensionParameters: [] };
 
+// ─── governance-store mock state (persistence is additive) ───
+let savedRuns: any[] = [];
+let priorRun: any = null;
+let saveThrows = false;
+
 mockModule('@/lib/rate-limit', {
   namedExports: {
     getClientIdentifier: () => 'test-client',
@@ -27,6 +32,21 @@ mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operat
 // These intercept the gate's dynamic imports (../google/token-store, ./ga4-config).
 mockModule('@/lib/google/token-store', { namedExports: { getValidAccessToken: async () => 'fake-token' } });
 mockModule('@/lib/measurement/ga4-config', { namedExports: { fetchGa4Config: async () => ga4Config } });
+// Persistence boundary — mocked so the route's additive store calls are
+// observable without a real Supabase. diffReports is NOT mocked (it's pure).
+mockModule('@/lib/measurement/governance-store', {
+  namedExports: {
+    planKeyFor: () => 'test-plan-key',
+    buildGovernanceRun: (report: any, plan: any, connectors: any) => ({
+      runId: 'run_test', siteUrl: report.meta.url, planKey: 'test-plan-key', createdAt: '2026-06-12T00:00:00.000Z', decision: report.decision, report, plan, connectors,
+    }),
+    saveRun: async (run: any) => {
+      if (saveThrows) throw new Error('storage down');
+      savedRuns.push(run);
+    },
+    getLatestRun: async () => priorRun,
+  },
+});
 mockModule('next/server', {
   namedExports: {
     NextRequest: class NextRequest {},
@@ -61,7 +81,31 @@ function goodPlan() {
 beforeEach(() => {
   operator = false;
   ga4Config = { propertyExists: true, displayName: 'MYNTRA', keyEventNames: ['purchase'], customDimensionParameters: [] };
+  savedRuns = [];
+  priorRun = null;
+  saveThrows = false;
 });
+
+// A prior stored run whose report differs from the current one, so a
+// compareToLast call produces a defined drift via the real diffReports.
+function priorGovernanceRun() {
+  return {
+    runId: 'run_prior',
+    siteUrl: 'https://shop.example.com',
+    planKey: 'test-plan-key',
+    createdAt: '2026-06-01T00:00:00.000Z',
+    decision: 'no_go',
+    report: {
+      meta: { url: 'https://shop.example.com', businessModel: 'ecommerce', planSchemaVersion: '1.0.0', readinessSchemaVersion: '0.1.0', generatedAt: '2026-06-01T00:00:00.000Z' },
+      decision: 'no_go',
+      checks: [{ id: 'event_ids_unique', category: 'events', name: 'Event IDs are unique', status: 'fail', blocking: true, dependsOn: 'plan', summary: '' }],
+      blockingFailures: ['event_ids_unique'],
+      warnings: [],
+      skipped: [],
+      approval: { required: false },
+    },
+  };
+}
 
 test('no plan → 400', async () => {
   const res = await POST(makeReq({}));
@@ -104,4 +148,53 @@ test('operator path returns a real report — GA4 config check resolves, no brow
   assert.equal(body.report.checks.find((c: any) => c.id === 'ga4_key_events_registered').status, 'pass');
   // governance never spawns a browser → deployed-site checks stay skipped.
   assert.equal(body.report.checks.find((c: any) => c.id === 'tracking_snippet_present').status, 'skipped');
+});
+
+// ─── Persistence (additive) ───
+
+test('default call (no options) stores nothing and returns no drift', async () => {
+  const res = await POST(makeReq({ plan: goodPlan() }));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(body.report, 'report present');
+  assert.equal(body.drift, undefined, 'no drift on default call');
+  assert.equal(savedRuns.length, 0, 'nothing persisted by default');
+});
+
+test('persist:true stores a run', async () => {
+  const res = await POST(makeReq({ plan: goodPlan(), persist: true }));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.equal(savedRuns.length, 1, 'one run persisted');
+  assert.equal(savedRuns[0].siteUrl, 'https://shop.example.com');
+});
+
+test('compareToLast with a prior run returns drift', async () => {
+  priorRun = priorGovernanceRun();
+  const res = await POST(makeReq({ plan: goodPlan(), compareToLast: true }));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.drift, 'drift present when a prior run exists');
+  assert.ok(['ok', 'regression', 'inconclusive'].includes(body.drift.verdict));
+});
+
+test('first-ever run (no prior) returns the report with no drift', async () => {
+  priorRun = null;
+  const res = await POST(makeReq({ plan: goodPlan(), compareToLast: true, persist: true }));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.ok(body.report, 'report present');
+  assert.equal(body.drift, undefined, 'no drift on the first run');
+  assert.equal(savedRuns.length, 1, 'first run is still persisted');
+});
+
+test('a storage failure still returns the report (no dead-end)', async () => {
+  saveThrows = true;
+  const res = await POST(makeReq({ plan: goodPlan(), persist: true }));
+  assert.equal(res.status, 200);
+  const body = await res.json();
+  assert.equal(body.success, true);
+  assert.ok(body.report, 'report returned despite the storage failure');
 });

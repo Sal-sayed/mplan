@@ -9,13 +9,22 @@
 // validateMeasurementPlan + meta guard, and the SAME operator gate — an anonymous
 // caller cannot inject ga4/gtm connectors, so those checks stay 'skipped'.
 //
-// Body: { plan: MeasurementPlan, ga4?: { propertyId }, gtm?: { containerId } }
-// Returns: { success: true, report } | { success: false, error }.
+// Body: { plan: MeasurementPlan, ga4?: { propertyId }, gtm?: { containerId },
+//         persist?: boolean, compareToLast?: boolean }
+// Returns: { success: true, report, drift? } | { success: false, error }.
+//
+// PERSISTENCE (additive — default behavior unchanged): with persist:true the run
+// is stored (Supabase, keyed by site + plan); with compareToLast:true the run is
+// diffed against the latest prior stored run for drift. Persistence is best-
+// effort — a storage failure never dead-ends the check (the report still returns,
+// drift omitted).
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { runGovernanceCheck } from '@/lib/measurement/governance';
+import { saveRun, getLatestRun, buildGovernanceRun, planKeyFor } from '@/lib/measurement/governance-store';
+import { diffReports, type GovernanceDrift } from '@/lib/measurement/governance-diff';
 import { isOperatorRequest } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
@@ -83,9 +92,42 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Additive persistence flags. Absent/false → behaves exactly as v0 (no store
+  // touch, no drift, returns { success, report } only).
+  const persist = body?.persist === true;
+  const compareToLast = body?.compareToLast === true;
+
   try {
     const { report } = await runGovernanceCheck({ url: meta.url, plan, ga4, gtm });
-    return NextResponse.json({ success: true, report }, { headers: rateLimitHeaders(rl) });
+
+    // Drift + persistence are wrapped so a storage failure (Supabase down /
+    // unconfigured) NEVER dead-ends the check — we still return the report.
+    let drift: GovernanceDrift | undefined;
+    if (persist || compareToLast) {
+      try {
+        const planKey = planKeyFor(plan);
+        // Diff against the PRIOR latest BEFORE saving this run (else the latest
+        // would be this very run).
+        if (compareToLast) {
+          const prior = await getLatestRun(meta.url, planKey);
+          if (prior) drift = diffReports(prior.report, report);
+        }
+        if (persist) {
+          // Persist the plan + connectors alongside the report so an unattended
+          // re-run (the scheduler) can reconstruct this exact check.
+          const connectors = ga4 || gtm ? { ...(ga4 ? { ga4 } : {}), ...(gtm ? { gtm } : {}) } : undefined;
+          await saveRun(buildGovernanceRun(report, plan, connectors));
+        }
+      } catch (err) {
+        // Persistence is additive — log and continue with the report intact.
+        console.warn('[governance/check] persistence skipped:', (err as Error)?.message);
+      }
+    }
+
+    return NextResponse.json(
+      { success: true, report, ...(drift ? { drift } : {}) },
+      { headers: rateLimitHeaders(rl) }
+    );
   } catch (err) {
     const message = (err as Error)?.message || 'Governance check failed';
     console.error('[governance/check] error:', err);
