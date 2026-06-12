@@ -40,14 +40,13 @@ export async function GET(req: NextRequest) {
   const code = url.searchParams.get('code');
   const state = url.searchParams.get('state');
   const expectedState = req.cookies.get('g_oauth_state')?.value;
-  // Production enforces the CSRF state match. In local dev (single operator, no
-  // untrusted traffic) the state cookie is easily lost across Google's cross-site
-  // redirect — e.g. a different browser profile lands the callback — so we require
-  // only the code and skip the strict match.
-  const isProd = process.env.NODE_ENV === 'production';
-  const stateOk = isProd ? Boolean(state && expectedState && state === expectedState) : true;
+  // Strict CSRF state match everywhere EXCEPT explicit local development (where
+  // the state cookie is easily lost across Google's cross-site redirect — e.g. a
+  // different browser profile lands the callback). Fail closed otherwise.
+  const isDev = process.env.NODE_ENV === 'development';
+  const stateOk = isDev ? true : Boolean(state && expectedState && state === expectedState);
   if (!code || !stateOk) {
-    console.warn('[google/oauth/callback] invalid state/code', { hasCode: !!code, hasState: !!state, hasCookie: !!expectedState, match: state === expectedState, isProd });
+    console.warn('[google/oauth/callback] invalid state/code', { hasCode: !!code, hasState: !!state, hasCookie: !!expectedState, match: state === expectedState, isDev });
     return popupResult('error', 'Invalid OAuth state.');
   }
 

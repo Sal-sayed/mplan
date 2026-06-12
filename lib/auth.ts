@@ -102,6 +102,9 @@ export async function isAdminRequest(req: {
 export async function isOperatorRequest(req: {
   cookies?: { get(name: string): { value: string } | undefined };
 }): Promise<boolean> {
-  if (process.env.NODE_ENV !== 'production') return true;
+  // Open ONLY in explicit local development — fail CLOSED everywhere else
+  // (production, staging, or an unset NODE_ENV) so an anonymous request can never
+  // drive the operator's stored Google token.
+  if (process.env.NODE_ENV === 'development') return true;
   return isAdminRequest(req);
 }
