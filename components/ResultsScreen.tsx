@@ -5,12 +5,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Target, BarChart3, MousePointerClick, Database,
   ShieldCheck, Settings2, Copy, Check, ChevronDown, FileSpreadsheet, Loader2, Star,
-  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, RefreshCw,
+  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, RefreshCw, History,
 } from 'lucide-react';
 import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
 import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
+import type { GovernanceDrift } from '@/lib/measurement/governance-diff';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -62,6 +63,14 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Launch-readiness gate (additive): idle → form → loading → done | error.
   const [rdPhase, setRdPhase] = useState<'idle' | 'form' | 'loading' | 'done' | 'error'>('idle');
   const [rdReport, setRdReport] = useState<LaunchReadinessReport | null>(null);
+  // Drift is surfaced only when the response carries it (a governance run-to-run
+  // comparison); the launch-readiness check returns none, so this stays null there.
+  const [rdDrift, setRdDrift] = useState<GovernanceDrift | null>(null);
+  // Which action produced the current run (drives loading copy + the first-run
+  // baseline note); a governance run with no drift = baseline saved, nothing to
+  // compare yet.
+  const [rdKind, setRdKind] = useState<'readiness' | 'governance'>('readiness');
+  const [rdBaseline, setRdBaseline] = useState(false);
   const [rdUrl, setRdUrl] = useState('');
   const [rdError, setRdError] = useState('');
   // Google connection (GA4/GTM checks) — admin-only, single-operator.
@@ -104,7 +113,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }, []);
 
   // Fetch status when the modal opens (an event handler, not an effect).
-  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdPhase('form'); fetchGoogleStatus(); };
+  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setRdPhase('form'); fetchGoogleStatus(); };
 
   // The OAuth popup posts back here when it finishes, so we refresh status
   // without navigating the main window away from the plan.
@@ -124,25 +133,60 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     finally { setGLoading(false); }
   };
 
+  // Shared connector body for both checks — reuses the modal's GA4/GTM inputs so
+  // there's no double entry (sent only when the operator is Google-connected).
+  const connectorBody = (): Record<string, unknown> => {
+    const b: Record<string, unknown> = {};
+    if (gStatus?.connected) {
+      if (rdGa4.trim()) b.ga4 = { propertyId: rdGa4.trim() };
+      if (rdGtm.trim()) b.gtm = { containerId: rdGtm.trim() };
+    }
+    return b;
+  };
+
   const runReadiness = async () => {
-    setRdPhase('loading'); setRdError('');
+    setRdKind('readiness'); setRdBaseline(false); setRdPhase('loading'); setRdError('');
     try {
-      const body: Record<string, unknown> = { plan };
+      const body: Record<string, unknown> = { plan, ...connectorBody() };
       const u = rdUrl.trim();
       if (u) body.deployedSiteUrl = u;
-      if (gStatus?.connected) {
-        if (rdGa4.trim()) body.ga4 = { propertyId: rdGa4.trim() };
-        if (rdGtm.trim()) body.gtm = { containerId: rdGtm.trim() };
-      }
       const res = await fetch('/api/launch-readiness', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
       const json = await res.json();
       if (!res.ok || !json.success) throw new Error(json.error || 'Launch readiness check failed');
       setRdReport(json.report as LaunchReadinessReport);
+      setRdDrift((json.drift as GovernanceDrift | undefined) ?? null);
       setRdPhase('done');
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Launch readiness check failed');
+      setRdPhase('error');
+    }
+  };
+
+  // Governance drift check: re-runs the gate's config checks AND diffs against the
+  // last saved run for this plan (persist + compareToLast). Same plan/connectors,
+  // same error/loading handling as runReadiness — just the endpoint that returns
+  // drift. The result threads into the SAME LaunchReadinessScreen, lighting up its
+  // DriftSection.
+  const runGovernance = async () => {
+    setRdKind('governance'); setRdBaseline(false); setRdPhase('loading'); setRdError('');
+    try {
+      const body: Record<string, unknown> = { plan, persist: true, compareToLast: true, ...connectorBody() };
+      const res = await fetch('/api/governance/check', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Governance check failed');
+      setRdReport(json.report as LaunchReadinessReport);
+      const drift = (json.drift as GovernanceDrift | undefined) ?? null;
+      setRdDrift(drift);
+      // No drift on a governance run = no prior baseline yet (first run for this
+      // plan). Surface a quiet note instead of an empty drift area.
+      setRdBaseline(!drift);
+      setRdPhase('done');
+    } catch (e) {
+      setRdError(e instanceof Error ? e.message : 'Governance check failed');
       setRdPhase('error');
     }
   };
@@ -388,7 +432,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
   // Full-screen takeover once the gate has run.
   if (rdPhase === 'done' && rdReport) {
-    return <LaunchReadinessScreen report={rdReport} onReset={() => { setRdPhase('idle'); setRdReport(null); }} />;
+    return <LaunchReadinessScreen report={rdReport} drift={rdDrift ?? undefined} baselineNote={rdBaseline} onReset={() => { setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false); }} />;
   }
 
   return (
@@ -457,9 +501,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             {rdPhase === 'loading' ? (
               <div className="text-center py-4">
                 <Loader2 className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-4" />
-                <p className="text-white font-semibold">Running launch readiness…</p>
+                <p className="text-white font-semibold">
+                  {rdKind === 'governance' ? 'Checking for drift…' : 'Running launch readiness…'}
+                </p>
                 <p className="text-slate-400 text-sm mt-1">
-                  {rdUrl.trim() ? 'Capturing the live site — this can take up to a minute.' : 'Checking plan consistency…'}
+                  {rdKind === 'governance'
+                    ? 'Re-checking your plan setup and comparing it to your last saved run.'
+                    : rdUrl.trim() ? 'Capturing the live site — this can take up to a minute.' : 'Checking plan consistency…'}
                 </p>
               </div>
             ) : (
@@ -538,15 +586,26 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                   </div>
                 </div>
                 {rdPhase === 'error' && <p className="text-sm text-rose-400 mb-3">{rdError}</p>}
-                <div className="flex gap-2">
-                  <button onClick={runReadiness}
-                    className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
-                    Run check
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <button onClick={runReadiness}
+                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                      Run check
+                    </button>
+                    <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
+                      className="px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
+                      Cancel
+                    </button>
+                  </div>
+                  {/* Additive governance action — config-only, no URL. Compares this
+                      plan's setup to the last saved run and lights up the DriftSection. */}
+                  <button onClick={runGovernance}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
+                    <History size={14} className="text-slate-400" /> Check for drift since last run
                   </button>
-                  <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
-                    className="px-4 py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
-                    Cancel
-                  </button>
+                  <p className="text-[11px] text-slate-500 text-center">
+                    Re-checks this plan&apos;s setup and compares it to your last saved governance run.
+                  </p>
                 </div>
               </>
             )}

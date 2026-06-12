@@ -8,7 +8,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, AlertCircle, ShieldCheck, Radio, ArrowLeft, ChevronDown } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, ShieldCheck, Radio, ArrowLeft, ArrowRight, ChevronDown, History } from 'lucide-react';
 import type {
   LaunchReadinessReport,
   LaunchObservedEvidence,
@@ -16,6 +16,7 @@ import type {
   CheckStatus,
   LaunchDecision,
 } from '@/lib/measurement/launch-readiness';
+import type { GovernanceDrift, DriftVerdict } from '@/lib/measurement/governance-diff';
 
 interface DecisionStyle {
   label: string;
@@ -230,7 +231,142 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
   );
 }
 
-export default function LaunchReadinessScreen({ report, onReset }: { report: LaunchReadinessReport; onReset?: () => void }) {
+// ─── Drift (governance run-to-run) ───
+
+interface VerdictStyle {
+  label: string;
+  Icon: typeof CheckCircle2;
+  text: string;
+  ring: string;
+  bg: string;
+  iconBg: string;
+  iconText: string;
+}
+
+// Mirrors the decision palette so the run-to-run verdict reads with the same
+// visual grammar as the go/no-go headline: regression ≈ no_go (rose),
+// inconclusive ≈ go_with_warnings (amber), ok ≈ go (emerald).
+const VERDICT: Record<DriftVerdict, VerdictStyle> = {
+  regression: {
+    label: 'Regression since last run', Icon: AlertCircle,
+    text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]',
+    iconBg: 'bg-rose-500/20', iconText: 'text-rose-400',
+  },
+  inconclusive: {
+    label: 'Inconclusive', Icon: AlertTriangle,
+    text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]',
+    iconBg: 'bg-amber-500/15', iconText: 'text-amber-400',
+  },
+  ok: {
+    label: 'No change since last run', Icon: CheckCircle2,
+    text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]',
+    iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-400',
+  },
+};
+
+function StatusTag({ status }: { status: CheckStatus }) {
+  return (
+    <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border font-semibold ${STATUS[status].chip}`}>
+      {status}
+    </span>
+  );
+}
+
+// One regressed/unverifiable check, showing its status transition (from → to).
+function TransitionRow({ name, from, to, ring, bg }: { name: string; from: CheckStatus; to: CheckStatus; ring: string; bg: string }) {
+  return (
+    <div className={`rounded-xl border ${ring} ${bg} p-3 flex items-center gap-3`}>
+      <span className="text-sm font-semibold text-white min-w-0 flex-1 truncate">{name}</span>
+      <span className="flex items-center gap-1.5 shrink-0">
+        <StatusTag status={from} />
+        <ArrowRight size={12} className="text-slate-500" />
+        <StatusTag status={to} />
+      </span>
+    </div>
+  );
+}
+
+// Renders EXACTLY the GovernanceDrift shape — verdict + per-check transitions +
+// decision change. Regressions lead (act on these); the →skipped checks are
+// de-emphasized as "couldn't verify, not a break" — never shown as failures.
+function DriftSection({ drift, nameById }: { drift: GovernanceDrift; nameById: (id: string) => string }) {
+  const v = VERDICT[drift.verdict];
+  const VIcon = v.Icon;
+
+  const regressed = drift.transitions.filter((t) => t.kind === 'regressed' || t.kind === 'degraded');
+  const unverifiable = drift.transitions.filter((t) => t.kind === 'inconclusive');
+
+  let sub: string;
+  if (drift.verdict === 'regression') {
+    const n = drift.regressions.length;
+    const bits: string[] = [];
+    if (n > 0) bits.push(`${n} check${n === 1 ? '' : 's'} regressed since the last run`);
+    if (drift.decisionChange) bits.push(`launch decision dropped to ${drift.decisionChange.to.replace(/_/g, ' ')}`);
+    sub = bits.join(' · ') || 'A confirmed regression since the last run.';
+  } else if (drift.verdict === 'inconclusive') {
+    const n = drift.inconclusive.length;
+    sub = `${n} check${n === 1 ? '' : 's'} couldn't be verified this run — treated as inconclusive, not a break.`;
+  } else {
+    sub = 'No material check changes since the last run.';
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
+      className={`rounded-2xl border ${v.ring} ${v.bg} p-5`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-xl ${v.iconBg} flex items-center justify-center shrink-0`}>
+          <VIcon className={v.iconText} size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <History size={13} className="text-slate-500" />
+            <span className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Drift since last run</span>
+          </div>
+          <h2 className={`text-lg font-bold ${v.text} mt-0.5`}>{v.label}</h2>
+          <p className="text-slate-400 text-sm mt-0.5">{sub}</p>
+        </div>
+      </div>
+
+      {/* Decision change, when the top-level verdict moved between runs. */}
+      {drift.decisionChange && (
+        <div className="mt-4 flex items-center gap-2 flex-wrap text-sm">
+          <span className="text-slate-500">Launch decision</span>
+          <span className={`font-semibold ${DECISION[drift.decisionChange.from].text}`}>{DECISION[drift.decisionChange.from].label}</span>
+          <ArrowRight size={13} className="text-slate-500" />
+          <span className={`font-semibold ${DECISION[drift.decisionChange.to].text}`}>{DECISION[drift.decisionChange.to].label}</span>
+        </div>
+      )}
+
+      {/* Regressions first — what the user must act on. */}
+      {regressed.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-widest text-rose-300/80 mb-2">Regressed · act on these</p>
+          <div className="space-y-2">
+            {regressed.map((t) => (
+              <TransitionRow key={t.id} name={nameById(t.id)} from={t.from} to={t.to} ring="border-rose-500/30" bg="bg-rose-500/[0.06]" />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Inconclusive — de-emphasized; couldn't verify, NOT a failure. */}
+      {unverifiable.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Couldn&apos;t verify this run · not a break</p>
+          <div className="space-y-2">
+            {unverifiable.map((t) => (
+              <TransitionRow key={t.id} name={nameById(t.id)} from={t.from} to={t.to} ring="border-white/[0.07]" bg="bg-white/[0.02]" />
+            ))}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+export default function LaunchReadinessScreen({ report, onReset, drift, baselineNote }: { report: LaunchReadinessReport; onReset?: () => void; drift?: GovernanceDrift; baselineNote?: boolean }) {
   const d = DECISION[report.decision];
   const DIcon = d.Icon;
 
@@ -243,6 +379,9 @@ export default function LaunchReadinessScreen({ report, onReset }: { report: Lau
   const needsGoogle = skips.filter((c) => c.dependsOn === 'ga4_oauth' || c.dependsOn === 'gtm_oauth');
   const needsUrl = skips.filter((c) => c.dependsOn === 'deployed_site');
   const otherSkips = skips.filter((c) => c.dependsOn !== 'ga4_oauth' && c.dependsOn !== 'gtm_oauth' && c.dependsOn !== 'deployed_site');
+
+  // Friendly name for a drift check id, drawn from this report's own checks.
+  const nameById = (id: string) => report.checks.find((c) => c.id === id)?.name ?? id;
 
   return (
     <div className="h-full w-full flex flex-col bg-[#0b1120] overflow-hidden">
@@ -290,6 +429,21 @@ export default function LaunchReadinessScreen({ report, onReset }: { report: Lau
               <CountPill n={skips.length} status="skipped" />
             </div>
           </motion.div>
+
+          {/* 1b — Drift since the last governance run (only when a comparison ran).
+              A first governance run has no prior baseline → a quiet note, not an
+              empty shell; never fabricate drift. */}
+          {drift ? (
+            <DriftSection drift={drift} nameById={nameById} />
+          ) : baselineNote ? (
+            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 flex items-start gap-3">
+              <History size={16} className="text-slate-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-slate-200">First governance run — baseline saved</p>
+                <p className="text-xs text-slate-500 mt-0.5">No prior run to compare against yet. Re-run this check later to see drift since now.</p>
+              </div>
+            </div>
+          ) : null}
 
           {/* 2 — Action-first: blockers, then warnings, then passes, then skipped */}
           <CheckGroup title="Must fix before launch" status="fail" checks={fails} defaultOpen />
