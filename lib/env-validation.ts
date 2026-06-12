@@ -42,6 +42,14 @@ export function validateEnv(): void {
     if (!process.env[key]) missing.push(key);
   }
 
+  // JWT_SECRET roots both the admin JWT and the Google refresh-token encryption
+  // (token-store.ts derives the AES key from it via scrypt). A short/low-entropy
+  // value undermines both, so fail fast at boot — not lazily on first use.
+  const jwtSecret = process.env.JWT_SECRET;
+  if (jwtSecret && jwtSecret.length < 32) {
+    missing.push('JWT_SECRET (must be at least 32 characters for security)');
+  }
+
   if (isProd) {
     for (const key of REQUIRED_IN_PRODUCTION) {
       if (!process.env[key]) missing.push(`${key} (required in production)`);

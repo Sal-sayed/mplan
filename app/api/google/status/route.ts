@@ -11,6 +11,13 @@ export async function GET(req: NextRequest) {
   const isAdmin = await isOperatorRequest(req);
   const configured = isOAuthConfigured();
 
+  // Don't disclose the connection status (connected/scopes/expiry) to non-operators
+  // — only the operator may connect, so only they need it. `configured` (whether
+  // the feature is set up server-side) is not sensitive and stays for all callers.
+  if (!isAdmin) {
+    return NextResponse.json({ configured, connected: false, isAdmin: false });
+  }
+
   let connected = false;
   let scopes: string[] | undefined;
   let expiresAt: string | undefined;
