@@ -1,0 +1,41 @@
+# Runs the governance drift sweep and the GA4 metric collector daily via the
+# repo's cron scripts (scripts/run-governance-cron.mjs + scripts/run-metrics-cron.mjs).
+# Both scripts are pure Node (global fetch / URL, top-level await) — no npm install
+# needed — and POST the MONITOR_SECRET-gated endpoints on the deployed app.
+#
+# SETUP (one-time): repo → Settings → Secrets and variables → Actions → add:
+#   MONITOR_SECRET   same value as the Render web service's MONITOR_SECRET
+#   APP_BASE_URL     the deployed app, e.g. https://mplan-1.onrender.com
+#
+# Trigger: daily at 08:00 UTC, or manually via the Actions tab (Run workflow).
+
+name: scheduled-metrics-and-governance
+
+on:
+  schedule:
+    - cron: '0 8 * * *' # 08:00 UTC daily (GA4 "yesterday" data is settled by then)
+  workflow_dispatch: {}
+
+jobs:
+  run-crons:
+    runs-on: ubuntu-latest
+    env:
+      APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+      MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+    steps:
+      - name: Check out the repo (for the cron scripts)
+        uses: actions/checkout@v4
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Governance drift sweep
+        run: node scripts/run-governance-cron.mjs
+
+      - name: GA4 metric collection
+        # Run even if the governance step exited non-zero — a 'regression' verdict
+        # is a finding, not an infra failure, so metric collection is never skipped.
+        if: always()
+        run: node scripts/run-metrics-cron.mjs
