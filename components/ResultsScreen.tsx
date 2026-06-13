@@ -76,6 +76,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Metric-health results (threshold Data Validation), shown on its own screen.
   const [mhResults, setMhResults] = useState<MetricHealthEntry[]>([]);
   const [mhChecked, setMhChecked] = useState(false);
+  // One-time historical backfill range (separate from the daily collector).
+  const [bfStart, setBfStart] = useState('');
+  const [bfEnd, setBfEnd] = useState('');
   const [rdUrl, setRdUrl] = useState('');
   const [rdError, setRdError] = useState('');
   // Google connection (GA4/GTM checks) — admin-only, single-operator.
@@ -118,7 +121,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }, []);
 
   // Fetch status when the modal opens (an event handler, not an effect).
-  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setRdPhase('form'); fetchGoogleStatus(); };
+  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setBfStart(''); setBfEnd(''); setRdPhase('form'); fetchGoogleStatus(); };
 
   // The OAuth popup posts back here when it finishes, so we refresh status
   // without navigating the main window away from the plan.
@@ -199,19 +202,46 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Metric health: runs the threshold Data Validation agent over the plan's key
   // events for the entered GA4 property (operator-gated server-side). Reads the
   // already-collected metric history — no Google call. Renders MetricHealthScreen.
+  // Shared: read the now-stored history and surface verdicts. Used by both the
+  // plain metric-health check and the backfill (which populates history first).
+  const loadMetricHealth = async () => {
+    const res = await fetch('/api/metrics/validate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, ...connectorBody() }),
+    });
+    const json = await res.json();
+    if (!res.ok || !json.success) throw new Error(json.error || 'Metric validation failed');
+    setMhResults((json.results as MetricHealthEntry[] | undefined) ?? []);
+    setMhChecked(json.propertyChecked === true);
+  };
+
   const runMetricHealth = async () => {
     setRdKind('metrics'); setRdPhase('loading'); setRdError('');
     try {
-      const res = await fetch('/api/metrics/validate', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, ...connectorBody() }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Metric validation failed');
-      setMhResults((json.results as MetricHealthEntry[] | undefined) ?? []);
-      setMhChecked(json.propertyChecked === true);
+      await loadMetricHealth();
       setRdPhase('done');
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Metric validation failed');
+      setRdPhase('error');
+    }
+  };
+
+  // One-time backfill: pull a chosen GA4 date range into history (operator-gated
+  // server-side), then immediately show the now-real verdicts. Separate endpoint
+  // from the daily cron; reuses the same reader + store.
+  const runBackfill = async () => {
+    if (!bfStart || !bfEnd) { setRdError('Pick a start and end date to backfill.'); setRdPhase('error'); return; }
+    setRdKind('metrics'); setRdPhase('loading'); setRdError('');
+    try {
+      const res = await fetch('/api/metrics/backfill', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, ...connectorBody(), startDate: bfStart, endDate: bfEnd }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Backfill failed');
+      await loadMetricHealth(); // history is now populated → real verdicts
+      setRdPhase('done');
+    } catch (e) {
+      setRdError(e instanceof Error ? e.message : 'Backfill failed');
       setRdPhase('error');
     }
   };
@@ -612,6 +642,30 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                             className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
                         </div>
                         <p className="text-[10px] text-slate-600">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
+
+                        {/* One-time historical backfill — pulls a chosen GA4 date
+                            range into metric history so the health check has a
+                            baseline. Separate from the daily collector. */}
+                        <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                          <p className="text-[11px] text-slate-400 mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
+                          <div className="grid grid-cols-2 gap-2">
+                            <label className="block">
+                              <span className="text-[10px] text-slate-500">Start date</span>
+                              <input type="date" value={bfStart} onChange={(e) => setBfStart(e.target.value)}
+                                className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                            </label>
+                            <label className="block">
+                              <span className="text-[10px] text-slate-500">End date</span>
+                              <input type="date" value={bfEnd} onChange={(e) => setBfEnd(e.target.value)}
+                                className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                            </label>
+                          </div>
+                          <button type="button" onClick={runBackfill}
+                            className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                            <BarChart3 size={12} /> Backfill &amp; check this range
+                          </button>
+                          <p className="text-[10px] text-slate-600 mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
+                        </div>
                       </div>
                     )}
                   </div>
