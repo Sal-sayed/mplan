@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Target, BarChart3, MousePointerClick, Database,
@@ -79,6 +80,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // One-time historical backfill range (separate from the daily collector).
   const [bfStart, setBfStart] = useState('');
   const [bfEnd, setBfEnd] = useState('');
+  // Stage 5: saved-plan history (optional sign-in).
+  const [signedIn, setSignedIn] = useState(false);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [rdUrl, setRdUrl] = useState('');
   const [rdError, setRdError] = useState('');
   // Google connection (GA4/GTM checks) — admin-only, single-operator.
@@ -122,6 +126,20 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
   // Fetch status when the modal opens (an event handler, not an effect).
   const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setBfStart(''); setBfEnd(''); setRdPhase('form'); fetchGoogleStatus(); };
+
+  // Know whether the visitor is signed in, to show Save-to-history (optional sign-in).
+  useEffect(() => {
+    fetch('/api/auth/me').then((r) => r.json()).then((d) => setSignedIn(Boolean(d.user))).catch(() => {});
+  }, []);
+  const saveToHistory = async () => {
+    setSaveState('saving');
+    try {
+      const res = await fetch('/api/plans', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }) });
+      setSaveState(res.ok ? 'saved' : 'error');
+    } catch {
+      setSaveState('error');
+    }
+  };
 
   // The OAuth popup posts back here when it finishes, so we refresh status
   // without navigating the main window away from the plan.
@@ -502,6 +520,17 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-white truncate">Measurement Plan</div><div className="text-xs text-slate-400 truncate">{meta.url}</div></div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          {signedIn ? (
+            <>
+              <button onClick={saveToHistory} disabled={saveState === 'saving' || saveState === 'saved'}
+                className="px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition disabled:opacity-60">
+                <History size={14} /> <span className="hidden sm:inline">{saveState === 'saved' ? 'Saved ✓' : saveState === 'saving' ? 'Saving…' : 'Save to history'}</span>
+              </button>
+              <Link href="/history" className="text-xs text-slate-400 hover:text-slate-200 hidden sm:inline px-1">History</Link>
+            </>
+          ) : (
+            <Link href="/signin" className="text-sm text-slate-300 hover:text-white px-1">Sign in</Link>
+          )}
           <button onClick={openReadiness}
             className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
