@@ -108,3 +108,42 @@ export async function isOperatorRequest(req: {
   if (process.env.NODE_ENV === 'development') return true;
   return isAdminRequest(req);
 }
+
+// ─── User sessions (Stage 1 — Google Sign-In identity) ───
+// ADDITIVE & PARALLEL: this is the session for logged-in end users (Google
+// Sign-In), separate from the admin `admin_token`. Stage 1 only ISSUES and READS
+// identity — it does NOT change the admin gate (isAdminRequest / isOperatorRequest)
+// or any route's authorization. Nothing uses getSessionUser to gate data yet;
+// isolation enforcement is a later stage.
+
+export interface SessionUser {
+  user_id: string;
+  email?: string;
+  role?: string;
+}
+
+export async function createSessionToken(user: SessionUser): Promise<string> {
+  return new SignJWT({ user_id: user.user_id, email: user.email ?? '', role: user.role ?? 'user' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(getSecret());
+}
+
+export async function getSessionUser(req: {
+  cookies?: { get(name: string): { value: string } | undefined };
+}): Promise<SessionUser | null> {
+  const token = req.cookies?.get('session')?.value;
+  if (!token) return null;
+  try {
+    const { payload } = await jwtVerify(token, getSecret());
+    if (typeof payload.user_id !== 'string' || !payload.user_id) return null;
+    return {
+      user_id: payload.user_id,
+      email: typeof payload.email === 'string' && payload.email ? payload.email : undefined,
+      role: typeof payload.role === 'string' ? payload.role : undefined,
+    };
+  } catch {
+    return null;
+  }
+}
