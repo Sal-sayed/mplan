@@ -3,19 +3,19 @@
 // the current session is the admin/operator (only they may connect).
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isOperatorRequest } from '@/lib/auth';
+import { isOperatorRequest, resolveConnectOwnerId } from '@/lib/auth';
 import { isOAuthConfigured } from '@/lib/google/oauth';
 import { getStatus } from '@/lib/google/token-store';
 
 export async function GET(req: NextRequest) {
   const isAdmin = await isOperatorRequest(req);
   const configured = isOAuthConfigured();
+  // The caller's OWN connection (Stage 4): a signed-in user's, the admin's, or
+  // none for an anonymous non-admin. isAdmin is kept for the existing readiness UI.
+  const ownerId = await resolveConnectOwnerId(req);
 
-  // Don't disclose the connection status (connected/scopes/expiry) to non-operators
-  // — only the operator may connect, so only they need it. `configured` (whether
-  // the feature is set up server-side) is not sensitive and stays for all callers.
-  if (!isAdmin) {
-    return NextResponse.json({ configured, connected: false, isAdmin: false });
+  if (!ownerId) {
+    return NextResponse.json({ configured, connected: false, isAdmin });
   }
 
   let connected = false;
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   let expiresAt: string | undefined;
   if (configured) {
     try {
-      const s = await getStatus();
+      const s = await getStatus(ownerId);
       connected = s.connected;
       scopes = s.scopes;
       expiresAt = s.expiresAt;

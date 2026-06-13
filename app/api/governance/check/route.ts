@@ -98,16 +98,17 @@ export async function POST(req: NextRequest) {
   const compareToLast = body?.compareToLast === true;
 
   try {
-    const { report } = await runGovernanceCheck({ url: meta.url, plan, ga4, gtm });
+    // Stage 2/4: attribute to the signed-in user (or 'admin'); the gate uses this
+    // owner's own Google token for the GA4/GTM checks.
+    const ownerId = await resolveOwnerId(req);
+    const { report } = await runGovernanceCheck({ url: meta.url, plan, ga4, gtm }, { ownerId });
 
     // Drift + persistence are wrapped so a storage failure (Supabase down /
     // unconfigured) NEVER dead-ends the check — we still return the report.
     let drift: GovernanceDrift | undefined;
     if (persist || compareToLast) {
       try {
-        // Stage 2: attribute the run to the signed-in user (or 'admin' default).
         // The (owner, siteUrl, planKey) key keeps two users' runs from colliding.
-        const ownerId = await resolveOwnerId(req);
         const planKey = planKeyFor(plan);
         // Diff against the PRIOR latest BEFORE saving this run (else the latest
         // would be this very run).

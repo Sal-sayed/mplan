@@ -120,13 +120,13 @@ test('per-property isolation: one property failing does not abort the others', a
   assert.equal(savedBatches.length, 1); // only the good property persisted
 });
 
-test('Google not connected → graceful skip, no crash', async () => {
+test("a property whose owner hasn't connected Google → that property errors, no crash, nothing saved", async () => {
   persistedRuns = [runWithProp('111')];
-  tokenThrows = true;
+  tokenThrows = true; // getValidAccessToken throws for this owner
   const res = await POST(makeReq({}, auth('topsecret')));
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.equal(body.results[0].skipped, true);
+  assert.ok(body.results[0].error, 'the property is recorded with an error');
   assert.equal(savedBatches.length, 0);
 });
 

@@ -160,3 +160,16 @@ export async function resolveOwnerId(req: {
   const user = await getSessionUser(req);
   return user?.user_id ?? DEFAULT_OWNER_ID;
 }
+
+// The principal allowed to CONNECT / MANAGE a Google analytics token (Stage 4):
+// a signed-in user (their own), else the admin/operator ('admin'), else null.
+// Unlike resolveOwnerId, an anonymous non-admin caller gets null — they must not
+// be able to read/overwrite the shared 'admin' token.
+export async function resolveConnectOwnerId(req: {
+  cookies?: { get(name: string): { value: string } | undefined };
+}): Promise<string | null> {
+  const user = await getSessionUser(req);
+  if (user) return user.user_id;
+  if (await isOperatorRequest(req)) return DEFAULT_OWNER_ID;
+  return null;
+}

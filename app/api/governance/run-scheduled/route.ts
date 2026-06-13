@@ -113,12 +113,10 @@ export async function POST(req: NextRequest) {
       // The gate resolves the (global, single-operator) Google token itself via
       // token-store; we only supply the per-site connector ids. Absent connectors
       // → those GA4/GTM checks stay skipped (never a crash).
-      const { report } = await runGovernanceCheck({
-        url: t.siteUrl,
-        plan,
-        ga4: connectors?.ga4,
-        gtm: connectors?.gtm,
-      });
+      const { report } = await runGovernanceCheck(
+        { url: t.siteUrl, plan, ga4: connectors?.ga4, gtm: connectors?.gtm },
+        { ownerId: t.prior.user_id ?? 'admin' } // Stage 4: use the run owner's token
+      );
 
       const drift = diffReports(t.prior.report, report);
       // Preserve the run's owner (Stage 2) — the cron acts on behalf of each user.

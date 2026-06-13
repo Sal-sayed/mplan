@@ -128,6 +128,9 @@ export interface LaunchReadinessContext {
 export interface ReadinessCheckOptions {
   requireApproval?: boolean; // default true
   strictOnSkipped?: boolean; // treat a blocking skipped check as a no-go
+  // Owner whose per-user Google token the live GA4/GTM checks use (Stage 4).
+  // Defaults to 'admin' so existing/anonymous behavior is unchanged.
+  ownerId?: string;
   // Test/DI seam for the live-capture step. Defaults to the real Playwright
   // capture, dynamically imported so this pure module never loads a browser
   // unless a deployed-site URL is actually being checked.
@@ -579,9 +582,9 @@ async function loadGtmConfigDefault(): Promise<(containerId: string, accessToken
   const mod = await import('./gtm-config.ts');
   return mod.fetchGtmConfig;
 }
-async function loadGoogleTokenDefault(): Promise<() => Promise<string>> {
+async function loadGoogleTokenDefault(ownerId: string): Promise<() => Promise<string>> {
   const mod = await import('../google/token-store.ts');
-  return mod.getValidAccessToken;
+  return () => mod.getValidAccessToken(ownerId);
 }
 
 // ─── Decision engine + report assembly ───
@@ -631,7 +634,7 @@ export async function runLaunchReadinessGate(
   let googleAccessToken: string | undefined;
   if (ga4PropertyId || gtmContainerId) {
     try {
-      const getToken = opts.getGoogleAccessToken ?? (await loadGoogleTokenDefault());
+      const getToken = opts.getGoogleAccessToken ?? (await loadGoogleTokenDefault(opts.ownerId ?? 'admin'));
       googleAccessToken = await getToken();
     } catch {
       googleAccessToken = undefined; // not connected → checks stay skipped

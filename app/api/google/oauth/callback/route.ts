@@ -3,7 +3,7 @@
 // the result to the opener window (popup flow) and closes itself.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isOperatorRequest } from '@/lib/auth';
+import { resolveConnectOwnerId } from '@/lib/auth';
 import { exchangeCodeForTokens } from '@/lib/google/oauth';
 import { saveTokens } from '@/lib/google/token-store';
 
@@ -25,9 +25,11 @@ ${note}
 }
 
 export async function GET(req: NextRequest) {
-  if (!(await isOperatorRequest(req))) {
-    console.warn('[google/oauth/callback] rejected — request is not signed in as admin');
-    return popupResult('error', 'Not signed in as admin.');
+  // Stage 4: the connecting principal owns the token (signed-in user or admin).
+  const ownerId = await resolveConnectOwnerId(req);
+  if (!ownerId) {
+    console.warn('[google/oauth/callback] rejected — no signed-in user or admin');
+    return popupResult('error', 'Not signed in.');
   }
 
   const url = new URL(req.url);
@@ -53,7 +55,7 @@ export async function GET(req: NextRequest) {
   let result: NextResponse;
   try {
     const tok = await exchangeCodeForTokens(code);
-    await saveTokens({
+    await saveTokens(ownerId, {
       accessToken: tok.access_token,
       refreshToken: tok.refresh_token,
       expiresInSec: tok.expires_in,

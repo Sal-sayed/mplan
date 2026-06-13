@@ -91,22 +91,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, results: [] });
   }
 
-  // One global operator token for every property (single-operator model). If
-  // Google isn't connected, skip gracefully — never crash the whole run.
-  let token: string;
-  try {
-    token = await getValidAccessToken();
-  } catch (err) {
-    return NextResponse.json({
-      success: true,
-      results: properties.map((propertyId) => ({ propertyId, skipped: true, error: (err as Error)?.message || 'Google not connected' })),
-    });
-  }
-
+  // Stage 4: each property's metrics are fetched with ITS OWNER's own Google
+  // token. A property whose owner hasn't connected Google (or whose fetch fails)
+  // is skipped per-property — never crashes the whole run.
   const fetchedAt = new Date().toISOString();
   const results: MetricFetchResult[] = [];
   for (const propertyId of properties) {
+    const owner = ownerByProperty.get(propertyId) ?? 'admin';
     try {
+      const token = await getValidAccessToken(owner);
       const report = await runGa4Report({ propertyId, metrics: METRICS, dimensions: DIMENSIONS, dateRange: DATE_RANGE }, token);
       const dateIdx = report.dimensionHeaders.indexOf('date');
       const evtIdx = report.dimensionHeaders.indexOf('eventName');
@@ -119,7 +112,7 @@ export async function POST(req: NextRequest) {
         date: toIsoDate(dateIdx >= 0 ? row.dimensionValues[dateIdx] ?? '' : ''),
         value: Number(row.metricValues[valIdx] ?? 0) || 0,
         fetchedAt,
-        user_id: ownerByProperty.get(propertyId) ?? 'admin',
+        user_id: owner,
       }));
 
       await saveMetrics(rows);

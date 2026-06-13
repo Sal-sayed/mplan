@@ -4,15 +4,17 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
-import { isOperatorRequest } from '@/lib/auth';
+import { resolveConnectOwnerId } from '@/lib/auth';
 import { buildAuthUrl, isOAuthConfigured } from '@/lib/google/oauth';
 
 export async function GET(req: NextRequest) {
   if (!isOAuthConfigured()) {
     return NextResponse.json({ error: 'Google OAuth is not configured on the server.' }, { status: 500 });
   }
-  if (!(await isOperatorRequest(req))) {
-    return NextResponse.json({ error: 'Sign in as admin (at /leads) before connecting Google.' }, { status: 401 });
+  // Stage 4: a signed-in user (or the admin) connects their OWN Google. An
+  // anonymous non-admin caller can't (they'd hijack the shared 'admin' token).
+  if (!(await resolveConnectOwnerId(req))) {
+    return NextResponse.json({ error: 'Sign in before connecting Google.' }, { status: 401 });
   }
 
   const state = randomBytes(16).toString('hex');

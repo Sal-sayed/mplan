@@ -1,18 +1,20 @@
-// Single-operator Google token store. Mirrors lib/leads-store.ts: a lazily
-// created Supabase client (service-role) with a local-file fallback so the
-// connection survives even when Supabase is unreachable (their key is currently
-// an anon key, so RLS may block the table — the local file then takes over).
+// Per-user Google token store (Stage 4). Each user's tokens live in their own
+// google_oauth row keyed by user_id; the refresh token is encrypted at rest
+// (AES-256-GCM, key from JWT_SECRET). Mirrors leads-store: Supabase service-role
+// with a local-file fallback (now a per-user MAP) so the connection survives when
+// Supabase is unreachable.
 //
-// The refresh token is encrypted at rest (AES-256-GCM, key derived from
-// JWT_SECRET). The short-lived access token is stored as-is and refreshed on
-// demand by getValidAccessToken().
+// Migration (hand-run): a unique constraint on google_oauth.user_id so the
+// per-user upsert has a conflict target —
+//   alter table google_oauth add constraint google_oauth_user_id_key unique (user_id);
+// The pre-existing single row (id='operator', user_id='admin') keeps working — it
+// is now looked up by user_id='admin' (the Stage-0 backfill).
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto';
 import fs from 'fs/promises';
 import path from 'path';
 
-const ROW_ID = 'operator';
 const LOCAL_FILE = path.join(process.cwd(), 'data', 'google-oauth.json');
 
 interface StoredToken {
@@ -20,10 +22,6 @@ interface StoredToken {
   refresh_token_enc: string | null;
   expiry: number; // epoch ms when the access token expires
   scope: string;
-  // Owner. Stage-0 ownership scaffolding only — ADDITIVE and UNUSED: the store
-  // still reads/writes the single ROW_ID='operator' row; nothing keys by this yet
-  // (no query change this stage). Maps to the google_oauth.user_id column.
-  user_id?: string;
 }
 
 // ─── encryption (refresh token only) ───
@@ -63,94 +61,105 @@ function getSupabase(): SupabaseClient | null {
   return _sb;
 }
 
-async function readLocal(): Promise<StoredToken | null> {
+// The local fallback is now a per-user map { [userId]: StoredToken }. Tolerates
+// the legacy single-token shape by attributing it to 'admin'.
+async function readLocalMap(): Promise<Record<string, StoredToken>> {
   try {
     const parsed = JSON.parse(await fs.readFile(LOCAL_FILE, 'utf8'));
-    return parsed && parsed.access_token ? (parsed as StoredToken) : null;
+    if (parsed && typeof parsed === 'object') {
+      if (typeof parsed.access_token === 'string') return { admin: parsed as StoredToken }; // legacy single token
+      return parsed as Record<string, StoredToken>;
+    }
   } catch {
-    return null;
+    /* none */
   }
+  return {};
 }
 
-async function writeLocal(rec: StoredToken): Promise<void> {
+async function writeLocalMap(map: Record<string, StoredToken>): Promise<void> {
   await fs.mkdir(path.dirname(LOCAL_FILE), { recursive: true });
-  await fs.writeFile(LOCAL_FILE, JSON.stringify(rec, null, 2));
+  await fs.writeFile(LOCAL_FILE, JSON.stringify(map, null, 2));
 }
 
-async function readRecord(): Promise<StoredToken | null> {
+async function readRecord(userId: string): Promise<StoredToken | null> {
   const sb = getSupabase();
   if (sb) {
     try {
       const { data, error } = await sb
         .from('google_oauth')
         .select('access_token, refresh_token_enc, expiry, scope')
-        .eq('id', ROW_ID)
+        .eq('user_id', userId)
         .maybeSingle();
       if (error) throw error;
       if (data) return data as StoredToken;
+      return null;
     } catch {
       /* fall through to local */
     }
   }
-  return readLocal();
+  return (await readLocalMap())[userId] ?? null;
 }
 
-async function writeRecord(rec: StoredToken): Promise<void> {
+async function writeRecord(userId: string, rec: StoredToken): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     try {
       const { error } = await sb
         .from('google_oauth')
-        .upsert({ id: ROW_ID, ...rec, updated_at: new Date().toISOString() });
+        .upsert({ id: userId, user_id: userId, ...rec, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
       if (error) throw error;
       return;
     } catch {
       /* fall back to local file */
     }
   }
-  await writeLocal(rec);
+  const map = await readLocalMap();
+  map[userId] = rec;
+  await writeLocalMap(map);
 }
 
-async function deleteRecord(): Promise<void> {
+async function deleteRecord(userId: string): Promise<void> {
   const sb = getSupabase();
   if (sb) {
     try {
-      await sb.from('google_oauth').delete().eq('id', ROW_ID);
+      await sb.from('google_oauth').delete().eq('user_id', userId);
     } catch {
       /* ignore — still clear local below */
     }
   }
   try {
-    await fs.unlink(LOCAL_FILE);
+    const map = await readLocalMap();
+    if (userId in map) {
+      delete map[userId];
+      await writeLocalMap(map);
+    }
   } catch {
     /* already gone */
   }
 }
 
-// ─── public API ───
+// ─── public API (per-user) ───
 
-export async function saveTokens(t: {
-  accessToken: string;
-  refreshToken?: string;
-  expiresInSec: number;
-  scope: string;
-}): Promise<void> {
+export async function saveTokens(
+  userId: string,
+  t: { accessToken: string; refreshToken?: string; expiresInSec: number; scope: string }
+): Promise<void> {
   const expiry = Date.now() + Math.max(0, t.expiresInSec) * 1000;
   let refresh_token_enc: string | null;
   if (t.refreshToken) {
     refresh_token_enc = encrypt(t.refreshToken);
   } else {
     // A refresh response often omits the refresh token — keep the stored one.
-    const existing = await readRecord();
+    const existing = await readRecord(userId);
     refresh_token_enc = existing?.refresh_token_enc ?? null;
   }
-  await writeRecord({ access_token: t.accessToken, refresh_token_enc, expiry, scope: t.scope });
+  await writeRecord(userId, { access_token: t.accessToken, refresh_token_enc, expiry, scope: t.scope });
 }
 
-// Returns a non-expired access token, transparently refreshing when needed.
-// Throws if not connected or the refresh token is gone (caller → reconnect).
-export async function getValidAccessToken(): Promise<string> {
-  const rec = await readRecord();
+// A non-expired access token for one user, transparently refreshing when needed.
+// Throws if that user isn't connected or their refresh token is gone.
+export async function getValidAccessToken(userId: string): Promise<string> {
+  const rec = await readRecord(userId);
   if (!rec) throw new Error('Google account not connected');
   if (rec.expiry - Date.now() > 30_000) return rec.access_token;
   if (!rec.refresh_token_enc) {
@@ -158,7 +167,7 @@ export async function getValidAccessToken(): Promise<string> {
   }
   const { refreshAccessToken } = await import('./oauth.ts');
   const refreshed = await refreshAccessToken(decrypt(rec.refresh_token_enc));
-  await saveTokens({
+  await saveTokens(userId, {
     accessToken: refreshed.access_token,
     refreshToken: refreshed.refresh_token,
     expiresInSec: refreshed.expires_in,
@@ -167,12 +176,12 @@ export async function getValidAccessToken(): Promise<string> {
   return refreshed.access_token;
 }
 
-export async function clearTokens(): Promise<void> {
-  await deleteRecord();
+export async function clearTokens(userId: string): Promise<void> {
+  await deleteRecord(userId);
 }
 
-export async function getStatus(): Promise<{ connected: boolean; scopes?: string[]; expiresAt?: string }> {
-  const rec = await readRecord();
+export async function getStatus(userId: string): Promise<{ connected: boolean; scopes?: string[]; expiresAt?: string }> {
+  const rec = await readRecord(userId);
   if (!rec) return { connected: false };
   return {
     connected: true,

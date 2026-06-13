@@ -18,7 +18,7 @@ let connStatus: any = {
   expiresAt: '2026-06-12T00:00:00.000Z',
 };
 
-mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator } });
+mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator, resolveConnectOwnerId: async () => (operator ? 'admin' : null) } });
 mockModule('@/lib/google/oauth', { namedExports: { isOAuthConfigured: () => true } });
 mockModule('@/lib/google/token-store', { namedExports: { getStatus: async () => connStatus } });
 mockModule('next/server', {

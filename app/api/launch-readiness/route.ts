@@ -15,7 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { runLaunchReadinessGate, type ReadinessCheckOptions } from '@/lib/measurement/launch-readiness';
-import { isOperatorRequest } from '@/lib/auth';
+import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
 export const maxDuration = 120; // live capture launches a headless browser
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
     ...(gtmConnector ? { gtm: gtmConnector } : {}),
   };
 
-  const opts: ReadinessCheckOptions = {};
+  const opts: ReadinessCheckOptions = { ownerId: await resolveOwnerId(req) }; // Stage 4: this owner's Google token
   if (typeof body.requireApproval === 'boolean') opts.requireApproval = body.requireApproval;
   if (typeof body.strictOnSkipped === 'boolean') opts.strictOnSkipped = body.strictOnSkipped;
 

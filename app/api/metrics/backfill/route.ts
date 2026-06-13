@@ -72,11 +72,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, error: `Range too large — keep it within ${MAX_SPAN_DAYS} days per backfill.` }, { status: 400 });
   }
 
-  // The operator's single Google token (same scope reads the Data API). If Google
-  // isn't connected, say so instead of crashing.
+  // Stage 4: this owner's own Google token (same scope reads the Data API), and
+  // the owner the rows are attributed to. If they haven't connected Google, say so.
+  const ownerId = await resolveOwnerId(req);
   let token: string;
   try {
-    token = await getValidAccessToken();
+    token = await getValidAccessToken(ownerId);
   } catch (err) {
     return NextResponse.json(
       { success: false, error: (err as Error)?.message || 'Connect Google to backfill metrics.' },
@@ -90,7 +91,6 @@ export async function POST(req: NextRequest) {
     const evtIdx = report.dimensionHeaders.indexOf('eventName');
     const valIdx = Math.max(0, report.metricHeaders.indexOf('eventCount'));
     const fetchedAt = new Date().toISOString();
-    const ownerId = await resolveOwnerId(req); // Stage 2: attribute the rows
 
     const rows: Ga4MetricDaily[] = report.rows.map((row) => ({
       propertyId,
