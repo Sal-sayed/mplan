@@ -49,6 +49,10 @@ export interface GovernanceRun {
   // whose plan is missing rather than crashing.
   plan?: MeasurementPlan;
   connectors?: GovernanceConnectors;
+  // Owner. Stage-0 ownership scaffolding only — ADDITIVE and UNUSED: nothing
+  // reads, writes, or filters by it yet (no query change this stage). Maps to the
+  // governance_runs.user_id column added by the Stage-0 migration.
+  user_id?: string;
 }
 
 // Row shape as stored in Supabase (snake_case columns).

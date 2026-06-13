@@ -31,6 +31,10 @@ export interface Ga4MetricDaily {
   date: string; // 'YYYY-MM-DD'
   value: number;
   fetchedAt: string; // ISO 8601
+  // Owner. Stage-0 ownership scaffolding only — ADDITIVE and UNUSED: nothing
+  // reads, writes, or filters by it yet (no query change this stage). Maps to the
+  // ga4_metric_daily.user_id column added by the Stage-0 migration.
+  user_id?: string;
 }
 
 interface Ga4MetricRow {

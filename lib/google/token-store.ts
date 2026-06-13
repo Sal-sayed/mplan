@@ -20,6 +20,10 @@ interface StoredToken {
   refresh_token_enc: string | null;
   expiry: number; // epoch ms when the access token expires
   scope: string;
+  // Owner. Stage-0 ownership scaffolding only — ADDITIVE and UNUSED: the store
+  // still reads/writes the single ROW_ID='operator' row; nothing keys by this yet
+  // (no query change this stage). Maps to the google_oauth.user_id column.
+  user_id?: string;
 }
 
 // ─── encryption (refresh token only) ───
