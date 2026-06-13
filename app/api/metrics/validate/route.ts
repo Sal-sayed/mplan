@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { validateMetrics, type MetricHealthEntry } from '@/lib/measurement/data-validation';
-import { isOperatorRequest } from '@/lib/auth';
+import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
 export const maxDuration = 30; // reads stored history only — no browser, no Google call
@@ -60,13 +60,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, propertyChecked: false, results: [] }, { headers: rateLimitHeaders(rl) });
   }
 
-  // Validate each key event's daily eventCount. One event failing to validate
-  // never aborts the others.
+  // Validate each key event's daily eventCount, scoped to this owner's history
+  // (Stage 3). One event failing to validate never aborts the others.
+  const ownerId = await resolveOwnerId(req);
   const keyEvents = plan.events.filter((e) => e.isKeyEvent);
   const results: MetricHealthEntry[] = [];
   for (const ev of keyEvents) {
     try {
-      const r = await validateMetrics({ propertyId, metricName: 'eventCount', dimensionValue: ev.name });
+      const r = await validateMetrics({ userId: ownerId, propertyId, metricName: 'eventCount', dimensionValue: ev.name });
       results.push({ eventName: ev.name, ...r });
     } catch (err) {
       results.push({

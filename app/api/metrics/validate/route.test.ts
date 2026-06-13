@@ -24,7 +24,7 @@ mockModule('@/lib/rate-limit', {
     rateLimitHeaders: () => ({}),
   },
 });
-mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator } });
+mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator, resolveOwnerId: async () => 'admin' } });
 mockModule('@/lib/measurement/data-validation', {
   namedExports: {
     validateMetrics: async (target: any) => {
@@ -112,4 +112,5 @@ test('operator + property → validates each KEY event and tags the result', asy
   assert.equal(validateCalls[0].dimensionValue, 'purchase');
   assert.equal(validateCalls[0].metricName, 'eventCount');
   assert.equal(validateCalls[0].propertyId, '123456');
+  assert.equal(validateCalls[0].userId, 'admin', 'validation is scoped to the resolved owner');
 });

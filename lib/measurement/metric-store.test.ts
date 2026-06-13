@@ -11,7 +11,7 @@ type MockModuleFn = (
 ) => void;
 const mockModule = (mock as unknown as { module: MockModuleFn }).module.bind(mock);
 
-const PK = ['property_id', 'metric_name', 'dimension_value', 'date'];
+const PK = ['user_id', 'property_id', 'metric_name', 'dimension_value', 'date']; // Stage 3: owner in the key
 let rows: any[] = [];
 function keyOf(r: any) {
   return PK.map((c) => r[c]).join('::');
@@ -62,8 +62,8 @@ mockModule('fs/promises', { namedExports: fsStub, defaultExport: fsStub });
 const { saveMetrics, getMetricHistory } = await import('./metric-store.ts');
 import type { Ga4MetricDaily } from './metric-store.ts';
 
-function m(date: string, value: number, dimensionValue = 'purchase'): Ga4MetricDaily {
-  return { propertyId: '123', metricName: 'eventCount', dimensionValue, date, value, fetchedAt: '2026-06-12T00:00:00.000Z' };
+function m(date: string, value: number, dimensionValue = 'purchase', userId = 'admin'): Ga4MetricDaily {
+  return { propertyId: '123', metricName: 'eventCount', dimensionValue, date, value, fetchedAt: '2026-06-12T00:00:00.000Z', user_id: userId };
 }
 
 beforeEach(() => {
@@ -74,7 +74,7 @@ beforeEach(() => {
 
 test('saveMetrics then getMetricHistory round-trips, ordered by date ascending', async () => {
   await saveMetrics([m('2026-06-03', 8), m('2026-06-01', 5), m('2026-06-02', 6)]);
-  const hist = await getMetricHistory({ propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  const hist = await getMetricHistory({ userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
   assert.deepEqual(hist.map((h) => h.date), ['2026-06-01', '2026-06-02', '2026-06-03']);
   assert.deepEqual(hist.map((h) => h.value), [5, 6, 8]);
 });
@@ -82,27 +82,41 @@ test('saveMetrics then getMetricHistory round-trips, ordered by date ascending',
 test('PK upsert does not duplicate — same (prop,metric,dim,date) overwrites', async () => {
   await saveMetrics([m('2026-06-01', 5)]);
   await saveMetrics([m('2026-06-01', 9)]); // same PK, new value
-  const hist = await getMetricHistory({ propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  const hist = await getMetricHistory({ userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
   assert.equal(hist.length, 1);
   assert.equal(hist[0].value, 9);
 });
 
 test('getMetricHistory filters by dimensionValue and sinceDate', async () => {
   await saveMetrics([m('2026-06-01', 5, 'purchase'), m('2026-06-02', 7, 'purchase'), m('2026-06-02', 99, 'add_to_cart')]);
-  const purchases = await getMetricHistory({ propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase', sinceDate: '2026-06-02' });
+  const purchases = await getMetricHistory({ userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase', sinceDate: '2026-06-02' });
   assert.equal(purchases.length, 1);
   assert.equal(purchases[0].value, 7);
 });
 
+// Stage-3 isolation checkpoint: two owners' metrics for the SAME property/date
+// coexist, and getMetricHistory returns ONLY the caller's own rows.
+test('two users, same property/date → distinct rows; getMetricHistory is owner-scoped', async () => {
+  await saveMetrics([m('2026-06-01', 5, 'purchase', 'admin')]);
+  await saveMetrics([m('2026-06-01', 999, 'purchase', 'user_B')]);
+
+  const adminSees = await getMetricHistory({ userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  const bSees = await getMetricHistory({ userId: 'user_B', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  assert.equal(adminSees.length, 1);
+  assert.equal(adminSees[0].value, 5, 'admin sees only admin');
+  assert.equal(bSees.length, 1);
+  assert.equal(bSees[0].value, 999, 'B sees only B — no overwrite, no leak');
+});
+
 test('saveMetrics([]) is a no-op and getMetricHistory returns [] for unknown keys', async () => {
   await saveMetrics([]);
-  const none = await getMetricHistory({ propertyId: 'nope', metricName: 'eventCount' });
+  const none = await getMetricHistory({ userId: 'admin', propertyId: 'nope', metricName: 'eventCount' });
   assert.deepEqual(none, []);
 });
 
 test('Stage 2: user_id round-trips through save → history (owner is carried)', async () => {
   await saveMetrics([{ ...m('2026-06-01', 5), user_id: 'admin' }]);
-  const hist = await getMetricHistory({ propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  const hist = await getMetricHistory({ userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
   assert.equal(hist.length, 1);
   assert.equal(hist[0].user_id, 'admin', 'the owner is persisted and read back');
 });

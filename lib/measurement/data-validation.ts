@@ -58,6 +58,7 @@ export interface ValidateOptions {
 const DEFAULTS = { dropThreshold: 0.5, minHistoryDays: 4, windowDays: 7 } as const;
 
 export interface MetricTarget {
+  userId: string; // REQUIRED owner scope (Stage 3) — history is read for one user
   propertyId: string;
   metricName: string;
   dimensionValue?: string;
@@ -75,6 +76,7 @@ export async function validateMetrics(
   const windowDays = opts.windowDays ?? DEFAULTS.windowDays;
 
   const history = await getHistory({
+    userId: target.userId,
     propertyId: target.propertyId,
     metricName: target.metricName,
     dimensionValue: target.dimensionValue,

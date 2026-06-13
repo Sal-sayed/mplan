@@ -18,7 +18,7 @@ function series(values: number[], startDay = 1): Ga4MetricDaily[] {
   }));
 }
 const inject = (rows: Ga4MetricDaily[]) => async () => rows;
-const target = { propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' };
+const target = { userId: 'admin', propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' };
 
 test('a drop > threshold vs the trailing average → regression (dropped)', async () => {
   // trailing ~10/day, latest crashes to 2 (80% drop).

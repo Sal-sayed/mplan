@@ -19,7 +19,13 @@ import fs from 'fs/promises';
 import path from 'path';
 
 const TABLE = 'ga4_metric_daily';
-const ON_CONFLICT = 'property_id,metric_name,dimension_value,date';
+// Stage 3: user_id is part of the conflict key (and the table PK — see the
+// Stage-3 migration) so two owners' rows for the same property/date COEXIST
+// rather than overwriting each other.
+const ON_CONFLICT = 'user_id,property_id,metric_name,dimension_value,date';
+// Owner for local-scratch / pre-backfill rows lacking a user_id (the Stage-0
+// backfill value).
+const LEGACY_OWNER = 'admin';
 const LOCAL_FILE = path.join(process.cwd(), 'data', 'ga4-metric-daily.json');
 
 export interface Ga4MetricDaily {
@@ -130,6 +136,9 @@ export async function saveMetrics(rows: Ga4MetricDaily[]): Promise<void> {
 }
 
 export interface MetricHistoryQuery {
+  // REQUIRED owner scope (Stage 3) — a history read is always for one user, so a
+  // missing filter can't leak another user's metrics.
+  userId: string;
   propertyId: string;
   metricName: string;
   dimensionValue?: string; // omit to span all dimension values for the metric
@@ -146,6 +155,7 @@ export async function getMetricHistory(q: MetricHistoryQuery): Promise<Ga4Metric
       let query = sb
         .from(TABLE)
         .select('property_id, metric_name, dimension_value, date, value, fetched_at, user_id')
+        .eq('user_id', q.userId)
         .eq('property_id', q.propertyId)
         .eq('metric_name', q.metricName);
       if (q.dimensionValue !== undefined) query = query.eq('dimension_value', q.dimensionValue);
@@ -162,6 +172,7 @@ export async function getMetricHistory(q: MetricHistoryQuery): Promise<Ga4Metric
   return (await readLocalMetrics())
     .filter(
       (m) =>
+        (m.user_id ?? LEGACY_OWNER) === q.userId &&
         m.propertyId === q.propertyId &&
         m.metricName === q.metricName &&
         (q.dimensionValue === undefined || m.dimensionValue === q.dimensionValue) &&
