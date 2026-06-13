@@ -60,3 +60,28 @@ test('zero baseline (never fired) with a zero latest → ok, no false zero_fire'
   const r = await validateMetrics(target, {}, inject(series([0, 0, 0, 0, 0])));
   assert.equal(r.verdict, 'ok');
 });
+
+// ── Synthetic seed scenarios — the permanent in-memory guard mirroring the dev
+// script scripts/seed-and-verify-metrics.mjs. Same three histories; here driven
+// through the injected DI seam so the logic is covered in CI without Supabase.
+// Keep these series IN SYNC with STABLE/DROP/THIN in that script.
+const SYNTHETIC_STABLE = [98, 102, 100, 99, 101, 100, 100, 103, 97, 100, 101, 99, 100, 100];
+const SYNTHETIC_DROP = [...Array(13).fill(100), 20];
+const SYNTHETIC_THIN = [100, 20];
+
+test('synthetic STABLE (14d ~100/day) → ok', async () => {
+  const r = await validateMetrics(target, {}, inject(series(SYNTHETIC_STABLE)));
+  assert.equal(r.verdict, 'ok');
+});
+
+test('synthetic DROP (100/day → 20) → regression (dropped)', async () => {
+  const r = await validateMetrics(target, {}, inject(series(SYNTHETIC_DROP)));
+  assert.equal(r.verdict, 'regression');
+  assert.equal(r.finding?.kind, 'dropped');
+});
+
+test('synthetic THIN (2 days) → inconclusive, never a false regression', async () => {
+  const r = await validateMetrics(target, {}, inject(series(SYNTHETIC_THIN)));
+  assert.equal(r.verdict, 'inconclusive');
+  assert.equal(r.finding, undefined);
+});
