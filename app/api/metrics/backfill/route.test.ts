@@ -26,7 +26,7 @@ mockModule('@/lib/rate-limit', {
     rateLimitHeaders: () => ({}),
   },
 });
-mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator } });
+mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator, resolveOwnerId: async () => 'admin' } });
 mockModule('@/lib/google/token-store', {
   namedExports: {
     getValidAccessToken: async () => {
@@ -117,5 +117,5 @@ test('operator + valid range → fetches the range, maps rows, saves history', a
   assert.deepEqual(lastReportReq.dateRange, { startDate: '2026-01-01', endDate: '2026-01-31' });
   // Rows mapped to the store shape (YYYYMMDD → YYYY-MM-DD, numeric value).
   assert.equal(savedBatches.length, 1);
-  assert.deepEqual(savedBatches[0][0], { propertyId: '123456', metricName: 'eventCount', dimensionValue: 'purchase', date: '2026-01-01', value: 12, fetchedAt: savedBatches[0][0].fetchedAt });
+  assert.deepEqual(savedBatches[0][0], { propertyId: '123456', metricName: 'eventCount', dimensionValue: 'purchase', date: '2026-01-01', value: 12, fetchedAt: savedBatches[0][0].fetchedAt, user_id: 'admin' });
 });

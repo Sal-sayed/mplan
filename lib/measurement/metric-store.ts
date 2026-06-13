@@ -44,6 +44,7 @@ interface Ga4MetricRow {
   date: string;
   value: number;
   fetched_at: string;
+  user_id: string | null;
 }
 
 function toRow(m: Ga4MetricDaily): Ga4MetricRow {
@@ -54,6 +55,7 @@ function toRow(m: Ga4MetricDaily): Ga4MetricRow {
     date: m.date,
     value: m.value,
     fetched_at: m.fetchedAt,
+    user_id: m.user_id ?? null,
   };
 }
 
@@ -65,6 +67,7 @@ function rowToMetric(r: Ga4MetricRow): Ga4MetricDaily {
     date: r.date,
     value: Number(r.value),
     fetchedAt: r.fetched_at,
+    user_id: r.user_id ?? undefined,
   };
 }
 
@@ -142,7 +145,7 @@ export async function getMetricHistory(q: MetricHistoryQuery): Promise<Ga4Metric
     try {
       let query = sb
         .from(TABLE)
-        .select('property_id, metric_name, dimension_value, date, value, fetched_at')
+        .select('property_id, metric_name, dimension_value, date, value, fetched_at, user_id')
         .eq('property_id', q.propertyId)
         .eq('metric_name', q.metricName);
       if (q.dimensionValue !== undefined) query = query.eq('dimension_value', q.dimensionValue);

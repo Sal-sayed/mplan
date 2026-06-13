@@ -12,7 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
-import { isOperatorRequest } from '@/lib/auth';
+import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
 import { getValidAccessToken } from '@/lib/google/token-store';
 import { runGa4Report } from '@/lib/measurement/ga4-data';
 import { saveMetrics, type Ga4MetricDaily } from '@/lib/measurement/metric-store';
@@ -90,6 +90,7 @@ export async function POST(req: NextRequest) {
     const evtIdx = report.dimensionHeaders.indexOf('eventName');
     const valIdx = Math.max(0, report.metricHeaders.indexOf('eventCount'));
     const fetchedAt = new Date().toISOString();
+    const ownerId = await resolveOwnerId(req); // Stage 2: attribute the rows
 
     const rows: Ga4MetricDaily[] = report.rows.map((row) => ({
       propertyId,
@@ -98,6 +99,7 @@ export async function POST(req: NextRequest) {
       date: toIsoDate(dateIdx >= 0 ? row.dimensionValues[dateIdx] ?? '' : ''),
       value: Number(row.metricValues[valIdx] ?? 0) || 0,
       fetchedAt,
+      user_id: ownerId,
     }));
 
     await saveMetrics(rows);

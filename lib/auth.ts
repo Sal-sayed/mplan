@@ -147,3 +147,16 @@ export async function getSessionUser(req: {
     return null;
   }
 }
+
+// The owner id a write is attributed to (Stage 2): the signed-in user, or the
+// seeded 'admin' for unauthenticated / admin usage — matching the Stage-0
+// backfill, so existing single-admin behavior is unchanged. This STAMPS ownership
+// on writes; it does NOT gate reads (that's Stage 3).
+export const DEFAULT_OWNER_ID = 'admin';
+
+export async function resolveOwnerId(req: {
+  cookies?: { get(name: string): { value: string } | undefined };
+}): Promise<string> {
+  const user = await getSessionUser(req);
+  return user?.user_id ?? DEFAULT_OWNER_ID;
+}

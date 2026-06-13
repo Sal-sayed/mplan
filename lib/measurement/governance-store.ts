@@ -25,6 +25,9 @@ import type { MeasurementPlan } from './types.ts';
 import type { LaunchReadinessReport, LaunchDecision } from './launch-readiness.ts';
 
 const TABLE = 'governance_runs';
+// Owner attributed to local-scratch / pre-Stage-0 rows that lack a user_id —
+// matches the Stage-0 backfill value. (The route passes the real owner in.)
+const LEGACY_OWNER = 'admin';
 const LOCAL_FILE = path.join(process.cwd(), 'data', 'governance-runs.json');
 
 // GA4/GTM identifiers used for a run's live checks. Persisted so an unattended
@@ -71,6 +74,7 @@ interface GovernanceRunRow {
   report: LaunchReadinessReport;
   plan: MeasurementPlan | null;
   connectors: GovernanceConnectors | null;
+  user_id: string | null;
 }
 
 function runToRow(r: GovernanceRun): GovernanceRunRow {
@@ -83,6 +87,7 @@ function runToRow(r: GovernanceRun): GovernanceRunRow {
     report: r.report,
     plan: r.plan ?? null,
     connectors: r.connectors ?? null,
+    user_id: r.user_id ?? null,
   };
 }
 
@@ -96,6 +101,7 @@ function rowToRun(row: GovernanceRunRow): GovernanceRun {
     report: row.report,
     plan: row.plan ?? undefined,
     connectors: row.connectors ?? undefined,
+    user_id: row.user_id ?? undefined,
   };
 }
 
@@ -125,6 +131,7 @@ export function planKeyFor(plan: MeasurementPlan): string {
 export function buildGovernanceRun(
   report: LaunchReadinessReport,
   plan: MeasurementPlan,
+  ownerId: string,
   connectors?: GovernanceConnectors,
   now: Date = new Date()
 ): GovernanceRun {
@@ -140,6 +147,7 @@ export function buildGovernanceRun(
     report,
     plan,
     connectors,
+    user_id: ownerId,
   };
 }
 
@@ -192,13 +200,18 @@ export async function saveRun(run: GovernanceRun): Promise<void> {
 // source of truth; falls back to the dev-scratch file when Supabase is down or
 // unconfigured. Returns null (never throws) so the caller treats "no baseline"
 // and "storage unreachable" identically — no drift, no dead-end.
-export async function getLatestRun(siteUrl: string, planKey: string): Promise<GovernanceRun | null> {
+// Stage 2: the key is now (ownerId, siteUrl, planKey) — two users analyzing the
+// same site get distinct rows and never collide. ownerId is REQUIRED so a lookup
+// always scopes to one owner. (This is the governance key change; broader read
+// enforcement on the other routes is Stage 3.)
+export async function getLatestRun(ownerId: string, siteUrl: string, planKey: string): Promise<GovernanceRun | null> {
   const sb = getSupabase();
   if (sb) {
     try {
       const { data, error } = await sb
         .from(TABLE)
-        .select('run_id, site_url, plan_key, created_at, decision, report')
+        .select('run_id, site_url, plan_key, created_at, decision, report, user_id')
+        .eq('user_id', ownerId)
         .eq('site_url', siteUrl)
         .eq('plan_key', planKey)
         .order('created_at', { ascending: false })
@@ -212,7 +225,7 @@ export async function getLatestRun(siteUrl: string, planKey: string): Promise<Go
   }
 
   const local = (await readLocalRuns())
-    .filter((r) => r.siteUrl === siteUrl && r.planKey === planKey)
+    .filter((r) => (r.user_id ?? LEGACY_OWNER) === ownerId && r.siteUrl === siteUrl && r.planKey === planKey)
     .sort(byCreatedAtDesc);
   return local[0] ?? null;
 }
@@ -228,7 +241,7 @@ export async function listLatestRuns(maxScan = 500): Promise<GovernanceRun[]> {
     try {
       const { data, error } = await sb
         .from(TABLE)
-        .select('run_id, site_url, plan_key, created_at, decision, report, plan, connectors')
+        .select('run_id, site_url, plan_key, created_at, decision, report, plan, connectors, user_id')
         .order('created_at', { ascending: false })
         .limit(maxScan);
       if (error) throw error;
@@ -242,11 +255,12 @@ export async function listLatestRuns(maxScan = 500): Promise<GovernanceRun[]> {
     runs = (await readLocalRuns()).sort(byCreatedAtDesc);
   }
 
-  // Keep only the first (latest, since ordered desc) run per (siteUrl, planKey).
+  // Keep only the latest run per (user_id, siteUrl, planKey) so each user's plans
+  // are tracked independently (the scheduler re-runs every user's runs).
   const seen = new Set<string>();
   const latest: GovernanceRun[] = [];
   for (const r of runs) {
-    const key = `${r.siteUrl}::${r.planKey}`;
+    const key = `${r.user_id ?? LEGACY_OWNER}::${r.siteUrl}::${r.planKey}`;
     if (seen.has(key)) continue;
     seen.add(key);
     latest.push(r);

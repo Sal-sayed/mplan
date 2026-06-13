@@ -6,7 +6,7 @@ process.env.JWT_SECRET = 'stage1-session-test-secret-0123456789abcd'; // >=32, n
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSessionToken, getSessionUser } from './auth.ts';
+import { createSessionToken, getSessionUser, resolveOwnerId, DEFAULT_OWNER_ID } from './auth.ts';
 
 // Minimal req shape carrying a `session` cookie value.
 const reqWith = (token?: string) => ({
@@ -38,4 +38,12 @@ test('a token signed with a different secret → null', async () => {
   parts[2] = parts[2].slice(0, -1) + (parts[2].endsWith('A') ? 'B' : 'A');
   const user = await getSessionUser(reqWith(parts.join('.')));
   assert.equal(user, null);
+});
+
+// Stage 2: the owner a write is attributed to.
+test('resolveOwnerId returns the signed-in user, else the admin default', async () => {
+  const token = await createSessionToken({ user_id: 'sub_777', email: 'x@y.com' });
+  assert.equal(await resolveOwnerId(reqWith(token)), 'sub_777', 'signed-in → their id');
+  assert.equal(await resolveOwnerId(reqWith(undefined)), DEFAULT_OWNER_ID, 'anonymous → admin default');
+  assert.equal(DEFAULT_OWNER_ID, 'admin');
 });

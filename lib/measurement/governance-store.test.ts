@@ -91,11 +91,12 @@ beforeEach(() => {
 
 test('saveRun then getLatestRun round-trips the GovernanceRun', async () => {
   const key = planKeyFor(plan());
-  const run = buildGovernanceRun(report(), plan());
+  const run = buildGovernanceRun(report(), plan(), 'admin');
   assert.equal(run.planKey, key, 'planKey is derived from the plan');
+  assert.equal(run.user_id, 'admin', 'run is stamped with the owner');
   await saveRun(run);
 
-  const fetched = await getLatestRun(run.siteUrl, key);
+  const fetched = await getLatestRun('admin', run.siteUrl, key);
   assert.ok(fetched, 'a prior run is returned');
   assert.equal(fetched.runId, run.runId);
   assert.equal(fetched.siteUrl, run.siteUrl);
@@ -106,18 +107,35 @@ test('saveRun then getLatestRun round-trips the GovernanceRun', async () => {
 
 test('getLatestRun returns the MOST RECENT run for a (site, plan) key', async () => {
   const key = planKeyFor(plan());
-  const older = buildGovernanceRun(report(), plan(), undefined, new Date('2026-06-01T00:00:00.000Z'));
-  const newer = buildGovernanceRun(report(), plan(), undefined, new Date('2026-06-02T00:00:00.000Z'));
+  const older = buildGovernanceRun(report(), plan(), 'admin', undefined, new Date('2026-06-01T00:00:00.000Z'));
+  const newer = buildGovernanceRun(report(), plan(), 'admin', undefined, new Date('2026-06-02T00:00:00.000Z'));
   await saveRun(older);
   await saveRun(newer);
 
-  const fetched = await getLatestRun(older.siteUrl, key);
+  const fetched = await getLatestRun('admin', older.siteUrl, key);
   assert.equal(fetched?.createdAt, newer.createdAt);
+});
+
+// Stage-2 isolation checkpoint: two users analyzing the SAME url get distinct
+// rows, and getLatestRun returns only the caller's own run — never the other's.
+test('two users, same site/plan → distinct rows; getLatestRun is owner-scoped', async () => {
+  const key = planKeyFor(plan());
+  const runA = buildGovernanceRun(report(), plan(), 'user_A');
+  const runB = buildGovernanceRun(report(), plan(), 'user_B');
+  await saveRun(runA);
+  await saveRun(runB);
+
+  const aSees = await getLatestRun('user_A', runA.siteUrl, key);
+  const bSees = await getLatestRun('user_B', runB.siteUrl, key);
+  assert.equal(aSees?.runId, runA.runId, 'A sees only A');
+  assert.equal(aSees?.user_id, 'user_A');
+  assert.equal(bSees?.runId, runB.runId, 'B sees only B');
+  assert.notEqual(aSees?.runId, bSees?.runId, 'the two owners never share a run');
 });
 
 test('listLatestRuns reconstructs plan + connectors (the re-run context the cron needs)', async () => {
   const connectors = { ga4: { propertyId: '123456' }, gtm: { containerId: 'GTM-XXXX' } };
-  const run = buildGovernanceRun(report(), plan(), connectors);
+  const run = buildGovernanceRun(report(), plan(), 'admin', connectors);
   await saveRun(run);
 
   const all = await listLatestRuns();
@@ -127,15 +145,15 @@ test('listLatestRuns reconstructs plan + connectors (the re-run context the cron
 });
 
 test('listLatestRuns keeps only the latest run per (site, plan) key', async () => {
-  await saveRun(buildGovernanceRun(report(), plan(), undefined, new Date('2026-06-01T00:00:00.000Z')));
-  await saveRun(buildGovernanceRun(report(), plan(), undefined, new Date('2026-06-03T00:00:00.000Z')));
+  await saveRun(buildGovernanceRun(report(), plan(), 'admin', undefined, new Date('2026-06-01T00:00:00.000Z')));
+  await saveRun(buildGovernanceRun(report(), plan(), 'admin', undefined, new Date('2026-06-03T00:00:00.000Z')));
   const all = await listLatestRuns();
   assert.equal(all.length, 1, 'deduped to one per key');
   assert.equal(all[0].createdAt, '2026-06-03T00:00:00.000Z');
 });
 
 test('getLatestRun returns null when no prior run exists', async () => {
-  const fetched = await getLatestRun('https://never-seen.example.com', planKeyFor(plan('https://never-seen.example.com')));
+  const fetched = await getLatestRun('admin', 'https://never-seen.example.com', planKeyFor(plan('https://never-seen.example.com')));
   assert.equal(fetched, null);
 });
 
@@ -150,7 +168,7 @@ test('saveRun degrades gracefully (no throw) when Supabase is unconfigured', asy
   delete process.env.SUPABASE_SERVICE_ROLE_KEY;
   const key = planKeyFor(plan());
   // Must not throw even with no durable store and no local file.
-  await saveRun(buildGovernanceRun(report(), plan()));
-  const fetched = await getLatestRun('https://shop.example.com', key);
+  await saveRun(buildGovernanceRun(report(), plan(), 'admin'));
+  const fetched = await getLatestRun('admin', 'https://shop.example.com', key);
   assert.equal(fetched, null); // nothing durable persisted
 });

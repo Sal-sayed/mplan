@@ -99,3 +99,10 @@ test('saveMetrics([]) is a no-op and getMetricHistory returns [] for unknown key
   const none = await getMetricHistory({ propertyId: 'nope', metricName: 'eventCount' });
   assert.deepEqual(none, []);
 });
+
+test('Stage 2: user_id round-trips through save → history (owner is carried)', async () => {
+  await saveMetrics([{ ...m('2026-06-01', 5), user_id: 'admin' }]);
+  const hist = await getMetricHistory({ propertyId: '123', metricName: 'eventCount', dimensionValue: 'purchase' });
+  assert.equal(hist.length, 1);
+  assert.equal(hist[0].user_id, 'admin', 'the owner is persisted and read back');
+});

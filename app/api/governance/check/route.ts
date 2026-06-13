@@ -25,7 +25,7 @@ import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { runGovernanceCheck } from '@/lib/measurement/governance';
 import { saveRun, getLatestRun, buildGovernanceRun, planKeyFor } from '@/lib/measurement/governance-store';
 import { diffReports, type GovernanceDrift } from '@/lib/measurement/governance-diff';
-import { isOperatorRequest } from '@/lib/auth';
+import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
 export const maxDuration = 30; // config-only (GA4/GTM Admin reads) — no browser capture
@@ -105,18 +105,21 @@ export async function POST(req: NextRequest) {
     let drift: GovernanceDrift | undefined;
     if (persist || compareToLast) {
       try {
+        // Stage 2: attribute the run to the signed-in user (or 'admin' default).
+        // The (owner, siteUrl, planKey) key keeps two users' runs from colliding.
+        const ownerId = await resolveOwnerId(req);
         const planKey = planKeyFor(plan);
         // Diff against the PRIOR latest BEFORE saving this run (else the latest
         // would be this very run).
         if (compareToLast) {
-          const prior = await getLatestRun(meta.url, planKey);
+          const prior = await getLatestRun(ownerId, meta.url, planKey);
           if (prior) drift = diffReports(prior.report, report);
         }
         if (persist) {
           // Persist the plan + connectors alongside the report so an unattended
           // re-run (the scheduler) can reconstruct this exact check.
           const connectors = ga4 || gtm ? { ...(ga4 ? { ga4 } : {}), ...(gtm ? { gtm } : {}) } : undefined;
-          await saveRun(buildGovernanceRun(report, plan, connectors));
+          await saveRun(buildGovernanceRun(report, plan, ownerId, connectors));
         }
       } catch (err) {
         // Persistence is additive — log and continue with the report intact.

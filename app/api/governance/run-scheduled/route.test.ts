@@ -36,8 +36,8 @@ mockModule('@/lib/measurement/governance-store', {
     saveRun: async (run: any) => {
       savedRuns.push(run);
     },
-    buildGovernanceRun: (rep: any, plan: any, connectors: any) => ({
-      runId: 'run_new', siteUrl: rep.meta.url, planKey: 'k', createdAt: 't', decision: rep.decision, report: rep, plan, connectors,
+    buildGovernanceRun: (rep: any, plan: any, ownerId: any, connectors: any) => ({
+      runId: 'run_new', siteUrl: rep.meta.url, planKey: 'k', createdAt: 't', decision: rep.decision, report: rep, plan, connectors, user_id: ownerId,
     }),
   },
 });

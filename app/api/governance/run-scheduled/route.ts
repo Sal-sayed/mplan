@@ -121,7 +121,8 @@ export async function POST(req: NextRequest) {
       });
 
       const drift = diffReports(t.prior.report, report);
-      await saveRun(buildGovernanceRun(report, plan, connectors));
+      // Preserve the run's owner (Stage 2) — the cron acts on behalf of each user.
+      await saveRun(buildGovernanceRun(report, plan, t.prior.user_id ?? 'admin', connectors));
 
       results.push({
         siteUrl: t.siteUrl,

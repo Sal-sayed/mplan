@@ -70,16 +70,19 @@ export async function POST(req: NextRequest) {
     ? body.propertyIds.filter((p: unknown): p is string => typeof p === 'string')
     : null;
 
-  // Unique GA4 properties across persisted governance runs.
+  // Unique GA4 properties across persisted governance runs, each mapped to the
+  // owner of the run that registered it (Stage 2 — metrics carry that user_id).
   let properties: string[];
+  const ownerByProperty = new Map<string, string>();
   try {
     const persisted = await listLatestRuns();
-    const set = new Set<string>();
     for (const r of persisted) {
       const pid = r.connectors?.ga4?.propertyId;
-      if (pid && (!restrict || restrict.includes(pid))) set.add(pid);
+      if (pid && (!restrict || restrict.includes(pid)) && !ownerByProperty.has(pid)) {
+        ownerByProperty.set(pid, r.user_id ?? 'admin');
+      }
     }
-    properties = [...set];
+    properties = [...ownerByProperty.keys()];
   } catch (err) {
     return NextResponse.json({ success: false, error: (err as Error)?.message || 'Failed to resolve properties' }, { status: 500 });
   }
@@ -116,6 +119,7 @@ export async function POST(req: NextRequest) {
         date: toIsoDate(dateIdx >= 0 ? row.dimensionValues[dateIdx] ?? '' : ''),
         value: Number(row.metricValues[valIdx] ?? 0) || 0,
         fetchedAt,
+        user_id: ownerByProperty.get(propertyId) ?? 'admin',
       }));
 
       await saveMetrics(rows);

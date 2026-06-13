@@ -28,7 +28,7 @@ mockModule('@/lib/rate-limit', {
     rateLimitHeaders: () => ({}),
   },
 });
-mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator } });
+mockModule('@/lib/auth', { namedExports: { isOperatorRequest: async () => operator, resolveOwnerId: async () => 'admin' } });
 // These intercept the gate's dynamic imports (../google/token-store, ./ga4-config).
 mockModule('@/lib/google/token-store', { namedExports: { getValidAccessToken: async () => 'fake-token' } });
 mockModule('@/lib/measurement/ga4-config', { namedExports: { fetchGa4Config: async () => ga4Config } });
@@ -37,8 +37,8 @@ mockModule('@/lib/measurement/ga4-config', { namedExports: { fetchGa4Config: asy
 mockModule('@/lib/measurement/governance-store', {
   namedExports: {
     planKeyFor: () => 'test-plan-key',
-    buildGovernanceRun: (report: any, plan: any, connectors: any) => ({
-      runId: 'run_test', siteUrl: report.meta.url, planKey: 'test-plan-key', createdAt: '2026-06-12T00:00:00.000Z', decision: report.decision, report, plan, connectors,
+    buildGovernanceRun: (report: any, plan: any, ownerId: any, connectors: any) => ({
+      runId: 'run_test', siteUrl: report.meta.url, planKey: 'test-plan-key', createdAt: '2026-06-12T00:00:00.000Z', decision: report.decision, report, plan, connectors, user_id: ownerId,
     }),
     saveRun: async (run: any) => {
       if (saveThrows) throw new Error('storage down');
