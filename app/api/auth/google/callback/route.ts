@@ -10,8 +10,21 @@ import { exchangeCodeForIdentity } from '@/lib/google/oauth-login';
 import { upsertUser } from '@/lib/users-store';
 import { createSessionToken } from '@/lib/auth';
 
+// Behind Render's proxy, req.url is the INTERNAL origin (http://localhost:10000),
+// so redirects must be built from the PUBLIC origin instead: APP_BASE_URL if set,
+// else the x-forwarded-* headers Render injects, else req.url as a last resort.
+function publicBase(req: NextRequest): string {
+  if (process.env.APP_BASE_URL) return process.env.APP_BASE_URL.replace(/\/$/, '');
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host');
+  if (host) {
+    const proto = req.headers.get('x-forwarded-proto') ?? new URL(req.url).protocol.replace(':', '');
+    return `${proto}://${host}`;
+  }
+  return new URL(req.url).origin;
+}
+
 function redirectTo(req: NextRequest, target: string): NextResponse {
-  return NextResponse.redirect(new URL(target, req.url));
+  return NextResponse.redirect(new URL(target, publicBase(req)));
 }
 
 export async function GET(req: NextRequest) {
