@@ -53,12 +53,27 @@ export interface GoogleTokenResponse {
 // access_type=offline + prompt=consent are what make Google return a refresh
 // token (and re-issue one each time, which keeps Testing-mode tokens fresh).
 export function buildAuthUrl(state: string): string {
+  return buildAuthUrlForScopes(GOOGLE_SCOPES, state);
+}
+
+// Phase B: a SEPARATE write consent — only requested when the user opts to
+// auto-apply. Adds tagmanager.edit.containers (create variables/triggers/tags in
+// a workspace). It does NOT request tagmanager.publish: Phase B writes to an
+// unpublished workspace and the user publishes in GTM themselves. include_granted_
+// scopes keeps the existing read scopes, so the upgraded token still does reads.
+export const GTM_WRITE_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
+
+export function buildWriteAuthUrl(state: string): string {
+  return buildAuthUrlForScopes([...GOOGLE_SCOPES, GTM_WRITE_SCOPE], state);
+}
+
+function buildAuthUrlForScopes(scopes: string[], state: string): string {
   const { clientId, redirectUri } = getConfig();
   const params = new URLSearchParams({
     client_id: clientId,
     redirect_uri: redirectUri,
     response_type: 'code',
-    scope: GOOGLE_SCOPES.join(' '),
+    scope: scopes.join(' '),
     access_type: 'offline',
     prompt: 'consent',
     include_granted_scopes: 'true',

@@ -529,7 +529,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
   // Phase A implementation guide — its own full-screen view (display only).
   if (igPhase === 'done' && igProposal) {
-    return <ImplementationGuideScreen proposal={igProposal} url={meta.url} onReset={() => { setIgPhase('idle'); setIgProposal(null); }} />;
+    return <ImplementationGuideScreen proposal={igProposal} plan={plan} url={meta.url} onReset={() => { setIgPhase('idle'); setIgProposal(null); }} />;
   }
   if (igPhase === 'loading' || igPhase === 'error') {
     return (
