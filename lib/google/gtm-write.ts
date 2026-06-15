@@ -58,6 +58,15 @@ export async function createWorkspace(containerPath: string, name: string, token
   return { path: r.json.path, workspaceId: r.json.workspaceId };
 }
 
+// Existing workspaces by name — lets a re-run REUSE a same-named workspace
+// instead of failing on GTM's "duplicate name" (and the skip-existing logic then
+// only adds what's missing).
+export async function listWorkspaces(containerPath: string, token: string): Promise<Map<string, { path: string; workspaceId: string }>> {
+  const r = await gtmGet(`${containerPath}/workspaces`, token);
+  const arr: any[] = Array.isArray(r.json?.workspace) ? r.json.workspace : [];
+  return new Map(arr.map((w) => [w.name as string, { path: w.path as string, workspaceId: w.workspaceId as string }]));
+}
+
 // ── existing-name lookups (idempotency within the workspace) ──
 async function listNames(workspacePath: string, kind: 'variables' | 'triggers' | 'tags', key: string, token: string): Promise<Set<string>> {
   const r = await gtmGet(`${workspacePath}/${kind}`, token);

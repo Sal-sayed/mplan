@@ -12,6 +12,7 @@ import * as gtmWrite from '../google/gtm-write.ts';
 
 export interface GtmApplyClient {
   resolveContainer: typeof gtmWrite.resolveContainer;
+  listWorkspaces: typeof gtmWrite.listWorkspaces;
   createWorkspace: typeof gtmWrite.createWorkspace;
   listVariableNames: typeof gtmWrite.listVariableNames;
   listTriggers: typeof gtmWrite.listTriggers;
@@ -23,6 +24,7 @@ export interface GtmApplyClient {
 
 const defaultClient: GtmApplyClient = {
   resolveContainer: gtmWrite.resolveContainer,
+  listWorkspaces: gtmWrite.listWorkspaces,
   createWorkspace: gtmWrite.createWorkspace,
   listVariableNames: gtmWrite.listVariableNames,
   listTriggers: gtmWrite.listTriggers,
@@ -61,7 +63,10 @@ export async function applyPlanToGtm(input: GtmApplyInput, client: GtmApplyClien
   const now = input.now ?? new Date();
   const host = plan.meta.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const workspaceName = `Sirah — ${host} — ${now.toISOString().slice(0, 10)}`;
-  const ws = await client.createWorkspace(container.path, workspaceName, token);
+  // Reuse a same-named workspace if it exists (a re-run), else create one — GTM
+  // rejects duplicate workspace names, so don't blindly create.
+  const existingWorkspaces = await client.listWorkspaces(container.path, token);
+  const ws = existingWorkspaces.get(workspaceName) ?? await client.createWorkspace(container.path, workspaceName, token);
 
   const created = { variables: [] as string[], triggers: [] as string[], tags: [] as string[] };
   const skipped = { variables: [] as string[], triggers: [] as string[], tags: [] as string[] };

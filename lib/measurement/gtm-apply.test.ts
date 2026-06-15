@@ -28,6 +28,7 @@ function fakeClient(overrides: Partial<GtmApplyClient> = {}): { client: GtmApply
   const calls = { workspace: [] as string[], variables: [] as string[], triggers: [] as string[], tags: [] as string[] };
   const base: GtmApplyClient = {
     resolveContainer: async () => ({ path: 'accounts/1/containers/2', name: 'Web', publicId: 'GTM-XXXX' }),
+    listWorkspaces: async () => new Map(),
     createWorkspace: async (_cp, name) => { calls.workspace.push(name); return { path: 'accounts/1/containers/2/workspaces/3', workspaceId: '3' }; },
     listVariableNames: async () => new Set<string>(),
     listTriggers: async () => new Map<string, string>(),
@@ -88,4 +89,13 @@ test('skips items already in the container — no duplicates', async () => {
 test('container not found → throws', async () => {
   const { client } = fakeClient({ resolveContainer: async () => null });
   await assert.rejects(() => applyPlanToGtm({ ...input(), containerId: 'GTM-NOPE' }, client), /not found/);
+});
+
+test('reuses an existing same-named workspace instead of failing on duplicate', async () => {
+  const { client, calls } = fakeClient({
+    listWorkspaces: async () => new Map([['Sirah — shop.example.com — 2026-06-14', { path: 'accounts/1/containers/2/workspaces/9', workspaceId: '9' }]]),
+  });
+  const result = await applyPlanToGtm(input(), client);
+  assert.equal(calls.workspace.length, 0, 'did not create a new workspace');
+  assert.ok(result.reviewUrl.includes('workspaces/9'), 'used the existing workspace');
 });
