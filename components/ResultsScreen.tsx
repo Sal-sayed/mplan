@@ -614,134 +614,135 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               </div>
             </div>
           ) : (
-            <div className="flex-1 overflow-y-auto">
-              <div className="p-4 lg:p-8 max-w-5xl mx-auto">
-                <p className="text-slate-400 text-sm mb-6 max-w-2xl">
-                  Two layers of verification. The quick one already ran from your plan; the full one opens your deployed site to see what actually fires.
-                </p>
+            <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
+              {/* ── Setup — the only scrolling region (scrolls independently when tall) ── */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-4">
+                  <p className="text-slate-400 text-sm max-w-2xl">
+                    Two layers of verification. The quick one already ran from your plan; the full one opens your deployed site to see what actually fires.
+                  </p>
 
-                <div className="grid lg:grid-cols-3 gap-6 items-start">
-                  {/* ── Setup (left, wide) ── */}
-                  <div className="lg:col-span-2 space-y-4">
-                    {/* Layer 1 — plan consistency (already done, no URL) */}
-                    <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
-                        <span className="text-sm text-white font-medium">Plan consistency</span>
-                        <span className="ml-auto text-[11px] text-slate-500">instant · no URL</span>
-                      </div>
-                      <p className="text-xs text-slate-400 mt-2">
-                        Already analyzed from <code className="text-slate-300 break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
-                      </p>
+                  {/* Layer 1 — plan consistency (already done, no URL) */}
+                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
+                      <span className="text-sm text-white font-medium">Plan consistency</span>
+                      <span className="ml-auto text-[11px] text-slate-500">instant · no URL</span>
                     </div>
-
-                    {/* Layer 2 — live verification (optional URL) */}
-                    <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
-                        <span className="text-sm text-white font-medium">Live verification</span>
-                        <span className="ml-auto text-[11px] text-slate-500">~1 min</span>
-                      </div>
-                      <label className="block text-xs text-slate-400 mb-1">
-                        Staging / live URL <span className="text-slate-600">(optional)</span>
-                      </label>
-                      <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
-                        className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
-                      <p className="text-[11px] text-slate-500">
-                        Point at a URL where GA4/GTM is deployed to capture what fires. Leave blank to re-run plan consistency only.
-                      </p>
-
-                      {/* Google connection — turns the 5 GA4/GTM "not verified" checks into real pass/fail. */}
-                      <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                        {!gStatus ? (
-                          <p className="text-[11px] text-slate-500">Checking Google connection…</p>
-                        ) : !gStatus.configured ? (
-                          <p className="text-[11px] text-slate-500">GA4/GTM account checks aren&apos;t configured on the server.</p>
-                        ) : !gStatus.isAdmin ? (
-                          <p className="text-[11px] text-slate-500">
-                            Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
-                            <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-400 underline">Sign in as admin</a>, then reopen this.
-                          </p>
-                        ) : !gStatus.connected ? (
-                          <div>
-                            <p className="text-[11px] text-slate-500 mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
-                            <button type="button" onClick={connectGoogle}
-                              className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-slate-100 text-xs font-medium hover:bg-white/[0.12] transition flex items-center gap-1.5">
-                              <ShieldCheck size={12} /> Connect Google
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
-                              <button type="button" onClick={disconnectGoogle} disabled={gLoading}
-                                className="ml-auto text-[11px] text-slate-500 hover:text-slate-300 underline disabled:opacity-50">Disconnect</button>
-                            </div>
-                            <div className="grid sm:grid-cols-2 gap-2">
-                              <input value={rdGa4} onChange={(e) => setRdGa4(e.target.value)} placeholder="GA4 property ID"
-                                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
-                              <input value={rdGtm} onChange={(e) => setRdGtm(e.target.value)} placeholder="GTM-XXXXXXX"
-                                className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
-                            </div>
-                            <p className="text-[10px] text-slate-600">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
-
-                            {/* One-time historical backfill — pulls a chosen GA4 date
-                                range into metric history so the health check has a
-                                baseline. Separate from the daily collector. */}
-                            <div className="mt-1 pt-3 border-t border-white/[0.06]">
-                              <p className="text-[11px] text-slate-400 mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
-                              <div className="grid sm:grid-cols-2 gap-2">
-                                <label className="block">
-                                  <span className="text-[10px] text-slate-500">Start date</span>
-                                  <input type="date" value={bfStart} onChange={(e) => setBfStart(e.target.value)}
-                                    className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
-                                </label>
-                                <label className="block">
-                                  <span className="text-[10px] text-slate-500">End date</span>
-                                  <input type="date" value={bfEnd} onChange={(e) => setBfEnd(e.target.value)}
-                                    className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
-                                </label>
-                              </div>
-                              <button type="button" onClick={runBackfill}
-                                className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
-                                <BarChart3 size={12} /> Backfill &amp; check this range
-                              </button>
-                              <p className="text-[10px] text-slate-600 mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* ── Actions (right) ── */}
-                  <div className="lg:sticky lg:top-6 rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 space-y-2.5">
-                    <h3 className="text-sm font-semibold text-white mb-1">Run a check</h3>
-                    {rdPhase === 'error' && <p className="text-sm text-rose-400">{rdError}</p>}
-                    <button onClick={runReadiness}
-                      className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
-                      Run check
-                    </button>
-                    {/* Additive governance action — config-only, no URL. Compares this
-                        plan's setup to the last saved run and lights up the DriftSection. */}
-                    <button onClick={runGovernance}
-                      className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
-                      <History size={14} className="text-slate-400" /> Check for drift since last run
-                    </button>
-                    {/* Additive metric-health action — judges each key event's recent
-                        firing against its trailing baseline (collected metric history). */}
-                    <button onClick={runMetricHealth}
-                      className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
-                      <BarChart3 size={14} className="text-cyan-400" /> Check metric health
-                    </button>
-                    <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
-                      className="w-full py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
-                      Cancel
-                    </button>
-                    <p className="text-[11px] text-slate-500 pt-1">
-                      Drift compares your setup to the last saved run; metric health checks your key events are still firing.
+                    <p className="text-xs text-slate-400 mt-2">
+                      Already analyzed from <code className="text-slate-300 break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
                     </p>
                   </div>
+
+                  {/* Layer 2 — live verification (optional URL) */}
+                  <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
+                      <span className="text-sm text-white font-medium">Live verification</span>
+                      <span className="ml-auto text-[11px] text-slate-500">~1 min</span>
+                    </div>
+                    <label className="block text-xs text-slate-400 mb-1">
+                      Staging / live URL <span className="text-slate-600">(optional)</span>
+                    </label>
+                    <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
+                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
+                    <p className="text-[11px] text-slate-500">
+                      Point at a URL where GA4/GTM is deployed to capture what fires. Leave blank to re-run plan consistency only.
+                    </p>
+
+                    {/* Google connection — turns the 5 GA4/GTM "not verified" checks into real pass/fail. */}
+                    <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                      {!gStatus ? (
+                        <p className="text-[11px] text-slate-500">Checking Google connection…</p>
+                      ) : !gStatus.configured ? (
+                        <p className="text-[11px] text-slate-500">GA4/GTM account checks aren&apos;t configured on the server.</p>
+                      ) : !gStatus.isAdmin ? (
+                        <p className="text-[11px] text-slate-500">
+                          Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
+                          <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-400 underline">Sign in as admin</a>, then reopen this.
+                        </p>
+                      ) : !gStatus.connected ? (
+                        <div>
+                          <p className="text-[11px] text-slate-500 mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
+                          <button type="button" onClick={connectGoogle}
+                            className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-slate-100 text-xs font-medium hover:bg-white/[0.12] transition flex items-center gap-1.5">
+                            <ShieldCheck size={12} /> Connect Google
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
+                            <button type="button" onClick={disconnectGoogle} disabled={gLoading}
+                              className="ml-auto text-[11px] text-slate-500 hover:text-slate-300 underline disabled:opacity-50">Disconnect</button>
+                          </div>
+                          <div className="grid sm:grid-cols-2 gap-2">
+                            <input value={rdGa4} onChange={(e) => setRdGa4(e.target.value)} placeholder="GA4 property ID"
+                              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                            <input value={rdGtm} onChange={(e) => setRdGtm(e.target.value)} placeholder="GTM-XXXXXXX"
+                              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                          </div>
+                          <p className="text-[10px] text-slate-600">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
+
+                          {/* One-time historical backfill — pulls a chosen GA4 date
+                              range into metric history so the health check has a
+                              baseline. Separate from the daily collector. */}
+                          <div className="mt-1 pt-3 border-t border-white/[0.06]">
+                            <p className="text-[11px] text-slate-400 mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
+                            <div className="grid sm:grid-cols-2 gap-2">
+                              <label className="block">
+                                <span className="text-[10px] text-slate-500">Start date</span>
+                                <input type="date" value={bfStart} onChange={(e) => setBfStart(e.target.value)}
+                                  className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                              </label>
+                              <label className="block">
+                                <span className="text-[10px] text-slate-500">End date</span>
+                                <input type="date" value={bfEnd} onChange={(e) => setBfEnd(e.target.value)}
+                                  className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                              </label>
+                            </div>
+                            <button type="button" onClick={runBackfill}
+                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                              <BarChart3 size={12} /> Backfill &amp; check this range
+                            </button>
+                            <p className="text-[10px] text-slate-600 mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Actions — OUTSIDE the scroll, so they're ALWAYS visible: a right
+                  rail on wide screens, a fixed bottom bar on narrow ones. ── */}
+              <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-white/[0.08] bg-[#0d1525] p-4 lg:p-5 overflow-y-auto">
+                <div className="max-w-3xl mx-auto space-y-2.5">
+                  <h3 className="text-sm font-semibold text-white mb-1 hidden lg:block">Run a check</h3>
+                  {rdPhase === 'error' && <p className="text-sm text-rose-400">{rdError}</p>}
+                  <button onClick={runReadiness}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                    Run check
+                  </button>
+                  {/* Additive governance action — config-only, no URL. Compares this
+                      plan's setup to the last saved run and lights up the DriftSection. */}
+                  <button onClick={runGovernance}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
+                    <History size={14} className="text-slate-400" /> Check for drift since last run
+                  </button>
+                  {/* Additive metric-health action — judges each key event's recent
+                      firing against its trailing baseline (collected metric history). */}
+                  <button onClick={runMetricHealth}
+                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
+                    <BarChart3 size={14} className="text-cyan-400" /> Check metric health
+                  </button>
+                  <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
+                    className="w-full py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
+                    Cancel
+                  </button>
+                  <p className="text-[11px] text-slate-500 pt-1">
+                    Drift compares your setup to the last saved run; metric health checks your key events are still firing.
+                  </p>
                 </div>
               </div>
             </div>
