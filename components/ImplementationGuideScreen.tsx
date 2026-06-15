@@ -101,7 +101,9 @@ export default function ImplementationGuideScreen({
   const { summary, items } = proposal;
 
   // ── Phase B apply (write to an UNPUBLISHED GTM workspace) ──
-  const [writeStatus, setWriteStatus] = useState<{ connected: boolean; canWrite: boolean } | null>(null);
+  // canConnect = signed-in OR admin (allowed to grant a write token at all);
+  // canWrite = already holds the tagmanager.edit.containers scope.
+  const [writeStatus, setWriteStatus] = useState<{ canConnect: boolean; canWrite: boolean } | null>(null);
   const [containerId, setContainerId] = useState('');
   const [measurementId, setMeasurementId] = useState('');
   const [applyState, setApplyState] = useState<'idle' | 'applying' | 'done' | 'error'>('idle');
@@ -110,12 +112,14 @@ export default function ImplementationGuideScreen({
 
   const fetchWriteStatus = useCallback(async () => {
     try {
-      const r = await fetch('/api/google/status');
-      const d = r.ok ? await r.json() : {};
-      const canWrite = Array.isArray(d.scopes) && d.scopes.some((s: string) => s.includes('tagmanager.edit.containers'));
-      setWriteStatus({ connected: Boolean(d.connected), canWrite });
+      const [sRes, meRes] = await Promise.all([fetch('/api/google/status'), fetch('/api/auth/me')]);
+      const s = sRes.ok ? await sRes.json() : {};
+      const me = meRes.ok ? await meRes.json() : {};
+      const canWrite = Array.isArray(s.scopes) && s.scopes.some((x: string) => x.includes('tagmanager.edit.containers'));
+      const canConnect = Boolean(me.user) || Boolean(s.isAdmin); // signed-in user or admin
+      setWriteStatus({ canConnect, canWrite });
     } catch {
-      setWriteStatus({ connected: false, canWrite: false });
+      setWriteStatus({ canConnect: false, canWrite: false });
     }
   }, []);
 
@@ -206,7 +210,17 @@ export default function ImplementationGuideScreen({
                 This creates the variables, triggers, and GA4 tags in a <span className="text-slate-200">new GTM workspace</span>. It does <span className="text-slate-200">not publish</span> — you review and Publish in Tag Manager yourself, so nothing goes live until you say so.
               </p>
 
-              {writeStatus && !writeStatus.canWrite ? (
+              {!writeStatus ? (
+                <p className="text-[11px] text-slate-500">Checking your Google connection…</p>
+              ) : !writeStatus.canConnect ? (
+                <div>
+                  <p className="text-[11px] text-slate-500 mb-2">Sign in first to connect Google and apply to GTM.</p>
+                  <a href="/signin"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-slate-900 text-xs font-semibold hover:bg-slate-100 transition">
+                    Sign in
+                  </a>
+                </div>
+              ) : !writeStatus.canWrite ? (
                 <div>
                   <p className="text-[11px] text-slate-500 mb-2">Writing to GTM needs a separate, one-time write consent (your current connection is read-only).</p>
                   <button onClick={connectForWrite}
