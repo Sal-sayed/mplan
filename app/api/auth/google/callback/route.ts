@@ -8,7 +8,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { exchangeCodeForIdentity } from '@/lib/google/oauth-login';
 import { upsertUser } from '@/lib/users-store';
-import { createSessionToken } from '@/lib/auth';
+import { createSessionToken, getSessionUser } from '@/lib/auth';
+
+// Where to land after a successful sign-in: the app home.
+const POST_SIGNIN = '/';
 
 // Behind Render's proxy, req.url is the INTERNAL origin (http://localhost:10000),
 // so redirects must be built from the PUBLIC origin instead: APP_BASE_URL if set,
@@ -40,7 +43,11 @@ export async function GET(req: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development';
   const stateOk = isDev ? true : Boolean(state && expectedState && state === expectedState);
   if (!code || !stateOk) {
-    const res = redirectTo(req, '/signin?error=invalid_state');
+    // A stale state usually means a repeat attempt (extra tab / re-click). If a
+    // valid session already exists, the user IS signed in — just send them to the
+    // app instead of showing an error. Otherwise fail closed.
+    const alreadySignedIn = await getSessionUser(req);
+    const res = redirectTo(req, alreadySignedIn ? POST_SIGNIN : '/signin?error=invalid_state');
     res.cookies.set('login_oauth_state', '', { maxAge: 0, path: '/' });
     return res;
   }
@@ -50,7 +57,7 @@ export async function GET(req: NextRequest) {
     const identity = await exchangeCodeForIdentity(code);
     const user = await upsertUser({ id: identity.sub, email: identity.email ?? null, name: identity.name ?? null });
     const token = await createSessionToken({ user_id: user.id, email: user.email ?? undefined, role: 'user' });
-    res = redirectTo(req, '/signin?signedin=1');
+    res = redirectTo(req, POST_SIGNIN);
     res.cookies.set('session', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',

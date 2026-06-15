@@ -5,6 +5,7 @@
 // the current session. No data is gated by this yet.
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 
 interface Me {
   user_id: string;
@@ -39,6 +40,12 @@ export default function SignInPage() {
             <p className="text-sm text-slate-200">
               Signed in as <span className="font-semibold">{user.email || user.user_id}</span>
             </p>
+            <Link
+              href="/"
+              className="block w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition"
+            >
+              Go to the app →
+            </Link>
             <button
               onClick={signOut}
               className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm hover:bg-white/[0.1] transition"
