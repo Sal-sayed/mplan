@@ -6,11 +6,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Target, BarChart3, MousePointerClick, Database,
   ShieldCheck, Settings2, Copy, Check, ChevronDown, FileSpreadsheet, Loader2, Star,
-  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, RefreshCw, History,
+  CheckCircle2, AlertTriangle, AlertCircle, ArrowRight, RefreshCw, History, Wrench,
 } from 'lucide-react';
 import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
 import MetricHealthScreen from './MetricHealthScreen';
+import ImplementationGuideScreen from './ImplementationGuideScreen';
+import type { ImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
 import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
@@ -80,6 +82,10 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // One-time historical backfill range (separate from the daily collector).
   const [bfStart, setBfStart] = useState('');
   const [bfEnd, setBfEnd] = useState('');
+  // Phase A implementation guide (display-only proposal derived from the plan).
+  const [igPhase, setIgPhase] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
+  const [igProposal, setIgProposal] = useState<ImplementationProposal | null>(null);
+  const [igError, setIgError] = useState('');
   // Stage 5: saved-plan history (optional sign-in).
   const [signedIn, setSignedIn] = useState(false);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -240,6 +246,24 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Metric validation failed');
       setRdPhase('error');
+    }
+  };
+
+  // Phase A: derive the implementation proposal from the plan (display only —
+  // no Google/GTM call, no write). Shows ImplementationGuideScreen.
+  const runImplementationGuide = async () => {
+    setIgPhase('loading'); setIgError('');
+    try {
+      const res = await fetch('/api/implementation/proposal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) throw new Error(json.error || 'Could not build the implementation guide.');
+      setIgProposal(json.proposal as ImplementationProposal);
+      setIgPhase('done');
+    } catch (e) {
+      setIgError(e instanceof Error ? e.message : 'Could not build the implementation guide.');
+      setIgPhase('error');
     }
   };
 
@@ -503,6 +527,29 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     }
   };
 
+  // Phase A implementation guide — its own full-screen view (display only).
+  if (igPhase === 'done' && igProposal) {
+    return <ImplementationGuideScreen proposal={igProposal} url={meta.url} onReset={() => { setIgPhase('idle'); setIgProposal(null); }} />;
+  }
+  if (igPhase === 'loading' || igPhase === 'error') {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-[#0b1120] p-6 text-center">
+        {igPhase === 'loading' ? (
+          <>
+            <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
+            <p className="text-white font-semibold text-lg">Building implementation guide…</p>
+            <p className="text-slate-400 text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-rose-400 font-semibold">{igError}</p>
+            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">Back</button>
+          </>
+        )}
+      </div>
+    );
+  }
+
   // Full-screen takeover once a check has run. Metric health has its own screen
   // (no readiness report), so it's checked first.
   if (rdPhase === 'done' && rdKind === 'metrics') {
@@ -534,6 +581,10 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <button onClick={openReadiness}
             className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
+          </button>
+          <button onClick={runImplementationGuide}
+            className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
+            <Wrench size={14} className="text-cyan-400" /> <span className="hidden sm:inline">Implementation guide</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
         </div>
