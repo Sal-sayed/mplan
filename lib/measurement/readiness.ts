@@ -415,6 +415,7 @@ export function evaluateReadiness(
       consentBannerDetected: observed.consentBannerDetected ?? null,
       consentAccepted: observed.consentAccepted ?? null,
       consentMode: observed.consentMode ?? null,
+      preConsent: observed.preConsent ?? null,
     },
   };
 }

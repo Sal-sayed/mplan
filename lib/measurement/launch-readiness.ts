@@ -641,6 +641,7 @@ export async function runLaunchReadinessGate(
         accepted: report.observedSummary.consentAccepted,
       },
       consentModeStatus: report.observedSummary.consentMode,
+      preConsent: report.observedSummary.preConsent,
     });
     deployedSiteChecks = projectDeployedSiteChecks(report, consentCompliance);
     // Same report/observed we just produced — no re-capture, no re-reconcile.

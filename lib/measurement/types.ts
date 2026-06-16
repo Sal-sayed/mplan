@@ -196,6 +196,17 @@ export interface ConsentModeStatus {
   hasV2Signals: boolean; // ad_user_data / ad_personalization present in a consent payload
 }
 
+// What fired BEFORE consent was accepted (slice 2: pre-consent enforcement). Read
+// from the SAME tracking-spy buffer earlier in the same capture — before
+// detectAndAcceptConsent runs — so any tracking here fired without the user's
+// agreement. `ran` distinguishes "observed, nothing fired" (compliant) from
+// "couldn't observe" (inconclusive — never a false violation).
+export interface PreConsentObservation {
+  ran: boolean; // the pre-consent window was actually observed
+  events: ObservedEvent[]; // tracking events captured before consent acceptance
+  rawHitCount: number; // raw hits seen in the pre-consent window
+}
+
 // What actually fired on the page, normalized away from the spy's internals.
 export interface ObservedSignals {
   url: string;
@@ -204,6 +215,7 @@ export interface ObservedSignals {
   consentBannerDetected?: boolean;
   consentAccepted?: boolean;
   consentMode?: ConsentModeStatus; // granular Consent Mode read (when captured)
+  preConsent?: PreConsentObservation; // what fired before consent (slice 2)
 }
 
 export type EventReadinessStatus = 'implemented' | 'missing' | 'misconfigured';
@@ -256,5 +268,6 @@ export interface ReadinessReport {
     consentBannerDetected: boolean | null;
     consentAccepted: boolean | null;
     consentMode: ConsentModeStatus | null; // granular Consent Mode read, when captured
+    preConsent: PreConsentObservation | null; // what fired before consent (slice 2)
   };
 }

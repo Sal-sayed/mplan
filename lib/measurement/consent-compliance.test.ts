@@ -80,6 +80,98 @@ test('a requiresConsent event with categoriesUsed lacking analytics flags via fo
   assert.equal(r.verdict, 'warn'); // non-blocking because consentModeRequired is false
 });
 
+// ─── Slice 2: pre-consent enforcement dimension ───
+
+const ran = (events: { name: string; vendor: string }[]) => ({ ran: true, rawHitCount: events.length, events });
+
+test('pre-consent: a requiresConsent event fired before consent → per-event violation + fail (when required)', () => {
+  const p = plan();
+  p.consent.consentModeRequired = true;
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: banner,
+    consentModeStatus: fullV2, // setup is fine
+    preConsent: ran([{ name: 'purchase', vendor: 'GA4' }]),
+  });
+  assert.equal(r.verdict, 'fail');
+  assert.ok(r.preConsentEventNames.includes('purchase'));
+  assert.ok(r.issues.some((i) => i.code === 'pre_consent_event' && i.severity === 'fail' && /purchase/.test(i.message)));
+});
+
+test('pre-consent: a GA4 hit before consent when consentModeRequired → fail', () => {
+  const p = plan();
+  p.consent.consentModeRequired = true;
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: banner,
+    consentModeStatus: fullV2,
+    preConsent: ran([{ name: 'page_view', vendor: 'GA4' }]), // not a requiresConsent event
+  });
+  assert.equal(r.verdict, 'fail');
+  assert.ok(r.issues.some((i) => i.code === 'pre_consent_tracking' && i.severity === 'fail'));
+});
+
+test('pre-consent: a hit on a non-required setup → warn (not fail)', () => {
+  const p = plan(); // consentModeRequired false
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: banner,
+    consentModeStatus: fullV2,
+    preConsent: ran([{ name: 'scroll', vendor: 'GA4' }]),
+  });
+  assert.equal(r.verdict, 'warn');
+  assert.ok(r.issues.some((i) => i.code === 'pre_consent_tracking' && i.severity === 'warn'));
+});
+
+test('pre-consent: nothing fired before consent → pass for the enforcement dimension', () => {
+  const p = plan();
+  const r = evaluateConsentCompliance({ plan: p, bannerResult: banner, consentModeStatus: fullV2, preConsent: ran([]) });
+  assert.equal(r.verdict, 'pass');
+  assert.equal(r.preConsentChecked, true);
+  assert.equal(r.preConsentTracking, false);
+});
+
+test('pre-consent: a dataLayer (GTM) push before consent is NOT a violation (only outbound hits count)', () => {
+  const p = plan();
+  p.consent.consentModeRequired = true;
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: banner,
+    consentModeStatus: fullV2,
+    preConsent: ran([{ name: 'purchase', vendor: 'GTM' }]), // dataLayer push, not an outbound hit
+  });
+  assert.equal(r.preConsentTracking, false);
+  assert.equal(r.verdict, 'pass');
+});
+
+test('pre-consent: pass could not run (ran:false) + no setup capture → inconclusive, never a false fail', () => {
+  const p = plan();
+  p.consent.consentModeRequired = true;
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: null,
+    consentModeStatus: null, // setup not captured
+    preConsent: { ran: false, rawHitCount: 0, events: [] }, // enforcement could not run
+  });
+  assert.equal(r.verdict, 'inconclusive');
+  assert.equal(r.preConsentChecked, false);
+  assert.ok(!r.issues.some((i) => i.severity === 'fail'));
+});
+
+test('combined verdict: consent set up correctly BUT a tag fires pre-consent → still fail (both dimensions considered)', () => {
+  const p = plan();
+  p.consent.consentModeRequired = true;
+  const r = evaluateConsentCompliance({
+    plan: p,
+    bannerResult: banner,
+    consentModeStatus: fullV2, // setup: would be pass alone
+    preConsent: ran([{ name: 'purchase', vendor: 'GA4' }]), // enforcement: violation
+  });
+  assert.equal(r.captured, true); // setup was verified...
+  assert.equal(r.preConsentTracking, true); // ...and enforcement caught the violation
+  assert.equal(r.verdict, 'fail'); // worst across both dimensions
+});
+
 test('computeConsentCoherenceProblems matches the gate consent_coherent rules', () => {
   const p = plan();
   p.consent.consentModeRequired = true;

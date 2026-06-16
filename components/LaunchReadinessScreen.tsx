@@ -313,6 +313,38 @@ function ConsentCompliancePanel({ consent }: { consent: ConsentComplianceResult 
         />
       </div>
 
+      {/* Pre-consent tracking (slice 2): did anything fire BEFORE the user agreed? */}
+      <div className="mt-4 pt-4 border-t border-line">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Radio size={13} className="text-faint" />
+          <span className="text-[11px] uppercase tracking-widest text-faint font-semibold">Pre-consent tracking</span>
+        </div>
+        {!consent.preConsentChecked ? (
+          <p className="text-sm text-faint">Not verified — needs a deployed URL to observe the pre-consent window.</p>
+        ) : !consent.preConsentTracking ? (
+          <div className="flex items-start gap-3">
+            <span className="text-base mt-0.5 text-emerald-400">✓</span>
+            <div className="text-sm text-muted">No tracking fired before consent was granted — compliant.</div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <div className="flex items-start gap-3">
+              <span className="text-base mt-0.5 text-rose-400">✕</span>
+              <div className="text-sm text-muted">
+                {consent.preConsentHitCount} tracking hit(s) fired <span className="font-semibold">before</span> consent was granted — this tracks users before they agree.
+              </div>
+            </div>
+            {consent.preConsentEventNames.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pl-7">
+                {consent.preConsentEventNames.map((name) => (
+                  <code key={name} className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-mono break-all">{name}</code>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* Issues — plain-English, severity-ordered. */}
       {consent.issues.length > 0 && (
         <div className="mt-4">

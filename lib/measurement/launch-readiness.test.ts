@@ -190,6 +190,7 @@ function baseReport(): ReadinessReport {
       consentBannerDetected: true,
       consentAccepted: true,
       consentMode: null,
+      preConsent: null,
     },
   };
 }
@@ -327,7 +328,7 @@ function requiredPlan(): MeasurementPlan {
   return p;
 }
 
-function observedWith(consentMode: ConsentModeStatus | undefined): ObservedSignals {
+function observedWith(consentMode: ConsentModeStatus | undefined, preConsent?: ObservedSignals['preConsent']): ObservedSignals {
   return {
     url: 'https://staging.example.com',
     rawHitCount: 5,
@@ -338,13 +339,14 @@ function observedWith(consentMode: ConsentModeStatus | undefined): ObservedSigna
       { name: 'purchase', vendor: 'GA4', destinationId: 'G-X', parameters: ['value'], count: 1 },
     ],
     ...(consentMode ? { consentMode } : {}),
+    ...(preConsent ? { preConsent } : {}),
   };
 }
 
-async function runDeployed(plan: MeasurementPlan, consentMode: ConsentModeStatus | undefined) {
+async function runDeployed(plan: MeasurementPlan, consentMode: ConsentModeStatus | undefined, preConsent?: ObservedSignals['preConsent']) {
   const { report } = await runLaunchReadinessGate(
     { url: 'https://staging.example.com', plan, connectors: { deployedSiteUrl: 'https://staging.example.com' } },
-    { captureObservedSignals: async () => observedWith(consentMode) }
+    { captureObservedSignals: async () => observedWith(consentMode, preConsent) }
   );
   return report;
 }
@@ -382,6 +384,39 @@ test('no deployed URL → consent_mode_configured skipped + consentCompliance in
   const r = await run(requiredPlan());
   assert.equal(check(r, 'consent_mode_configured').status, 'skipped');
   assert.equal(r.consentCompliance?.verdict, 'inconclusive');
+});
+
+// ─── Slice 2: pre-consent enforcement folded into the same verdict ───
+
+test('pre-consent: a requiresConsent event fires before consent → fail + named, even when setup is correct', async () => {
+  // Consent Mode set up perfectly (would be pass on slice 1 alone)...
+  const fullMode: ConsentModeStatus = { active: true, hasDefault: true, hasUpdate: true, version: 'v2', hasV2Signals: true };
+  // ...but `purchase` (a requiresConsent event) fired BEFORE consent was accepted.
+  const preConsent = { ran: true, rawHitCount: 2, events: [{ name: 'purchase', vendor: 'GA4', parameters: [], count: 1 }] };
+  const report = await runDeployed(requiredPlan(), fullMode, preConsent);
+  const c = check(report, 'consent_mode_configured');
+  assert.equal(c.status, 'fail'); // enforcement dimension flips an otherwise-clean setup
+  assert.equal(report.decision, 'no_go'); // blocking because consentModeRequired
+  assert.equal(report.consentCompliance?.verdict, 'fail');
+  assert.ok(report.consentCompliance?.preConsentEventNames.includes('purchase'));
+  assert.ok(c.evidence?.some((e) => /purchase.*before consent/i.test(e)));
+});
+
+test('pre-consent: clean — nothing fired before consent → enforcement passes', async () => {
+  const fullMode: ConsentModeStatus = { active: true, hasDefault: true, hasUpdate: true, version: 'v2', hasV2Signals: true };
+  const preConsent = { ran: true, rawHitCount: 0, events: [] };
+  const report = await runDeployed(requiredPlan(), fullMode, preConsent);
+  assert.equal(check(report, 'consent_mode_configured').status, 'pass');
+  assert.equal(report.consentCompliance?.preConsentTracking, false);
+});
+
+test('pre-consent: non-required setup with a pre-consent hit → warn (not blocking)', async () => {
+  const fullMode: ConsentModeStatus = { active: true, hasDefault: true, hasUpdate: true, version: 'v2', hasV2Signals: true };
+  // goodPlan: consentModeRequired false. A non-requiresConsent GA4 hit fired pre-consent.
+  const preConsent = { ran: true, rawHitCount: 1, events: [{ name: 'scroll', vendor: 'GA4', parameters: [], count: 1 }] };
+  const report = await runDeployed(goodPlan(), fullMode, preConsent);
+  assert.equal(check(report, 'consent_mode_configured').status, 'warn');
+  assert.notEqual(report.decision, 'no_go');
 });
 
 // ─── GA4 / GTM projections (pure) ───

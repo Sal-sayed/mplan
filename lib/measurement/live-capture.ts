@@ -14,7 +14,7 @@ import { attachTrackingSpy, readTrackingSpyEvents } from '../tracking-spy/index.
 import { detectAndAcceptConsent, readConsentModeStatus } from '../scraper.ts';
 import { simulateRealUser } from '../user-simulator.ts';
 import { toObservedSignals } from './observed-signals.ts';
-import type { ObservedSignals } from './types.ts';
+import type { ObservedSignals, PreConsentObservation } from './types.ts';
 
 export async function captureObservedSignals(url: string): Promise<ObservedSignals> {
   // Standard headless Chromium — same launch args/context the auditor uses.
@@ -48,6 +48,15 @@ export async function captureObservedSignals(url: string): Promise<ObservedSigna
     }
     await page.waitForTimeout(2500);
 
+    // ── PRE-CONSENT observation (slice 2) ──────────────────────────────────
+    // Read the SAME spy buffer NOW, before accepting anything: whatever tracking
+    // is here fired without the user's agreement. Bounded (just an extra read of
+    // the already-running spy — no second navigation, no second browser). The
+    // read is non-destructive, so the post-consent measurement below is intact.
+    // Degrades to ran:false (→ inconclusive downstream) if the spy didn't install
+    // — never a false violation.
+    const preConsent = await observePreConsent(page);
+
     // Accept consent so consent-gated tags are allowed to fire before we measure.
     const consent = await detectAndAcceptConsent(page);
     await page.waitForTimeout(2000);
@@ -62,10 +71,26 @@ export async function captureObservedSignals(url: string): Promise<ObservedSigna
     const consentMode = await readConsentModeStatus(page);
 
     const spy = await readTrackingSpyEvents(page);
-    console.log(`[launch-readiness] capture: raw=${spy.rawHitCount}, unique=${spy.events.length}, consentMode=${consentMode.active}`);
+    console.log(`[launch-readiness] capture: raw=${spy.rawHitCount}, unique=${spy.events.length}, consentMode=${consentMode.active}, preConsentHits=${preConsent.events.length}`);
 
-    return toObservedSignals(url, spy, { detected: consent.detected, accepted: consent.accepted }, consentMode);
+    return toObservedSignals(url, spy, { detected: consent.detected, accepted: consent.accepted }, consentMode, preConsent);
   } finally {
     await browser.close();
+  }
+}
+
+// Observe the pre-consent window from the live spy buffer. ran:false (→ the
+// enforcement dimension reads inconclusive, never a false violation) when the spy
+// didn't install or the page can't be evaluated. The mapper drops malformed rows.
+async function observePreConsent(page: import('playwright').Page): Promise<PreConsentObservation> {
+  try {
+    const installed = await page.evaluate(() => Boolean((window as unknown as { __trackingSpy?: unknown }).__trackingSpy)).catch(() => false);
+    if (!installed) return { ran: false, events: [], rawHitCount: 0 };
+    const pre = await readTrackingSpyEvents(page);
+    // Reuse the same normalization the post-consent path uses (events only).
+    const events = toObservedSignals(page.url(), pre, null).events;
+    return { ran: true, events, rawHitCount: pre.rawHitCount };
+  } catch {
+    return { ran: false, events: [], rawHitCount: 0 };
   }
 }

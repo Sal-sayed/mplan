@@ -6,7 +6,7 @@
 // browser. evaluateReadiness (readiness.ts) then consumes the ObservedSignals.
 
 import type { NormalizedEvent } from '../tracking-spy/parsers.ts';
-import type { ConsentModeStatus, ObservedEvent, ObservedSignals } from './types.ts';
+import type { ConsentModeStatus, ObservedEvent, ObservedSignals, PreConsentObservation } from './types.ts';
 
 // The subset of readTrackingSpyEvents()'s result the mapper consumes. The real
 // TrackingSpyReadResult.events carry extra fields (firstSeenAt/lastSeenAt) — they
@@ -25,12 +25,14 @@ export interface ConsentCapture {
 // Map normalized spy events + consent + rawHitCount into the capture-agnostic
 // ObservedSignals shape evaluateReadiness expects. Pure and deterministic.
 // consentMode is the scraper's granular Consent Mode read (optional — absent on
-// the deterministic-only path or when capture couldn't read it).
+// the deterministic-only path or when capture couldn't read it). preConsent is the
+// pre-consent window observation (slice 2), also optional.
 export function toObservedSignals(
   url: string,
   spy: SpyCapture,
   consent: ConsentCapture | null,
-  consentMode: ConsentModeStatus | null = null
+  consentMode: ConsentModeStatus | null = null,
+  preConsent: PreConsentObservation | null = null
 ): ObservedSignals {
   const events: ObservedEvent[] = spy.events.map((e) => ({
     name: e.eventName,
@@ -47,5 +49,6 @@ export function toObservedSignals(
     consentBannerDetected: consent ? consent.detected : undefined,
     consentAccepted: consent ? consent.accepted : undefined,
     consentMode: consentMode ?? undefined,
+    preConsent: preConsent ?? undefined,
   };
 }
