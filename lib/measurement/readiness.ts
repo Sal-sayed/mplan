@@ -414,6 +414,7 @@ export function evaluateReadiness(
       rawHitCount: observed.rawHitCount ?? null,
       consentBannerDetected: observed.consentBannerDetected ?? null,
       consentAccepted: observed.consentAccepted ?? null,
+      consentMode: observed.consentMode ?? null,
     },
   };
 }

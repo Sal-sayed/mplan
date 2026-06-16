@@ -19,9 +19,10 @@ import type {
   ReadinessCheckOptions,
   ReadinessCheckId,
 } from './launch-readiness.ts';
+import { evaluateConsentCompliance } from './consent-compliance.ts';
 import type { Ga4ConfigData } from './ga4-config.ts';
 import type { GtmConfigData } from './gtm-config.ts';
-import type { MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
+import type { ConsentModeStatus, MeasurementPlan, ObservedSignals, ReadinessReport } from './types.ts';
 
 // A coherent ecommerce plan (consentModeRequired false) — every deterministic
 // check passes. events: [0] page_view (non-key), [1] purchase (key, consent-gated).
@@ -188,6 +189,7 @@ function baseReport(): ReadinessReport {
       rawHitCount: 10,
       consentBannerDetected: true,
       consentAccepted: true,
+      consentMode: null,
     },
   };
 }
@@ -220,12 +222,30 @@ test('projectTrackingSnippetPresent: signals present → pass', () => {
   assert.equal(projectTrackingSnippetPresent(baseReport()).status, 'pass');
 });
 
-test('projectConsentModeConfigured: PARTIAL → warn, scoped summary, blocking follows consentModeRequired', () => {
-  const required = projectConsentModeConfigured(baseReport(), true);
-  assert.equal(required.status, 'warn'); // never a confident green
-  assert.equal(required.blocking, true);
-  assert.match(required.summary, /not verifiable|Consent Mode/i);
-  assert.equal(projectConsentModeConfigured(baseReport(), false).blocking, false);
+test('projectConsentModeConfigured: evidence-backed status from the compliance verdict; blocking follows consentModeRequired', () => {
+  // Required by the plan + no Consent Mode present on the page → fail (blocking).
+  const reqPlan = goodPlan();
+  reqPlan.consent.consentModeRequired = true;
+  const failC = evaluateConsentCompliance({
+    plan: reqPlan,
+    bannerResult: { detected: true, accepted: true },
+    consentModeStatus: { active: false, hasDefault: false, hasUpdate: false, version: null, hasV2Signals: false },
+  });
+  const failCheck = projectConsentModeConfigured(failC);
+  assert.equal(failCheck.status, 'fail'); // evidence-backed, not the old blind warn
+  assert.equal(failCheck.blocking, true);
+
+  // Not required + fully present → pass, non-blocking.
+  const okPlan = goodPlan();
+  okPlan.consent.consentModeRequired = false;
+  const passC = evaluateConsentCompliance({
+    plan: okPlan,
+    bannerResult: { detected: true, accepted: true },
+    consentModeStatus: { active: true, hasDefault: true, hasUpdate: true, version: 'v2', hasV2Signals: true },
+  });
+  const passCheck = projectConsentModeConfigured(passC);
+  assert.equal(passCheck.status, 'pass');
+  assert.equal(passCheck.blocking, false);
 });
 
 test('projectDataLayerVariablesPresent: PARTIAL → warn; lists missing required params', () => {
@@ -297,6 +317,71 @@ test('deployedSiteUrl present but no signals → tracking_snippet_present fail �
   assert.equal(check(report, 'tracking_snippet_present').status, 'fail');
   assert.ok(report.blockingFailures.includes('tracking_snippet_present'));
   assert.equal(report.decision, 'no_go');
+});
+
+// ─── Consent Mode Verification: the gate now reads granular Consent Mode ───
+
+function requiredPlan(): MeasurementPlan {
+  const p = goodPlan();
+  p.consent.consentModeRequired = true; // categoriesUsed already ['necessary','analytics'] → coherent
+  return p;
+}
+
+function observedWith(consentMode: ConsentModeStatus | undefined): ObservedSignals {
+  return {
+    url: 'https://staging.example.com',
+    rawHitCount: 5,
+    consentBannerDetected: true,
+    consentAccepted: true,
+    events: [
+      { name: 'page_view', vendor: 'GA4', parameters: [], count: 1 },
+      { name: 'purchase', vendor: 'GA4', destinationId: 'G-X', parameters: ['value'], count: 1 },
+    ],
+    ...(consentMode ? { consentMode } : {}),
+  };
+}
+
+async function runDeployed(plan: MeasurementPlan, consentMode: ConsentModeStatus | undefined) {
+  const { report } = await runLaunchReadinessGate(
+    { url: 'https://staging.example.com', plan, connectors: { deployedSiteUrl: 'https://staging.example.com' } },
+    { captureObservedSignals: async () => observedWith(consentMode) }
+  );
+  return report;
+}
+
+test('consent_mode_configured: required + full Consent Mode v2 present → pass (not the old blind warn)', async () => {
+  const report = await runDeployed(requiredPlan(), { active: true, hasDefault: true, hasUpdate: true, version: 'v2', hasV2Signals: true });
+  assert.equal(check(report, 'consent_mode_configured').status, 'pass');
+  assert.equal(report.consentCompliance?.verdict, 'pass');
+  assert.ok(!report.blockingFailures.includes('consent_mode_configured'));
+});
+
+test('consent_mode_configured: required but NO consent signals on the page → fail → no_go', async () => {
+  const report = await runDeployed(requiredPlan(), { active: false, hasDefault: false, hasUpdate: false, version: null, hasV2Signals: false });
+  assert.equal(check(report, 'consent_mode_configured').status, 'fail');
+  assert.equal(check(report, 'consent_mode_configured').blocking, true);
+  assert.ok(report.blockingFailures.includes('consent_mode_configured'));
+  assert.equal(report.decision, 'no_go');
+  assert.equal(report.consentCompliance?.verdict, 'fail');
+});
+
+test('consent_mode_configured: required, default present but no update / no v2 → warn (partial)', async () => {
+  const report = await runDeployed(requiredPlan(), { active: true, hasDefault: true, hasUpdate: false, version: 'v1', hasV2Signals: false });
+  assert.equal(check(report, 'consent_mode_configured').status, 'warn');
+  assert.notEqual(report.decision, 'no_go'); // warn is non-blocking even when required
+  assert.equal(report.consentCompliance?.verdict, 'warn');
+});
+
+test('consent_mode_configured: severity stays non-blocking when consentModeRequired is false', async () => {
+  const report = await runDeployed(goodPlan(), { active: false, hasDefault: false, hasUpdate: false, version: null, hasV2Signals: false });
+  assert.equal(check(report, 'consent_mode_configured').blocking, false);
+  assert.notEqual(report.decision, 'no_go');
+});
+
+test('no deployed URL → consent_mode_configured skipped + consentCompliance inconclusive (never false fail)', async () => {
+  const r = await run(requiredPlan());
+  assert.equal(check(r, 'consent_mode_configured').status, 'skipped');
+  assert.equal(r.consentCompliance?.verdict, 'inconclusive');
 });
 
 // ─── GA4 / GTM projections (pure) ───

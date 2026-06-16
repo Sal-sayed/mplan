@@ -16,6 +16,7 @@ import type {
   CheckStatus,
   LaunchDecision,
 } from '@/lib/measurement/launch-readiness';
+import type { ConsentComplianceResult, ConsentVerdict } from '@/lib/measurement/consent-compliance';
 import type { GovernanceDrift, DriftVerdict } from '@/lib/measurement/governance-diff';
 
 interface DecisionStyle {
@@ -228,6 +229,107 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
         )}
       </div>
     </div>
+  );
+}
+
+// ─── Consent compliance (slice 1: Consent Mode Verification) ───
+
+const CONSENT_VERDICT: Record<ConsentVerdict, { label: string; text: string; ring: string; bg: string; Icon: typeof CheckCircle2 }> = {
+  pass: { label: 'Consent compliant', text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', Icon: CheckCircle2 },
+  warn: { label: 'Consent — review', text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', Icon: AlertTriangle },
+  fail: { label: 'Consent — not compliant', text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', Icon: AlertCircle },
+  inconclusive: { label: 'Consent — not verified', text: 'text-faint', ring: 'border-line', bg: 'bg-overlay', Icon: ShieldCheck },
+};
+
+// One present/absent indicator row (mirrors the audit Consent Management panel).
+function ConsentSignalRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className={`text-base mt-0.5 ${ok ? 'text-emerald-400' : 'text-amber-400'}`}>{ok ? '✓' : '⚠'}</span>
+      <div>
+        <div className="text-sm text-muted font-medium">{label}</div>
+        <div className="text-xs text-faint mt-0.5">{detail}</div>
+      </div>
+    </div>
+  );
+}
+
+function ConsentCompliancePanel({ consent }: { consent: ConsentComplianceResult }) {
+  const v = CONSENT_VERDICT[consent.verdict];
+  const VIcon = v.Icon;
+  const required = consent.consentModeRequired;
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}
+      className={`rounded-2xl border ${v.ring} ${v.bg} p-5`}
+    >
+      <div className="flex items-start gap-3">
+        <div className={`w-10 h-10 rounded-xl bg-overlay flex items-center justify-center shrink-0`}>
+          <VIcon className={v.text} size={22} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={13} className="text-faint" />
+            <span className="text-[11px] uppercase tracking-widest text-faint font-semibold">Consent &amp; compliance</span>
+          </div>
+          <h2 className={`text-lg font-bold ${v.text} mt-0.5`}>{v.label}</h2>
+          <p className="text-faint text-sm mt-0.5">{consent.summary}</p>
+        </div>
+      </div>
+
+      {/* Signal grid — what the page actually showed. */}
+      <div className="mt-4 pt-4 border-t border-line grid sm:grid-cols-2 gap-3">
+        <ConsentSignalRow
+          ok={consent.consentModePresent}
+          label="Google Consent Mode"
+          detail={
+            consent.captured
+              ? consent.consentModePresent
+                ? `Present — default ${consent.hasDefault ? '✓' : '✗'}, update ${consent.hasUpdate ? '✓' : '✗'}`
+                : 'No consent default/update signals found on the page'
+              : 'Not verified — needs a deployed URL'
+          }
+        />
+        <ConsentSignalRow
+          ok={consent.consentModeV2}
+          label="Consent Mode v2"
+          detail={consent.consentModeV2 ? 'ad_user_data / ad_personalization present' : 'v2 ad_* signals not found'}
+        />
+        <ConsentSignalRow
+          ok={consent.bannerDetected === true}
+          label="Consent banner / CMP"
+          detail={
+            consent.bannerDetected === true
+              ? `Detected${consent.cmp ? ` (${consent.cmp})` : ''}${consent.bannerAccepted ? ' — accepted' : ''}`
+              : consent.bannerDetected === false
+                ? 'No consent banner detected'
+                : 'Banner state unknown'
+          }
+        />
+        <ConsentSignalRow
+          ok={!required || consent.consentModePresent}
+          label="Required by plan"
+          detail={required ? 'Plan requires Consent Mode' : 'Plan does not require Consent Mode'}
+        />
+      </div>
+
+      {/* Issues — plain-English, severity-ordered. */}
+      {consent.issues.length > 0 && (
+        <div className="mt-4">
+          <p className="text-[10px] uppercase tracking-widest text-faint mb-2">Issues</p>
+          <ul className="space-y-1.5">
+            {consent.issues.map((iss, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <span className={`text-xs mt-0.5 ${iss.severity === 'fail' ? 'text-rose-400' : 'text-amber-400'}`}>
+                  {iss.severity === 'fail' ? '✕' : '⚠'}
+                </span>
+                <span className="text-muted">{iss.message}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </motion.div>
   );
 }
 
@@ -461,7 +563,10 @@ export default function LaunchReadinessScreen({ report, onReset, drift, baseline
           />
           <CheckGroup title="Not yet verified" status="skipped" checks={otherSkips} defaultOpen={false} />
 
-          {/* 3 — Evidence, only when a live capture ran */}
+          {/* 3 — Consent & compliance verdict (always present; inconclusive until a live capture runs) */}
+          {report.consentCompliance && <ConsentCompliancePanel consent={report.consentCompliance} />}
+
+          {/* 4 — Evidence, only when a live capture ran */}
           {report.observed && <ObservedEvidence observed={report.observed} />}
         </div>
       </div>

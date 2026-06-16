@@ -12,6 +12,11 @@
 // no validation library. The plan shape is owned by types.ts; never redefined.
 
 import { evaluateReadiness } from './readiness.ts';
+import {
+  computeConsentCoherenceProblems,
+  evaluateConsentCompliance,
+  type ConsentComplianceResult,
+} from './consent-compliance.ts';
 import type { BusinessModel, MeasurementPlan, ObservedEvent, ObservedSignals, ReadinessReport } from './types.ts';
 import type { Ga4ConfigData } from './ga4-config.ts';
 import type { GtmConfigData } from './gtm-config.ts';
@@ -105,6 +110,10 @@ export interface LaunchReadinessReport {
   // Present only when deployedSiteUrl was supplied and capture+reconcile ran;
   // omitted entirely on the deterministic-only path.
   observed?: LaunchObservedEvidence;
+  // Focused Consent & Compliance verdict — always present. Folds plan coherence +
+  // the banner signal + the granular Consent Mode read into one evidence-backed
+  // result. 'inconclusive' on the deterministic-only path (no live capture).
+  consentCompliance?: ConsentComplianceResult;
 }
 
 export interface LaunchReadinessResult {
@@ -300,15 +309,8 @@ function checkConsentCoherent(plan: MeasurementPlan): ReadinessCheck {
   const { consent } = plan;
   // Conditionally blocking: only a hard gate when Consent Mode is required.
   const blocking = consent.consentModeRequired === true;
-  const problems: string[] = [];
-
-  const anyRequiresConsent = plan.events.some((e) => e.requiresConsent);
-  if (anyRequiresConsent && !consent.categoriesUsed.includes('analytics')) {
-    problems.push("events set requiresConsent but consent.categoriesUsed is missing 'analytics'");
-  }
-  if (consent.consentModeRequired && consent.categoriesUsed.length === 0) {
-    problems.push('consentModeRequired is true but consent.categoriesUsed is empty');
-  }
+  // Shared with the Consent & Compliance evaluator so the two never drift.
+  const problems = computeConsentCoherenceProblems(plan);
 
   const pass = problems.length === 0;
   const status: CheckStatus = pass ? 'pass' : consent.consentModeRequired ? 'fail' : 'warn';
@@ -404,32 +406,41 @@ export function projectTrackingSnippetPresent(report: ReadinessReport): Readines
   };
 }
 
-// PARTIAL by nature: the spy sees a consent BANNER, not granular Consent Mode
-// state (consent_default/update are filtered). Never a confident green — always
-// 'warn', scoped in the summary. Blocking only when the plan requires Consent Mode.
-export function projectConsentModeConfigured(report: ReadinessReport, consentModeRequired: boolean): ReadinessCheck {
-  const detected = report.observedSummary.consentBannerDetected;
-  const accepted = report.observedSummary.consentAccepted;
-  const bannerNote =
-    detected === true
-      ? `a consent banner was detected${accepted ? ' and accepted' : ''}`
-      : detected === false
-        ? 'no consent banner was detected'
-        : 'consent banner state is unknown';
+// Evidence-backed now: projects the Consent & Compliance evaluator result into
+// the check. The granular Consent Mode read (from window.dataLayer, surfaced via
+// observedSummary.consentMode) replaces the old blind 'warn'. Blocking still
+// follows consentModeRequired only — a required-but-absent Consent Mode is the one
+// case that can now fail (→ no_go); everything else is pass/warn.
+const CONSENT_VERDICT_STATUS: Record<ConsentComplianceResult['verdict'], CheckStatus> = {
+  pass: 'pass',
+  warn: 'warn',
+  fail: 'fail',
+  inconclusive: 'warn', // never a false fail on the live path
+};
+
+export function projectConsentModeConfigured(compliance: ConsentComplianceResult): ReadinessCheck {
+  const evidence = [
+    `consentModeRequired=${compliance.consentModeRequired}`,
+    `consentModePresent=${compliance.consentModePresent}`,
+    `consentDefault=${compliance.hasDefault}`,
+    `consentUpdate=${compliance.hasUpdate}`,
+    `consentModeV2=${compliance.consentModeV2}`,
+    `consentBannerDetected=${compliance.bannerDetected ?? 'unknown'}`,
+    ...compliance.issues.map((i) => `${i.severity}: ${i.message}`),
+  ];
   return {
     id: 'consent_mode_configured',
     category: 'consent',
     name: 'Consent Mode configured on the site',
-    status: 'warn',
-    blocking: consentModeRequired,
+    status: CONSENT_VERDICT_STATUS[compliance.verdict],
+    blocking: compliance.consentModeRequired,
     dependsOn: 'deployed_site',
-    summary: `Partial check: ${bannerNote}, but Google Consent Mode configuration is NOT verifiable from page capture (the spy filters consent_default/update). Verify Consent Mode manually or via the GA4/GTM checks in the next phase.`,
-    evidence: [
-      `consentBannerDetected=${detected ?? 'unknown'}`,
-      `consentAccepted=${accepted ?? 'unknown'}`,
-      `consentReady=${report.scores.consentReady}`,
-    ],
-    remediation: 'Manually confirm Consent Mode v2 default/update signals on the deployed site; full verification arrives with the GA4/GTM OAuth checks.',
+    summary: compliance.summary,
+    evidence,
+    remediation:
+      compliance.verdict === 'pass'
+        ? undefined
+        : 'Configure Google Consent Mode v2 (consent default + update with ad_user_data/ad_personalization) and ensure the CMP signals the user choice before tags fire.',
   };
 }
 
@@ -456,13 +467,14 @@ export function projectDataLayerVariablesPresent(report: ReadinessReport): Readi
   };
 }
 
-// Build the 4 deployed-site checks from one ReadinessReport (one capture, one reconcile).
-function projectDeployedSiteChecks(report: ReadinessReport, consentModeRequired: boolean): ReadinessCheck[] {
+// Build the 4 deployed-site checks from one ReadinessReport (one capture, one
+// reconcile) + the consent compliance verdict computed from that same capture.
+function projectDeployedSiteChecks(report: ReadinessReport, compliance: ConsentComplianceResult): ReadinessCheck[] {
   return [
     projectPlannedEventsFire(report),
     projectTrackingSnippetPresent(report),
     projectDataLayerVariablesPresent(report),
-    projectConsentModeConfigured(report, consentModeRequired),
+    projectConsentModeConfigured(compliance),
   ];
 }
 
@@ -615,14 +627,26 @@ export async function runLaunchReadinessGate(
   const deployedSiteUrl = ctx.connectors?.deployedSiteUrl;
   let deployedSiteChecks: ReadinessCheck[];
   let observedEvidence: LaunchObservedEvidence | undefined;
+  // Always produced (pure). On the deterministic-only path it folds plan coherence
+  // + a null Consent Mode read → 'inconclusive', never a false fail.
+  let consentCompliance: ConsentComplianceResult;
   if (deployedSiteUrl) {
     const capture = opts.captureObservedSignals ?? (await loadDefaultCapture());
     const observed = await capture(deployedSiteUrl);
     const report = evaluateReadiness(plan, observed);
-    deployedSiteChecks = projectDeployedSiteChecks(report, consentModeRequired);
+    consentCompliance = evaluateConsentCompliance({
+      plan,
+      bannerResult: {
+        detected: report.observedSummary.consentBannerDetected,
+        accepted: report.observedSummary.consentAccepted,
+      },
+      consentModeStatus: report.observedSummary.consentMode,
+    });
+    deployedSiteChecks = projectDeployedSiteChecks(report, consentCompliance);
     // Same report/observed we just produced — no re-capture, no re-reconcile.
     observedEvidence = { summary: report.observedSummary, events: observed.events };
   } else {
+    consentCompliance = evaluateConsentCompliance({ plan, bannerResult: null, consentModeStatus: null });
     deployedSiteChecks = skippedDeployedSiteChecks(consentModeRequired);
   }
 
@@ -704,6 +728,7 @@ export async function runLaunchReadinessGate(
     warnings,
     skipped,
     approval,
+    consentCompliance,
     ...(observedEvidence ? { observed: observedEvidence } : {}),
   };
 

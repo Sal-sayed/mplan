@@ -183,6 +183,19 @@ export interface ObservedEvent {
   count?: number; // how many times it fired during capture
 }
 
+// Granular Google Consent Mode state read from window.dataLayer at capture time.
+// Distinct from the consent BANNER signal: the banner tells us a CMP exists, this
+// tells us whether Consent Mode default/update signals (and v2 ad_* signals) are
+// actually present on the page. Sourced from the scraper's existing dataLayer
+// read (lib/scraper.ts readConsentModeStatus), not a new scanner.
+export interface ConsentModeStatus {
+  active: boolean; // any consent default OR update seen in the dataLayer
+  hasDefault: boolean; // a `consent default` push was present
+  hasUpdate: boolean; // a `consent update` push was present
+  version: string | null; // 'v2' when ad_user_data/ad_personalization present, 'v1' when only basic, else null
+  hasV2Signals: boolean; // ad_user_data / ad_personalization present in a consent payload
+}
+
 // What actually fired on the page, normalized away from the spy's internals.
 export interface ObservedSignals {
   url: string;
@@ -190,6 +203,7 @@ export interface ObservedSignals {
   rawHitCount?: number; // total raw hits seen — a capture-health sanity check
   consentBannerDetected?: boolean;
   consentAccepted?: boolean;
+  consentMode?: ConsentModeStatus; // granular Consent Mode read (when captured)
 }
 
 export type EventReadinessStatus = 'implemented' | 'missing' | 'misconfigured';
@@ -241,5 +255,6 @@ export interface ReadinessReport {
     rawHitCount: number | null;
     consentBannerDetected: boolean | null;
     consentAccepted: boolean | null;
+    consentMode: ConsentModeStatus | null; // granular Consent Mode read, when captured
   };
 }

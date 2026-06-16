@@ -11,7 +11,7 @@
 
 import { chromium } from 'playwright';
 import { attachTrackingSpy, readTrackingSpyEvents } from '../tracking-spy/index.ts';
-import { detectAndAcceptConsent } from '../scraper.ts';
+import { detectAndAcceptConsent, readConsentModeStatus } from '../scraper.ts';
 import { simulateRealUser } from '../user-simulator.ts';
 import { toObservedSignals } from './observed-signals.ts';
 import type { ObservedSignals } from './types.ts';
@@ -56,10 +56,15 @@ export async function captureObservedSignals(url: string): Promise<ObservedSigna
     await simulateRealUser(page, { maxDurationMs: 45000, label: 'launch-readiness' });
     await page.waitForTimeout(6000); // settle — analytics debounce/batch
 
-    const spy = await readTrackingSpyEvents(page);
-    console.log(`[launch-readiness] capture: raw=${spy.rawHitCount}, unique=${spy.events.length}`);
+    // Read granular Consent Mode AFTER accepting consent, so both the `default`
+    // (page load) and `update` (on accept) signals have had a chance to push.
+    // Reuses the scraper's existing dataLayer read — the spy can't see these.
+    const consentMode = await readConsentModeStatus(page);
 
-    return toObservedSignals(url, spy, { detected: consent.detected, accepted: consent.accepted });
+    const spy = await readTrackingSpyEvents(page);
+    console.log(`[launch-readiness] capture: raw=${spy.rawHitCount}, unique=${spy.events.length}, consentMode=${consentMode.active}`);
+
+    return toObservedSignals(url, spy, { detected: consent.detected, accepted: consent.accepted }, consentMode);
   } finally {
     await browser.close();
   }

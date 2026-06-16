@@ -2,6 +2,7 @@
 import { chromium, type Page } from 'playwright';
 import { attachTrackingSpy, readTrackingSpyEvents, type NormalizedEvent } from './tracking-spy';
 import { simulateRealUser, type SimResult } from './user-simulator';
+import type { ConsentModeStatus } from './measurement/types';
 
 export interface ScrapedPage {
   meta: Record<string, string>;
@@ -705,6 +706,44 @@ export async function detectAndAcceptConsent(page: Page): Promise<{
 
   // PHASE 5: Universal heuristic text-pattern match
   return universalAcceptClick(page);
+}
+
+// Read granular Google Consent Mode state from window.dataLayer — the SAME read
+// the existing-site audit already does inline (see deepScrapeWebsite's
+// consentModeStatus), exported here so the launch-readiness gate can reuse it
+// instead of staying blind (the tracking-spy filters consent_default/update).
+// Read-only; never throws. Returns active=false when no consent signals exist.
+export async function readConsentModeStatus(page: Page): Promise<ConsentModeStatus> {
+  const empty: ConsentModeStatus = { active: false, hasDefault: false, hasUpdate: false, version: null, hasV2Signals: false };
+  return page
+    .evaluate(() => {
+      const dl = (window as unknown as { dataLayer?: unknown[] }).dataLayer;
+      if (!Array.isArray(dl)) return { hasDefault: false, hasUpdate: false, hasV2Signals: false };
+      let hasDefault = false, hasUpdate = false, hasV2Signals = false;
+      for (const item of dl) {
+        // Consent Mode pushes the gtag arguments object: ['consent','default'|'update', {…}].
+        if (Array.isArray(item) && item[0] === 'consent') {
+          if (item[1] === 'default') hasDefault = true;
+          if (item[1] === 'update') hasUpdate = true;
+          const payload = item[2];
+          if (payload && typeof payload === 'object' && ('ad_user_data' in payload || 'ad_personalization' in payload)) {
+            hasV2Signals = true; // Consent Mode v2 signals
+          }
+        }
+      }
+      return { hasDefault, hasUpdate, hasV2Signals };
+    })
+    .then((r) => {
+      const active = r.hasDefault || r.hasUpdate;
+      return {
+        active,
+        hasDefault: r.hasDefault,
+        hasUpdate: r.hasUpdate,
+        version: r.hasV2Signals ? 'v2' : active ? 'v1' : null,
+        hasV2Signals: r.hasV2Signals,
+      } satisfies ConsentModeStatus;
+    })
+    .catch(() => empty);
 }
 
 // ═══════════════════════════════════════════
