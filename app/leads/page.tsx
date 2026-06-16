@@ -57,14 +57,14 @@ export default function LeadsPage() {
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#0b1120] flex flex-col">
+    <div className="h-screen w-screen overflow-hidden bg-app flex flex-col">
       {/* Header */}
-      <header className="shrink-0 h-14 px-6 flex items-center justify-between border-b border-white/[0.08]">
+      <header className="shrink-0 h-14 px-6 flex items-center justify-between border-b border-line">
         <div />
         <div className="flex items-center gap-3">
-          <span className="text-xs text-slate-500 uppercase tracking-wider hidden sm:inline">Admin</span>
+          <span className="text-xs text-faint uppercase tracking-wider hidden sm:inline">Admin</span>
           <button onClick={handleLogout}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-slate-400 hover:text-white transition text-xs">
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-overlay border border-line text-faint hover:text-ink transition text-xs">
             <LogOut size={12} /> Logout
           </button>
         </div>
@@ -75,15 +75,15 @@ export default function LeadsPage() {
         {/* Title row */}
         <div className="flex items-end justify-between mb-5 shrink-0">
           <div>
-            <h1 className="text-2xl font-bold text-white">Lead Exports</h1>
-            <p className="text-slate-500 text-xs mt-1">All measurement plan exports in one place</p>
+            <h1 className="text-2xl font-bold text-ink">Lead Exports</h1>
+            <p className="text-faint text-xs mt-1">All measurement plan exports in one place</p>
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center gap-3 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5">
+            className="flex items-center gap-3 bg-overlay border border-line rounded-lg px-4 py-2.5">
             <Users className="text-blue-400" size={16} />
             <div>
-              <span className="text-xl font-bold text-white">{total}</span>
-              <span className="text-[10px] text-slate-500 ml-1.5">exports</span>
+              <span className="text-xl font-bold text-ink">{total}</span>
+              <span className="text-[10px] text-faint ml-1.5">exports</span>
             </div>
           </motion.div>
         </div>
@@ -93,34 +93,34 @@ export default function LeadsPage() {
           {loading ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <Loader2 className="mx-auto text-slate-500 animate-spin mb-3" size={20} />
-                <p className="text-sm text-slate-500">Loading leads...</p>
+                <Loader2 className="mx-auto text-faint animate-spin mb-3" size={20} />
+                <p className="text-sm text-faint">Loading leads...</p>
               </div>
             </div>
           ) : leads.length === 0 ? (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <FileSpreadsheet className="mx-auto text-slate-600 mb-3" size={28} />
-                <h3 className="text-white font-semibold text-lg mb-1">No exports yet</h3>
-                <p className="text-slate-500 text-sm">Leads will appear here once users export their measurement plans</p>
+                <FileSpreadsheet className="mx-auto text-faint mb-3" size={28} />
+                <h3 className="text-ink font-semibold text-lg mb-1">No exports yet</h3>
+                <p className="text-faint text-sm">Leads will appear here once users export their measurement plans</p>
               </div>
             </div>
           ) : (
-            <div className="bg-white/[0.03] border border-white/[0.07] rounded-xl overflow-hidden flex flex-col min-h-0">
+            <div className="bg-overlay border border-line rounded-xl overflow-hidden flex flex-col min-h-0">
               {/* Table header */}
-              <div className="shrink-0 grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 px-5 py-2.5 border-b border-white/[0.07] bg-white/[0.02]">
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Email</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Mode</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Website</span>
-                <span className="text-[10px] text-slate-500 uppercase tracking-widest font-medium">Date & Time</span>
+              <div className="shrink-0 grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 px-5 py-2.5 border-b border-line bg-overlay">
+                <span className="text-[10px] text-faint uppercase tracking-widest font-medium">Email</span>
+                <span className="text-[10px] text-faint uppercase tracking-widest font-medium">Mode</span>
+                <span className="text-[10px] text-faint uppercase tracking-widest font-medium">Website</span>
+                <span className="text-[10px] text-faint uppercase tracking-widest font-medium">Date & Time</span>
               </div>
 
               {/* Table body - scrollable */}
               <div className="flex-1 overflow-y-auto scroll-area">
                 {leads.map((lead, i) => (
                   <motion.div key={lead.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.03 }}
-                    className="grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 items-center px-5 py-3 border-b border-white/[0.04] last:border-b-0 hover:bg-white/[0.02] transition">
-                    <span className="text-sm text-white font-mono truncate pr-3">{lead.email}</span>
+                    className="grid grid-cols-[1.8fr_0.6fr_2.5fr_1.3fr] gap-0 items-center px-5 py-3 border-b border-line last:border-b-0 hover:bg-overlay transition">
+                    <span className="text-sm text-ink font-mono truncate pr-3">{lead.email}</span>
                     <span className={`text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-medium ${
                       lead.mode === 'audit'
                         ? 'bg-orange-500/10 text-orange-400'
@@ -129,10 +129,10 @@ export default function LeadsPage() {
                       {lead.mode === 'audit' ? 'Audit' : 'New'}
                     </span>
                     <div className="flex items-center gap-2 min-w-0 pr-3">
-                      <Globe size={11} className="text-slate-600 shrink-0" />
-                      <span className="text-sm text-slate-400 truncate">{lead.website_title || lead.website_url || '—'}</span>
+                      <Globe size={11} className="text-faint shrink-0" />
+                      <span className="text-sm text-faint truncate">{lead.website_title || lead.website_url || '—'}</span>
                     </div>
-                    <span className="text-xs text-slate-500 font-mono">{formatDateTime(lead.created_at)}</span>
+                    <span className="text-xs text-faint font-mono">{formatDateTime(lead.created_at)}</span>
                   </motion.div>
                 ))}
               </div>

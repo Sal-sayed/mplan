@@ -53,11 +53,11 @@ export default function ErrorsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#0a0a0a] text-white">
+    <main className="min-h-screen bg-app text-ink">
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/leads" className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white">
+            <Link href="/leads" className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
               <ArrowLeft size={16} /> Leads
             </Link>
             <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -68,7 +68,7 @@ export default function ErrorsPage() {
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-white/60 text-sm">
+          <div className="flex items-center gap-2 text-faint text-sm">
             <Loader2 size={16} className="animate-spin" />
             Loading…
           </div>
@@ -81,7 +81,7 @@ export default function ErrorsPage() {
         )}
 
         {!loading && !loadError && errors.length === 0 && (
-          <div className="rounded-lg border border-white/10 bg-white/5 p-8 text-center text-white/60 text-sm">
+          <div className="rounded-lg border border-line bg-overlay p-8 text-center text-faint text-sm">
             No unresolved errors. 🎉
           </div>
         )}
@@ -92,9 +92,9 @@ export default function ErrorsPage() {
               <div key={err.id} className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
                 <div className="flex items-center justify-between mb-2 text-xs">
                   <span className="font-mono font-bold text-red-300">{err.event_type}</span>
-                  <span className="text-white/50">{formatDateTime(err.created_at)}</span>
+                  <span className="text-faint">{formatDateTime(err.created_at)}</span>
                 </div>
-                <pre className="text-xs text-white/80 overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="text-xs text-muted overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(err.payload, null, 2)}
                 </pre>
               </div>

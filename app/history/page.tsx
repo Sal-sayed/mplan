@@ -58,32 +58,32 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-slate-200">
-      <header className="h-16 px-6 flex items-center gap-3 border-b border-white/[0.08] bg-[#0d1525]">
+    <div className="min-h-screen bg-app text-muted">
+      <header className="h-16 px-6 flex items-center gap-3 border-b border-line bg-surface">
         <Clock size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-white">Your saved plans</span>
-        <Link href="/" className="ml-auto text-xs text-slate-400 hover:text-slate-200">← Back to app</Link>
+        <span className="text-sm font-semibold text-ink">Your saved plans</span>
+        <Link href="/" className="ml-auto text-xs text-faint hover:text-muted">← Back to app</Link>
       </header>
 
       <div className="max-w-3xl mx-auto p-6">
         {authed === undefined ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-faint">Loading…</p>
         ) : authed === false ? (
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
-            <p className="text-sm text-slate-300 mb-4">Sign in to see your saved plans.</p>
-            <a href="/api/auth/google/start" className="inline-block px-4 py-2.5 rounded-xl bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 transition">Sign in with Google</a>
+          <div className="rounded-2xl border border-line bg-overlay p-8 text-center">
+            <p className="text-sm text-muted mb-4">Sign in to see your saved plans.</p>
+            <a href="/api/auth/google/start" className="inline-block px-4 py-2.5 rounded-xl bg-contrast text-contrast-ink font-semibold text-sm hover:opacity-90 transition">Sign in with Google</a>
           </div>
         ) : plans.length === 0 ? (
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
-            <p className="text-sm text-slate-400">No saved plans yet. Generate a plan and click <span className="text-slate-200 font-medium">Save to history</span>.</p>
+          <div className="rounded-2xl border border-line bg-overlay p-8 text-center">
+            <p className="text-sm text-faint">No saved plans yet. Generate a plan and click <span className="text-muted font-medium">Save to history</span>.</p>
           </div>
         ) : (
           <ul className="space-y-2.5">
             {plans.map((p) => (
-              <li key={p.id} className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 flex items-center gap-3">
+              <li key={p.id} className="rounded-xl border border-line bg-overlay p-4 flex items-center gap-3">
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white truncate">{p.site_url || 'Untitled plan'}</p>
-                  <p className="text-xs text-slate-500 mt-0.5">
+                  <p className="text-sm font-semibold text-ink truncate">{p.site_url || 'Untitled plan'}</p>
+                  <p className="text-xs text-faint mt-0.5">
                     {p.business_model || '—'} · {new Date(p.created_at).toLocaleDateString()}
                   </p>
                 </div>

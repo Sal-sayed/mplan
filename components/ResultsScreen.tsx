@@ -54,7 +54,7 @@ function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; 
     } catch { /* silent */ } finally { setDl(false); }
   };
   return (
-    <button onClick={download} disabled={dl} className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition disabled:opacity-50">
+    <button onClick={download} disabled={dl} className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition disabled:opacity-50">
       {dl ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />} Download Excel
     </button>
   );
@@ -316,10 +316,10 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   const SH = ({ title, k, data, count }: { title: string; k: string; data: unknown; count?: number }) => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        <h3 className="text-xl font-bold text-white">{title}</h3>
+        <h3 className="text-xl font-bold text-ink">{title}</h3>
         {count !== undefined && <span className="text-xs bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-medium">{count}</span>}
       </div>
-      <button onClick={() => copySection(k, data)} className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/[0.05]">
+      <button onClick={() => copySection(k, data)} className="flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors px-3 py-1.5 rounded-lg hover:bg-overlay">
         {copiedSection === k ? <><Check className="w-3.5 h-3.5 text-emerald-500" /><span className="text-emerald-500">Copied!</span></> : <><Copy className="w-3.5 h-3.5" />Copy JSON</>}
       </button>
     </div>
@@ -341,9 +341,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           {/* Plan-consistency badge — answers "is this plan correct?" right here,
               without needing the separate Launch readiness screen. */}
           {consistencyState === 'loading' && (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5 flex items-center gap-3">
+            <div className="rounded-2xl border border-line bg-overlay p-5 flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
-              <p className="text-sm text-slate-300">Checking plan consistency…</p>
+              <p className="text-sm text-muted">Checking plan consistency…</p>
             </div>
           )}
           {consistencyState === 'done' && consistency && (
@@ -355,18 +355,18 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className={`text-lg font-bold ${v.text}`}>{v.label}</h3>
-                    <span className="text-[11px] text-slate-500 uppercase tracking-wide">plan consistency</span>
+                    <span className="text-[11px] text-faint uppercase tracking-wide">plan consistency</span>
                   </div>
-                  <p className="text-sm text-slate-400 mt-0.5">{v.sub}</p>
+                  <p className="text-sm text-faint mt-0.5">{v.sub}</p>
                   <div className="flex flex-wrap items-center gap-2 mt-3">
                     {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-300 border-rose-500/20"><b>{planFails}</b> must fix</span>}
                     {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-300 border-amber-500/20"><b>{planWarns}</b> to review</span>}
                     <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/20"><b>{planPass}</b> passing</span>
-                    <span className="text-xs px-2.5 py-1 rounded-full border bg-white/[0.04] text-slate-400 border-white/[0.08]"><b>{liveCount}</b> need live verification</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-overlay text-faint border-line"><b>{liveCount}</b> need live verification</span>
                   </div>
                 </div>
                 <button onClick={openReadiness}
-                  className="shrink-0 self-start px-3.5 py-2 rounded-xl bg-white/[0.06] border border-white/[0.1] text-slate-100 text-sm font-medium flex items-center gap-1.5 hover:bg-white/[0.12] transition">
+                  className="shrink-0 self-start px-3.5 py-2 rounded-xl bg-overlay border border-line-strong text-ink text-sm font-medium flex items-center gap-1.5 hover:bg-overlay-strong transition">
                   Full check <ArrowRight size={14} />
                 </button>
               </div>
@@ -374,7 +374,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           )}
 
           <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 rounded-2xl border border-blue-500/25 p-6">
-            <h3 className="text-lg font-bold text-white mb-4">Plan Overview</h3>
+            <h3 className="text-lg font-bold text-ink mb-4">Plan Overview</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 ['URL', meta.url],
@@ -384,7 +384,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                 ['Schema', meta.schemaVersion],
                 ['Generated', meta.generatedAt ? new Date(meta.generatedAt).toLocaleDateString() : 'N/A'],
               ].map(([l, v]) => (
-                <div key={l as string}><p className="text-xs text-slate-400 uppercase tracking-wider">{l as string}</p><p className="text-slate-200 mt-1 text-sm font-medium break-words">{(v as string) || 'N/A'}</p></div>
+                <div key={l as string}><p className="text-xs text-faint uppercase tracking-wider">{l as string}</p><p className="text-muted mt-1 text-sm font-medium break-words">{(v as string) || 'N/A'}</p></div>
               ))}
             </div>
           </div>
@@ -398,23 +398,23 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             ].map(s => (
               <motion.div key={s.l} whileHover={{ y: -3 }} className={`${s.bg} rounded-xl border p-5 text-center transition-all hover:shadow-lg`}>
                 <p className={`text-3xl font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.v}</p>
-                <p className="text-xs text-slate-500 mt-1 font-medium">{s.l}</p></motion.div>
+                <p className="text-xs text-faint mt-1 font-medium">{s.l}</p></motion.div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-white/[0.05] rounded-2xl border border-white/[0.08] p-5">
-              <h4 className="text-sm font-semibold text-white mb-4">Consent</h4>
+            <div className="bg-overlay rounded-2xl border border-line p-5">
+              <h4 className="text-sm font-semibold text-ink mb-4">Consent</h4>
               <div className="flex flex-wrap gap-2 mb-3">
                 {(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-2.5 py-1 rounded-full font-medium capitalize">{c}</span>)}
               </div>
-              <p className="text-xs text-slate-400">Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}.</p>
+              <p className="text-xs text-faint">Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}.</p>
             </div>
-            <div className="bg-white/[0.05] rounded-2xl border border-white/[0.08] p-5">
-              <h4 className="text-sm font-semibold text-white mb-4">Tooling</h4>
+            <div className="bg-overlay rounded-2xl border border-line p-5">
+              <h4 className="text-sm font-semibold text-ink mb-4">Tooling</h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-400">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-slate-500 mt-0.5">GA4 key events</p></div>
-                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-400">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-slate-500 mt-0.5">Suggested GTM tags</p></div>
+                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-400">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-faint mt-0.5">GA4 key events</p></div>
+                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-400">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-faint mt-0.5">Suggested GTM tags</p></div>
               </div>
             </div>
           </div>
@@ -429,31 +429,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <div className="space-y-2.5">
             {events.map((event: TrackedEvent, i: number) => (
               <motion.div key={event.id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                className="bg-white/[0.04] rounded-xl border border-white/[0.07] overflow-hidden hover:border-blue-500/20 transition-all">
-                <button onClick={() => toggleEvent(i)} className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-white/[0.02] transition-colors">
-                  <span className="text-xs text-slate-600 font-mono w-6 shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
+                className="bg-overlay rounded-xl border border-line overflow-hidden hover:border-blue-500/20 transition-all">
+                <button onClick={() => toggleEvent(i)} className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-overlay transition-colors">
+                  <span className="text-xs text-faint font-mono w-6 shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
                   {event.isKeyEvent && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
                   <code className="text-sm text-blue-400 font-mono font-medium flex-1 truncate">{event.name}</code>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${CATEGORY_COLOR[event.category] || 'bg-white/[0.06] text-slate-300'}`}>{event.category}</span>
-                  {event.requiresConsent && <span className="text-[10px] text-slate-500 hidden sm:inline">consent</span>}
-                  <ChevronDown className={`w-3.5 h-3.5 text-slate-600 transition-transform duration-200 shrink-0 ${expandedEvents.has(i) ? 'rotate-180' : ''}`} />
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${CATEGORY_COLOR[event.category] || 'bg-overlay text-muted'}`}>{event.category}</span>
+                  {event.requiresConsent && <span className="text-[10px] text-faint hidden sm:inline">consent</span>}
+                  <ChevronDown className={`w-3.5 h-3.5 text-faint transition-transform duration-200 shrink-0 ${expandedEvents.has(i) ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>{expandedEvents.has(i) && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="px-5 pb-4 pt-2 border-t border-white/[0.05]">
-                      <p className="text-sm text-slate-300 mb-3">{event.description}</p>
+                    <div className="px-5 pb-4 pt-2 border-t border-line">
+                      <p className="text-sm text-muted mb-3">{event.description}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                        <div><p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Trigger</p><p className="text-sm text-slate-300">{event.trigger}</p></div>
-                        <div><p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Flags</p><p className="text-sm text-slate-300">{event.isKeyEvent ? 'Key event' : 'Standard'}{event.requiresConsent ? ' · requires consent' : ''}</p></div>
+                        <div><p className="text-[10px] text-faint uppercase tracking-widest mb-1">Trigger</p><p className="text-sm text-muted">{event.trigger}</p></div>
+                        <div><p className="text-[10px] text-faint uppercase tracking-widest mb-1">Flags</p><p className="text-sm text-muted">{event.isKeyEvent ? 'Key event' : 'Standard'}{event.requiresConsent ? ' · requires consent' : ''}</p></div>
                       </div>
                       {event.parameters?.length > 0 && (
                         <div>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Parameters</p>
-                          <div className="rounded-lg overflow-hidden border border-white/[0.06]">
+                          <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Parameters</p>
+                          <div className="rounded-lg overflow-hidden border border-line">
                             <table className="w-full text-xs">
-                              <thead><tr className="bg-white/[0.03]"><th className="text-left px-3 py-2 text-slate-500 font-medium">Name</th><th className="text-left px-3 py-2 text-slate-500 font-medium">Type</th><th className="text-left px-3 py-2 text-slate-500 font-medium">Req</th><th className="text-left px-3 py-2 text-slate-500 font-medium">Source</th></tr></thead>
+                              <thead><tr className="bg-overlay"><th className="text-left px-3 py-2 text-faint font-medium">Name</th><th className="text-left px-3 py-2 text-faint font-medium">Type</th><th className="text-left px-3 py-2 text-faint font-medium">Req</th><th className="text-left px-3 py-2 text-faint font-medium">Source</th></tr></thead>
                               <tbody>{event.parameters.map((p, j) => (
-                                <tr key={p.name || j} className="border-t border-white/[0.04]"><td className="px-3 py-1.5 text-cyan-400 font-mono">{p.name}</td><td className="px-3 py-1.5 text-slate-500">{p.type}</td><td className="px-3 py-1.5 text-slate-500">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-slate-500 font-mono">{p.source}</td></tr>
+                                <tr key={p.name || j} className="border-t border-line"><td className="px-3 py-1.5 text-cyan-400 font-mono">{p.name}</td><td className="px-3 py-1.5 text-faint">{p.type}</td><td className="px-3 py-1.5 text-faint">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-faint font-mono">{p.source}</td></tr>
                               ))}</tbody>
                             </table>
                           </div>
@@ -471,55 +471,55 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         <div><SH title="Data Layer" k="datalayer" data={dataLayer} count={dataLayer.length} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{dataLayer.map((d, i) => (
             <motion.div key={d.key || i} whileHover={{ y: -2 }} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-white/[0.05] rounded-xl border border-white/[0.08] p-5 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
-              <div className="flex items-center justify-between mb-2"><code className="text-white font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
-              <p className="text-sm text-slate-500 mb-2">{d.description}</p>
-              {d.example && <div className="text-xs text-slate-400 bg-white/[0.03] rounded-lg p-2 font-mono border border-white/[0.05] mb-2 break-words">{d.example}</div>}
-              {d.usedByEventIds?.length > 0 && <div className="flex flex-wrap gap-1">{d.usedByEventIds.map((id) => <span key={id} className="text-[10px] font-mono bg-white/[0.04] text-slate-400 px-1.5 py-0.5 rounded border border-white/[0.05]">{id}</span>)}</div>}
+              className="bg-overlay rounded-xl border border-line p-5 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
+              <div className="flex items-center justify-between mb-2"><code className="text-ink font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
+              <p className="text-sm text-faint mb-2">{d.description}</p>
+              {d.example && <div className="text-xs text-faint bg-overlay rounded-lg p-2 font-mono border border-line mb-2 break-words">{d.example}</div>}
+              {d.usedByEventIds?.length > 0 && <div className="flex flex-wrap gap-1">{d.usedByEventIds.map((id) => <span key={id} className="text-[10px] font-mono bg-overlay text-faint px-1.5 py-0.5 rounded border border-line">{id}</span>)}</div>}
             </motion.div>))}</div></div>);
 
       case 'consent': return (
         <div><SH title="Consent Plan" k="consent" data={plan.consent} />
           <div className="space-y-4">
-            <div className="bg-white/[0.05] rounded-xl border border-white/[0.08] p-5">
-              <h4 className="text-sm font-semibold text-white mb-3">Categories used</h4>
+            <div className="bg-overlay rounded-xl border border-line p-5">
+              <h4 className="text-sm font-semibold text-ink mb-3">Categories used</h4>
               <div className="flex flex-wrap gap-2">{(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-3 py-1.5 rounded-full font-medium capitalize">{c}</span>)}</div>
             </div>
-            <div className="bg-white/[0.05] rounded-xl border border-white/[0.08] p-5">
+            <div className="bg-overlay rounded-xl border border-line p-5">
               <div className="flex items-center gap-2 mb-2">
                 <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.consent?.consentModeRequired ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
                   Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}
                 </span>
               </div>
-              {plan.consent?.notes && <p className="text-sm text-slate-400 mt-2">{plan.consent.notes}</p>}
+              {plan.consent?.notes && <p className="text-sm text-faint mt-2">{plan.consent.notes}</p>}
             </div>
           </div></div>);
 
       case 'tooling': return (
         <div><SH title="Tooling" k="tooling" data={plan.tooling} />
           <div className="space-y-4">
-            <div className="bg-white/[0.05] rounded-xl border border-white/[0.08] p-5">
-              <h4 className="text-sm font-semibold text-white mb-3">GA4</h4>
-              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Key events</p>
+            <div className="bg-overlay rounded-xl border border-line p-5">
+              <h4 className="text-sm font-semibold text-ink mb-3">GA4</h4>
+              <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Key events</p>
               <div className="flex flex-wrap gap-2 mb-4">{(plan.tooling?.ga4?.keyEvents || []).map((e) => <code key={e} className="text-xs text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">{e}</code>)}</div>
               {(plan.tooling?.ga4?.customDimensions?.length || 0) > 0 && (
                 <>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Custom dimensions</p>
-                  <div className="rounded-lg overflow-hidden border border-white/[0.06]">
+                  <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Custom dimensions</p>
+                  <div className="rounded-lg overflow-hidden border border-line">
                     <table className="w-full text-xs">
-                      <thead><tr className="bg-white/[0.03]"><th className="text-left px-3 py-2 text-slate-500 font-medium">Name</th><th className="text-left px-3 py-2 text-slate-500 font-medium">Scope</th><th className="text-left px-3 py-2 text-slate-500 font-medium">Parameter</th></tr></thead>
+                      <thead><tr className="bg-overlay"><th className="text-left px-3 py-2 text-faint font-medium">Name</th><th className="text-left px-3 py-2 text-faint font-medium">Scope</th><th className="text-left px-3 py-2 text-faint font-medium">Parameter</th></tr></thead>
                       <tbody>{(plan.tooling?.ga4?.customDimensions || []).map((d, j) => (
-                        <tr key={d.name || j} className="border-t border-white/[0.04]"><td className="px-3 py-1.5 text-slate-200">{d.name}</td><td className="px-3 py-1.5 text-slate-500">{d.scope}</td><td className="px-3 py-1.5 text-cyan-400 font-mono">{d.parameter}</td></tr>
+                        <tr key={d.name || j} className="border-t border-line"><td className="px-3 py-1.5 text-muted">{d.name}</td><td className="px-3 py-1.5 text-faint">{d.scope}</td><td className="px-3 py-1.5 text-cyan-400 font-mono">{d.parameter}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
                 </>
               )}
             </div>
-            <div className="bg-white/[0.05] rounded-xl border border-white/[0.08] p-5">
-              <h4 className="text-sm font-semibold text-white mb-2">GTM</h4>
-              <p className="text-sm text-slate-300 mb-1">Suggested tags: <span className="font-semibold text-white">{plan.tooling?.gtm?.suggestedTagCount ?? 0}</span></p>
-              {plan.tooling?.gtm?.notes && <p className="text-sm text-slate-400">{plan.tooling.gtm.notes}</p>}
+            <div className="bg-overlay rounded-xl border border-line p-5">
+              <h4 className="text-sm font-semibold text-ink mb-2">GTM</h4>
+              <p className="text-sm text-muted mb-1">Suggested tags: <span className="font-semibold text-ink">{plan.tooling?.gtm?.suggestedTagCount ?? 0}</span></p>
+              {plan.tooling?.gtm?.notes && <p className="text-sm text-faint">{plan.tooling.gtm.notes}</p>}
             </div>
           </div></div>);
 
@@ -533,17 +533,17 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }
   if (igPhase === 'loading' || igPhase === 'error') {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-[#0b1120] p-6 text-center">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-app p-6 text-center">
         {igPhase === 'loading' ? (
           <>
             <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
-            <p className="text-white font-semibold text-lg">Building implementation guide…</p>
-            <p className="text-slate-400 text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
+            <p className="text-ink font-semibold text-lg">Building implementation guide…</p>
+            <p className="text-faint text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
           </>
         ) : (
           <>
             <p className="text-rose-400 font-semibold">{igError}</p>
-            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">Back</button>
+            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm hover:bg-overlay-strong transition">Back</button>
           </>
         )}
       </div>
@@ -560,30 +560,30 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-[#0b1120]">
-      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-white/[0.08] bg-[#0d1525] z-10">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-app">
+      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-line bg-surface z-10">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onReset} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 transition shrink-0"><ArrowLeft size={18} /></button>
-          <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-white truncate">Measurement Plan</div><div className="text-xs text-slate-400 truncate">{meta.url}</div></div>
+          <button onClick={onReset} className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0"><ArrowLeft size={18} /></button>
+          <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-ink truncate">Measurement Plan</div><div className="text-xs text-faint truncate">{meta.url}</div></div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {signedIn ? (
             <>
               <button onClick={saveToHistory} disabled={saveState === 'saving' || saveState === 'saved'}
-                className="px-3 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition disabled:opacity-60">
+                className="px-3 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition disabled:opacity-60">
                 <History size={14} /> <span className="hidden sm:inline">{saveState === 'saved' ? 'Saved ✓' : saveState === 'saving' ? 'Saving…' : 'Save to history'}</span>
               </button>
-              <Link href="/history" className="text-xs text-slate-400 hover:text-slate-200 hidden sm:inline px-1">History</Link>
+              <Link href="/history" className="text-xs text-faint hover:text-muted hidden sm:inline px-1">History</Link>
             </>
           ) : (
-            <Link href="/signin" className="text-sm text-slate-300 hover:text-white px-1">Sign in</Link>
+            <Link href="/signin" className="text-sm text-muted hover:text-ink px-1">Sign in</Link>
           )}
           <button onClick={openReadiness}
-            className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
+            className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
           </button>
           <button onClick={runImplementationGuide}
-            className="px-4 py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-200 text-sm font-medium flex items-center gap-2 hover:bg-white/[0.1] transition">
+            className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition">
             <Wrench size={14} className="text-cyan-400" /> <span className="hidden sm:inline">Implementation guide</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
@@ -606,25 +606,25 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="hidden lg:block shrink-0 w-52 border-r border-white/[0.08] bg-[#0b1120]">
+        <aside className="hidden lg:block shrink-0 w-52 border-r border-line bg-app">
           <nav className="h-full scroll-area py-3 px-2">
             {TABS.map(tab => { const Icon = tab.icon; const active = activeTab === tab.key;
               return (<button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition mb-0.5 ${active ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-blue-300 border border-blue-500/25 font-semibold' : 'text-slate-500 hover:bg-white/[0.05] hover:text-slate-200'}`}>
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition mb-0.5 ${active ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-blue-300 border border-blue-500/25 font-semibold' : 'text-faint hover:bg-overlay hover:text-muted'}`}>
                 <Icon size={16} className="shrink-0" /><span className="truncate">{tab.label}</span></button>);
             })}
           </nav>
         </aside>
 
-        <div className="lg:hidden shrink-0 absolute top-16 left-0 right-0 z-10 h-12 overflow-x-auto no-scrollbar flex gap-1 px-4 border-b border-white/[0.08] bg-[#0d1525] items-center">
+        <div className="lg:hidden shrink-0 absolute top-16 left-0 right-0 z-10 h-12 overflow-x-auto no-scrollbar flex gap-1 px-4 border-b border-line bg-surface items-center">
           {TABS.map(t => { const Icon = t.icon; return (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'text-slate-400'}`}>
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'text-faint'}`}>
               <Icon size={12} />{t.label}</button>);
           })}
         </div>
 
-        <div className="flex-1 scroll-area lg:mt-0 mt-12 bg-[#0b1120]">
+        <div className="flex-1 scroll-area lg:mt-0 mt-12 bg-app">
           <div className="p-4 lg:p-8 max-w-5xl">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
               {renderContent()}
@@ -634,17 +634,17 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       </div>
 
       {(rdPhase === 'form' || rdPhase === 'loading' || rdPhase === 'error') && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[#0b1120]">
-          <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-white/[0.08] bg-[#0d1525]">
+        <div className="fixed inset-0 z-50 flex flex-col bg-app">
+          <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-line bg-surface">
             <button onClick={() => { setRdPhase('idle'); setRdError(''); }} aria-label="Back"
-              className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 transition shrink-0">
+              className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0">
               <ArrowLeft size={18} />
             </button>
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-white truncate flex items-center gap-2">
+              <div className="text-sm font-semibold text-ink truncate flex items-center gap-2">
                 <ShieldCheck size={15} className="text-blue-400" /> Launch readiness check
               </div>
-              <div className="text-xs text-slate-400 truncate">{meta.url}</div>
+              <div className="text-xs text-faint truncate">{meta.url}</div>
             </div>
           </header>
 
@@ -652,10 +652,10 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
                 <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
-                <p className="text-white font-semibold text-lg">
+                <p className="text-ink font-semibold text-lg">
                   {rdKind === 'governance' ? 'Checking for drift…' : rdKind === 'metrics' ? 'Checking metric health…' : 'Running launch readiness…'}
                 </p>
-                <p className="text-slate-400 text-sm mt-1.5 max-w-sm mx-auto">
+                <p className="text-faint text-sm mt-1.5 max-w-sm mx-auto">
                   {rdKind === 'governance'
                     ? 'Re-checking your plan setup and comparing it to your last saved run.'
                     : rdKind === 'metrics'
@@ -669,19 +669,19 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               {/* ── Setup — the only scrolling region (scrolls independently when tall) ── */}
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-4">
-                  <p className="text-slate-400 text-sm max-w-2xl">
+                  <p className="text-faint text-sm max-w-2xl">
                     Two layers of verification. The quick one already ran from your plan; the full one opens your deployed site to see what actually fires.
                   </p>
 
                   {/* Layer 1 — plan consistency (already done, no URL) */}
-                  <div className="rounded-2xl border border-white/[0.08] bg-white/[0.03] p-5">
+                  <div className="rounded-2xl border border-line bg-overlay p-5">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
-                      <span className="text-sm text-white font-medium">Plan consistency</span>
-                      <span className="ml-auto text-[11px] text-slate-500">instant · no URL</span>
+                      <span className="text-sm text-ink font-medium">Plan consistency</span>
+                      <span className="ml-auto text-[11px] text-faint">instant · no URL</span>
                     </div>
-                    <p className="text-xs text-slate-400 mt-2">
-                      Already analyzed from <code className="text-slate-300 break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
+                    <p className="text-xs text-faint mt-2">
+                      Already analyzed from <code className="text-muted break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
                     </p>
                   </div>
 
@@ -689,34 +689,34 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                   <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
-                      <span className="text-sm text-white font-medium">Live verification</span>
-                      <span className="ml-auto text-[11px] text-slate-500">~1 min</span>
+                      <span className="text-sm text-ink font-medium">Live verification</span>
+                      <span className="ml-auto text-[11px] text-faint">~1 min</span>
                     </div>
-                    <label className="block text-xs text-slate-400 mb-1">
-                      Staging / live URL <span className="text-slate-600">(optional)</span>
+                    <label className="block text-xs text-faint mb-1">
+                      Staging / live URL <span className="text-faint">(optional)</span>
                     </label>
                     <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
-                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3 py-2.5 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40 mb-2" />
-                    <p className="text-[11px] text-slate-500">
+                      className="w-full bg-overlay border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40 mb-2" />
+                    <p className="text-[11px] text-faint">
                       Point at a URL where GA4/GTM is deployed to capture what fires. Leave blank to re-run plan consistency only.
                     </p>
 
                     {/* Google connection — turns the 5 GA4/GTM "not verified" checks into real pass/fail. */}
-                    <div className="mt-4 pt-4 border-t border-white/[0.06]">
+                    <div className="mt-4 pt-4 border-t border-line">
                       {!gStatus ? (
-                        <p className="text-[11px] text-slate-500">Checking Google connection…</p>
+                        <p className="text-[11px] text-faint">Checking Google connection…</p>
                       ) : !gStatus.configured ? (
-                        <p className="text-[11px] text-slate-500">GA4/GTM account checks aren&apos;t configured on the server.</p>
+                        <p className="text-[11px] text-faint">GA4/GTM account checks aren&apos;t configured on the server.</p>
                       ) : !gStatus.isAdmin ? (
-                        <p className="text-[11px] text-slate-500">
+                        <p className="text-[11px] text-faint">
                           Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
                           <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-400 underline">Sign in as admin</a>, then reopen this.
                         </p>
                       ) : !gStatus.connected ? (
                         <div>
-                          <p className="text-[11px] text-slate-500 mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
+                          <p className="text-[11px] text-faint mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
                           <button type="button" onClick={connectGoogle}
-                            className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-slate-100 text-xs font-medium hover:bg-white/[0.12] transition flex items-center gap-1.5">
+                            className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
                             <ShieldCheck size={12} /> Connect Google
                           </button>
                         </div>
@@ -725,38 +725,38 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                           <div className="flex items-center gap-2">
                             <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
                             <button type="button" onClick={disconnectGoogle} disabled={gLoading}
-                              className="ml-auto text-[11px] text-slate-500 hover:text-slate-300 underline disabled:opacity-50">Disconnect</button>
+                              className="ml-auto text-[11px] text-faint hover:text-muted underline disabled:opacity-50">Disconnect</button>
                           </div>
                           <div className="grid sm:grid-cols-2 gap-2">
                             <input value={rdGa4} onChange={(e) => setRdGa4(e.target.value)} placeholder="GA4 property ID"
-                              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                              className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
                             <input value={rdGtm} onChange={(e) => setRdGtm(e.target.value)} placeholder="GTM-XXXXXXX"
-                              className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-blue-500/40" />
+                              className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
                           </div>
-                          <p className="text-[10px] text-slate-600">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
+                          <p className="text-[10px] text-faint">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
 
                           {/* One-time historical backfill — pulls a chosen GA4 date
                               range into metric history so the health check has a
                               baseline. Separate from the daily collector. */}
-                          <div className="mt-1 pt-3 border-t border-white/[0.06]">
-                            <p className="text-[11px] text-slate-400 mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
+                          <div className="mt-1 pt-3 border-t border-line">
+                            <p className="text-[11px] text-faint mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
                             <div className="grid sm:grid-cols-2 gap-2">
                               <label className="block">
-                                <span className="text-[10px] text-slate-500">Start date</span>
+                                <span className="text-[10px] text-faint">Start date</span>
                                 <input type="date" value={bfStart} onChange={(e) => setBfStart(e.target.value)}
-                                  className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                                  className="w-full mt-0.5 bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40" />
                               </label>
                               <label className="block">
-                                <span className="text-[10px] text-slate-500">End date</span>
+                                <span className="text-[10px] text-faint">End date</span>
                                 <input type="date" value={bfEnd} onChange={(e) => setBfEnd(e.target.value)}
-                                  className="w-full mt-0.5 bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white focus:outline-none focus:border-cyan-500/40" />
+                                  className="w-full mt-0.5 bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40" />
                               </label>
                             </div>
                             <button type="button" onClick={runBackfill}
                               className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
                               <BarChart3 size={12} /> Backfill &amp; check this range
                             </button>
-                            <p className="text-[10px] text-slate-600 mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
+                            <p className="text-[10px] text-faint mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
                           </div>
                         </div>
                       )}
@@ -767,31 +767,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
               {/* ── Actions — OUTSIDE the scroll, so they're ALWAYS visible: a right
                   rail on wide screens, a fixed bottom bar on narrow ones. ── */}
-              <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-white/[0.08] bg-[#0d1525] p-4 lg:p-5 overflow-y-auto">
+              <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-line bg-surface p-4 lg:p-5 overflow-y-auto">
                 <div className="max-w-3xl mx-auto space-y-2.5">
-                  <h3 className="text-sm font-semibold text-white mb-1 hidden lg:block">Run a check</h3>
+                  <h3 className="text-sm font-semibold text-ink mb-1 hidden lg:block">Run a check</h3>
                   {rdPhase === 'error' && <p className="text-sm text-rose-400">{rdError}</p>}
                   <button onClick={runReadiness}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
                     Run check
                   </button>
                   {/* Additive governance action — config-only, no URL. Compares this
                       plan's setup to the last saved run and lights up the DriftSection. */}
                   <button onClick={runGovernance}
-                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
-                    <History size={14} className="text-slate-400" /> Check for drift since last run
+                    className="w-full py-2.5 rounded-xl bg-overlay border border-line-strong text-muted text-sm font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-2">
+                    <History size={14} className="text-faint" /> Check for drift since last run
                   </button>
                   {/* Additive metric-health action — judges each key event's recent
                       firing against its trailing baseline (collected metric history). */}
                   <button onClick={runMetricHealth}
-                    className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm font-medium hover:bg-white/[0.1] transition flex items-center justify-center gap-2">
+                    className="w-full py-2.5 rounded-xl bg-overlay border border-line-strong text-muted text-sm font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-2">
                     <BarChart3 size={14} className="text-cyan-400" /> Check metric health
                   </button>
                   <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
-                    className="w-full py-2 rounded-xl bg-white/[0.05] border border-white/[0.08] text-slate-300 text-sm hover:bg-white/[0.1] transition">
+                    className="w-full py-2 rounded-xl bg-overlay border border-line text-muted text-sm hover:bg-overlay-strong transition">
                     Cancel
                   </button>
-                  <p className="text-[11px] text-slate-500 pt-1">
+                  <p className="text-[11px] text-faint pt-1">
                     Drift compares your setup to the last saved run; metric health checks your key events are still firing.
                   </p>
                 </div>

@@ -376,9 +376,9 @@ export default function Home() {
         {stage === 'error' && (
           <motion.div key="error" className="absolute inset-0 flex items-center justify-center p-6"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="bg-white/[0.05] backdrop-blur-2xl border border-white/[0.1] rounded-2xl p-8 max-w-md text-center">
+            <div className="bg-overlay backdrop-blur-2xl border border-line-strong rounded-2xl p-8 max-w-md text-center">
               <p className="text-red-400 mb-4">{error}</p>
-              <button onClick={reset} className="px-6 py-2.5 bg-white/[0.1] rounded-xl text-white hover:bg-white/[0.15] transition">
+              <button onClick={reset} className="px-6 py-2.5 bg-overlay-strong rounded-xl text-ink hover:bg-overlay-strong transition">
                 Try again
               </button>
             </div>

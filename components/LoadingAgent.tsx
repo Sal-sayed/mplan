@@ -53,7 +53,7 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
       exit={{ opacity: 0, scale: 0.95 }}
       className="w-full max-w-xl mx-auto"
     >
-      <div className="bg-white/[0.05] backdrop-blur-2xl rounded-2xl border border-white/10 p-8">
+      <div className="bg-overlay backdrop-blur-2xl rounded-2xl border border-line p-8">
         {/* AI Brain visualization */}
         <div className="flex justify-center mb-8">
           <div className="relative">
@@ -133,7 +133,7 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
                       ? 'bg-emerald-500/20'
                       : isActive
                       ? 'bg-purple-500/20'
-                      : 'bg-white/5'
+                      : 'bg-overlay'
                   }`}
                 >
                   {isDone ? (
@@ -141,7 +141,7 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
                   ) : (
                     <Icon
                       className={`w-4 h-4 ${
-                        isActive ? 'text-purple-400' : 'text-slate-500'
+                        isActive ? 'text-purple-400' : 'text-faint'
                       }`}
                     />
                   )}
@@ -150,10 +150,10 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
                   <p
                     className={`text-sm font-medium ${
                       isActive
-                        ? 'text-white'
+                        ? 'text-ink'
                         : isDone
-                        ? 'text-slate-400'
-                        : 'text-slate-600'
+                        ? 'text-faint'
+                        : 'text-faint'
                     }`}
                   >
                     {stage.label}
@@ -165,7 +165,7 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
-                        className="text-xs text-slate-500 mt-0.5"
+                        className="text-xs text-faint mt-0.5"
                       >
                         {stage.detail}
                       </motion.p>
@@ -178,7 +178,7 @@ export default function LoadingAgent({ currentStage }: LoadingAgentProps) {
         </div>
 
         {/* Progress bar */}
-        <div className="mt-6 h-1.5 bg-white/5 rounded-full overflow-hidden">
+        <div className="mt-6 h-1.5 bg-overlay rounded-full overflow-hidden">
           <motion.div
             initial={{ width: '0%' }}
             animate={{ width: `${((currentStage + 1) / stages.length) * 100}%` }}

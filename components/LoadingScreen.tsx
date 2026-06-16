@@ -290,7 +290,7 @@ export default function LoadingScreen({
       {onCancel && (
         <button
           onClick={onCancel}
-          className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20"
+          className="absolute top-4 left-4 md:top-6 md:left-6 flex items-center gap-2 text-faint hover:text-ink transition text-sm z-20"
         >
           <ArrowLeft size={14} /> Back
         </button>
@@ -302,29 +302,29 @@ export default function LoadingScreen({
         animate={{ opacity: 1, y: 0 }}
         className="mb-4 flex items-center justify-center flex-wrap gap-3 pl-16 md:pl-20 pr-2"
       >
-        <div className="flex items-center gap-3 px-4 py-1.5 bg-white/[0.04] border border-white/[0.08] rounded-full">
+        <div className="flex items-center gap-3 px-4 py-1.5 bg-overlay border border-line rounded-full">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
             className="w-3 h-3 rounded-full border-2 border-blue-400 border-t-transparent"
           />
-          <span className="text-xs text-white">
+          <span className="text-xs text-ink">
             {statusText}
-            <span className="text-white/50"> · {hostname}</span>
+            <span className="text-faint"> · {hostname}</span>
           </span>
         </div>
         <div className="flex items-center gap-2 text-[11px]">
-          <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/60 font-mono">
+          <span className="px-2.5 py-1 bg-overlay border border-line rounded-full text-faint font-mono">
             {Math.round(displayProgress)}%
           </span>
-          <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.08] rounded-full text-white/60 font-mono">
+          <span className="px-2.5 py-1 bg-overlay border border-line rounded-full text-faint font-mono">
             {elapsedDisplay}
           </span>
         </div>
       </motion.div>
 
       {/* Email line (small, under top bar) */}
-      <div className="text-center text-[11px] text-white/40 mb-3 truncate">
+      <div className="text-center text-[11px] text-faint mb-3 truncate">
         → {email}
       </div>
 
@@ -343,10 +343,10 @@ export default function LoadingScreen({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white/[0.04] border border-white/[0.08] rounded-xl flex flex-col overflow-hidden min-h-[360px] lg:min-h-0"
+          className="bg-overlay border border-line rounded-xl flex flex-col overflow-hidden min-h-[360px] lg:min-h-0"
         >
-          <div className="px-4 py-3 border-b border-white/[0.08]">
-            <div className="text-[10px] uppercase tracking-[0.15em] text-white/60 font-medium">
+          <div className="px-4 py-3 border-b border-line">
+            <div className="text-[10px] uppercase tracking-[0.15em] text-faint font-medium">
               What you’re getting
             </div>
           </div>
@@ -384,7 +384,7 @@ export default function LoadingScreen({
                     ? 'border-blue-500/40 bg-blue-500/10 text-blue-200'
                     : isDone
                     ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                    : 'border-white/[0.08] text-white/40'
+                    : 'border-line text-faint'
                 }`}
               >
                 <span>{isDone ? '✓' : isActive ? '●' : '○'}</span>
@@ -395,7 +395,7 @@ export default function LoadingScreen({
         </div>
         <div className="flex items-center gap-3">
           <div className="flex-1">
-            <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden border border-white/[0.06]">
+            <div className="h-2 bg-overlay rounded-full overflow-hidden border border-line">
               <motion.div
                 className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 relative"
                 initial={{ width: 0 }}
@@ -406,7 +406,7 @@ export default function LoadingScreen({
               </motion.div>
             </div>
           </div>
-          <div className="text-[11px] text-white/60 font-mono whitespace-nowrap">
+          <div className="text-[11px] text-faint font-mono whitespace-nowrap">
             {etaSeconds > 1 ? `~${formatTime(etaSeconds)} remaining` : 'Almost there…'}
           </div>
         </div>

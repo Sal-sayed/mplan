@@ -520,12 +520,12 @@ export default function AnimatedBackground() {
   }, [init]);
 
   return (
-    <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none" style={{ background: 'linear-gradient(170deg, #0d1525 0%, #0a1028 30%, #0e1530 50%, #091020 80%, #0b1322 100%)' }}>
-      <div className="absolute top-[-5%] right-[10%] w-[700px] h-[700px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(60,100,200,0.08) 0%, transparent 60%)' }} />
-      <div className="absolute bottom-[5%] left-[5%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(40,80,180,0.06) 0%, transparent 60%)' }} />
-      <div className="absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(100,140,240,0.05) 0%, transparent 60%)' }} />
-      <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(100,160,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(100,160,255,1) 1px, transparent 1px)', backgroundSize: '70px 70px' }} />
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-auto" />
+    <div className="app-backdrop fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+      <div className="backdrop-fx absolute top-[-5%] right-[10%] w-[700px] h-[700px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(60,100,200,0.08) 0%, transparent 60%)' }} />
+      <div className="backdrop-fx absolute bottom-[5%] left-[5%] w-[500px] h-[500px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(40,80,180,0.06) 0%, transparent 60%)' }} />
+      <div className="backdrop-fx absolute top-[20%] left-[30%] w-[400px] h-[400px] rounded-full" style={{ background: 'radial-gradient(circle, rgba(100,140,240,0.05) 0%, transparent 60%)' }} />
+      <div className="backdrop-fx absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'linear-gradient(rgba(100,160,255,1) 1px, transparent 1px), linear-gradient(90deg, rgba(100,160,255,1) 1px, transparent 1px)', backgroundSize: '70px 70px' }} />
+      <canvas ref={canvasRef} className="backdrop-fx absolute inset-0 w-full h-full pointer-events-auto" />
     </div>
   );
 }

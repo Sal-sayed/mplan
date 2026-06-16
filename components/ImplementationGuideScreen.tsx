@@ -28,9 +28,9 @@ function CodeBlock({ code }: { code: string }) {
   };
   return (
     <div className="relative">
-      <pre className="text-[12px] leading-relaxed text-slate-200 bg-black/30 border border-white/[0.08] rounded-lg p-3 overflow-x-auto font-mono whitespace-pre">{code}</pre>
+      <pre className="text-[12px] leading-relaxed text-muted bg-black/30 border border-line rounded-lg p-3 overflow-x-auto font-mono whitespace-pre">{code}</pre>
       <button onClick={copy}
-        className="absolute top-2 right-2 px-2 py-1 rounded-md bg-white/[0.06] border border-white/[0.1] text-[11px] text-slate-300 hover:bg-white/[0.12] transition flex items-center gap-1">
+        className="absolute top-2 right-2 px-2 py-1 rounded-md bg-overlay border border-line-strong text-[11px] text-muted hover:bg-overlay-strong transition flex items-center gap-1">
         {copied ? <><Check size={11} /> Copied</> : <><Copy size={11} /> Copy</>}
       </button>
     </div>
@@ -39,36 +39,36 @@ function CodeBlock({ code }: { code: string }) {
 
 function Item({ item }: { item: ProposalItem }) {
   return (
-    <div className={`rounded-2xl border ${item.isKeyEvent ? 'border-amber-500/25 bg-amber-500/[0.04]' : 'border-white/[0.08] bg-white/[0.02]'} p-5`}>
+    <div className={`rounded-2xl border ${item.isKeyEvent ? 'border-amber-500/25 bg-amber-500/[0.04]' : 'border-line bg-overlay'} p-5`}>
       <div className="flex items-center gap-2 flex-wrap">
-        <code className="text-sm font-semibold text-white font-mono break-all">{item.eventName}</code>
+        <code className="text-sm font-semibold text-ink font-mono break-all">{item.eventName}</code>
         {item.isKeyEvent && (
           <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-semibold flex items-center gap-1"><Star size={9} /> key event</span>
         )}
-        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/[0.05] text-slate-400">{item.category}</span>
+        <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-overlay text-faint">{item.category}</span>
       </div>
 
       {/* WHY — prominent */}
-      <p className="text-sm text-slate-200 mt-3">
-        <span className="text-slate-500">Why: </span>{item.explanation}
+      <p className="text-sm text-muted mt-3">
+        <span className="text-faint">Why: </span>{item.explanation}
       </p>
 
       <div className="grid md:grid-cols-2 gap-4 mt-4">
         {/* Trigger */}
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">GTM trigger</p>
-          <p className="text-sm text-white font-medium">{item.trigger.type}</p>
-          <p className="text-xs text-slate-400 mt-0.5">{item.trigger.condition}</p>
+          <p className="text-[10px] uppercase tracking-widest text-faint mb-1.5">GTM trigger</p>
+          <p className="text-sm text-ink font-medium">{item.trigger.type}</p>
+          <p className="text-xs text-faint mt-0.5">{item.trigger.condition}</p>
         </div>
         {/* Tag */}
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">GA4 event tag</p>
-          <p className="text-sm text-white font-medium">{item.tag.name}</p>
-          <p className="text-xs text-slate-400 mt-0.5">Sends GA4 event <code className="text-slate-300">{item.tag.ga4EventName}</code></p>
+          <p className="text-[10px] uppercase tracking-widest text-faint mb-1.5">GA4 event tag</p>
+          <p className="text-sm text-ink font-medium">{item.tag.name}</p>
+          <p className="text-xs text-faint mt-0.5">Sends GA4 event <code className="text-muted">{item.tag.ga4EventName}</code></p>
           {item.tag.parameters.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {item.tag.parameters.map((p) => (
-                <span key={p.name} className="text-[11px] px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.06] text-slate-300 font-mono">
+                <span key={p.name} className="text-[11px] px-2 py-0.5 rounded bg-overlay border border-line text-muted font-mono">
                   {p.name} = {p.value}
                 </span>
               ))}
@@ -79,7 +79,7 @@ function Item({ item }: { item: ProposalItem }) {
 
       {/* dataLayer push */}
       <div className="mt-4">
-        <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1.5">dataLayer push (add to the site)</p>
+        <p className="text-[10px] uppercase tracking-widest text-faint mb-1.5">dataLayer push (add to the site)</p>
         <CodeBlock code={item.dataLayerSnippet} />
       </div>
     </div>
@@ -159,20 +159,20 @@ export default function ImplementationGuideScreen({
   };
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#0b1120] overflow-hidden">
-      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-white/[0.08] bg-[#0d1525]">
+    <div className="h-full w-full flex flex-col bg-app overflow-hidden">
+      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-line bg-surface">
         {onReset && (
-          <button onClick={onReset} aria-label="Back" className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 transition shrink-0">
+          <button onClick={onReset} aria-label="Back" className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0">
             <ArrowLeft size={18} />
           </button>
         )}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-white truncate flex items-center gap-2"><Wrench size={15} className="text-cyan-400" /> Implementation guide</div>
-          {url && <div className="text-xs text-slate-400 truncate">{url}</div>}
+          <div className="text-sm font-semibold text-ink truncate flex items-center gap-2"><Wrench size={15} className="text-cyan-400" /> Implementation guide</div>
+          {url && <div className="text-xs text-faint truncate">{url}</div>}
         </div>
       </header>
 
-      <div className="flex-1 scroll-area bg-[#0b1120] overflow-y-auto">
+      <div className="flex-1 scroll-area bg-app overflow-y-auto">
         <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-5">
           {/* Review-only banner — Phase B (auto-apply) is separate */}
           <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-4 flex items-start gap-3">
@@ -184,16 +184,16 @@ export default function ImplementationGuideScreen({
           </div>
 
           {/* Summary + approve */}
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-5 flex items-center gap-4 flex-wrap">
+          <div className="rounded-2xl border border-line bg-overlay p-5 flex items-center gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
-              <p className="text-sm text-white font-semibold">{summary.totalEvents} event{summary.totalEvents === 1 ? '' : 's'} to implement</p>
-              <p className="text-xs text-slate-400 mt-0.5">{summary.keyEvents} key event{summary.keyEvents === 1 ? '' : 's'} · {summary.tagCount} GA4 tag{summary.tagCount === 1 ? '' : 's'} proposed</p>
+              <p className="text-sm text-ink font-semibold">{summary.totalEvents} event{summary.totalEvents === 1 ? '' : 's'} to implement</p>
+              <p className="text-xs text-faint mt-0.5">{summary.keyEvents} key event{summary.keyEvents === 1 ? '' : 's'} · {summary.tagCount} GA4 tag{summary.tagCount === 1 ? '' : 's'} proposed</p>
             </div>
             {approved ? (
               <span className="text-sm text-emerald-300 flex items-center gap-1.5"><CheckCircle2 size={16} /> Approved — nothing was applied to GTM</span>
             ) : (
               <button onClick={() => { setApproved(true); fetchWriteStatus(); }}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition shrink-0">
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition shrink-0">
                 Approve this implementation plan
               </button>
             )}
@@ -204,27 +204,27 @@ export default function ImplementationGuideScreen({
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 space-y-3">
               <div className="flex items-center gap-2">
                 <Wrench size={15} className="text-cyan-400" />
-                <p className="text-sm font-semibold text-white">Apply to GTM — creates an unpublished workspace</p>
+                <p className="text-sm font-semibold text-ink">Apply to GTM — creates an unpublished workspace</p>
               </div>
-              <p className="text-xs text-slate-400">
-                This creates the variables, triggers, and GA4 tags in a <span className="text-slate-200">new GTM workspace</span>. It does <span className="text-slate-200">not publish</span> — you review and Publish in Tag Manager yourself, so nothing goes live until you say so.
+              <p className="text-xs text-faint">
+                This creates the variables, triggers, and GA4 tags in a <span className="text-muted">new GTM workspace</span>. It does <span className="text-muted">not publish</span> — you review and Publish in Tag Manager yourself, so nothing goes live until you say so.
               </p>
 
               {!writeStatus ? (
-                <p className="text-[11px] text-slate-500">Checking your Google connection…</p>
+                <p className="text-[11px] text-faint">Checking your Google connection…</p>
               ) : !writeStatus.canConnect ? (
                 <div>
-                  <p className="text-[11px] text-slate-500 mb-2">Sign in first to connect Google and apply to GTM.</p>
+                  <p className="text-[11px] text-faint mb-2">Sign in first to connect Google and apply to GTM.</p>
                   <a href="/signin"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-slate-900 text-xs font-semibold hover:bg-slate-100 transition">
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-contrast text-contrast-ink text-xs font-semibold hover:opacity-90 transition">
                     Sign in
                   </a>
                 </div>
               ) : !writeStatus.canWrite ? (
                 <div>
-                  <p className="text-[11px] text-slate-500 mb-2">Writing to GTM needs a separate, one-time write consent (your current connection is read-only).</p>
+                  <p className="text-[11px] text-faint mb-2">Writing to GTM needs a separate, one-time write consent (your current connection is read-only).</p>
                   <button onClick={connectForWrite}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] border border-white/[0.1] text-slate-100 text-xs font-medium hover:bg-white/[0.12] transition flex items-center gap-1.5">
+                    className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
                     <ExternalLink size={12} /> Connect Google for write
                   </button>
                 </div>
@@ -232,12 +232,12 @@ export default function ImplementationGuideScreen({
                 <>
                   <div className="grid sm:grid-cols-2 gap-2">
                     <input value={containerId} onChange={(e) => setContainerId(e.target.value)} placeholder="GTM container — GTM-XXXXXXX"
-                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/40" />
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                     <input value={measurementId} onChange={(e) => setMeasurementId(e.target.value)} placeholder="GA4 Measurement ID — G-XXXXXXX"
-                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-2.5 py-2 text-xs text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500/40" />
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                   </div>
                   <button onClick={applyToGtm} disabled={applyState === 'applying'}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/20 transition disabled:opacity-60">
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/20 transition disabled:opacity-60">
                     {applyState === 'applying' ? 'Creating workspace…' : 'Create GTM workspace (no publish)'}
                   </button>
                 </>
@@ -247,8 +247,8 @@ export default function ImplementationGuideScreen({
               {applyState === 'done' && applyResult && (
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3 space-y-1.5">
                   <p className="text-sm text-emerald-200 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Workspace created — nothing published</p>
-                  <p className="text-xs text-slate-300 break-all">{applyResult.workspaceName}</p>
-                  <p className="text-xs text-slate-400">
+                  <p className="text-xs text-muted break-all">{applyResult.workspaceName}</p>
+                  <p className="text-xs text-faint">
                     {applyResult.created.tags.length} tag(s), {applyResult.created.triggers.length} trigger(s), {applyResult.created.variables.length} variable(s) created
                     {applyResult.skipped.tags.length + applyResult.skipped.triggers.length > 0 ? ' · some already existed (skipped)' : ''}.
                   </p>

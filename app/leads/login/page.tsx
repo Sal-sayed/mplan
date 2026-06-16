@@ -45,31 +45,31 @@ export default function LeadsLogin() {
             <div className="inline-flex p-3 rounded-xl bg-purple-500/20 mb-5">
               <Lock className="text-purple-400" size={22} />
             </div>
-            <h1 className="text-2xl font-bold text-white mb-1">Admin Login</h1>
-            <p className="text-slate-400 text-sm">Sign in to view leads</p>
+            <h1 className="text-2xl font-bold text-ink mb-1">Admin Login</h1>
+            <p className="text-faint text-sm">Sign in to view leads</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Username</label>
+              <label className="block text-xs font-medium text-faint mb-1.5 uppercase tracking-wider">Username</label>
               <div className="relative">
-                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" size={15} />
                 <input
                   required value={username} autoFocus
                   onChange={e => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-purple-500/50 transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-overlay border border-line rounded-xl text-ink outline-none focus:border-purple-500/50 transition"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider">Password</label>
+              <label className="block text-xs font-medium text-faint mb-1.5 uppercase tracking-wider">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-faint" size={15} />
                 <input
                   type="password" required value={password}
                   onChange={e => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white outline-none focus:border-purple-500/50 transition"
+                  className="w-full pl-10 pr-4 py-2.5 bg-overlay border border-line rounded-xl text-ink outline-none focus:border-purple-500/50 transition"
                 />
               </div>
             </div>
@@ -78,13 +78,13 @@ export default function LeadsLogin() {
 
             <button
               type="submit" disabled={loading}
-              className="w-full py-2.5 mt-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/30 transition flex items-center justify-center gap-2"
+              className="w-full py-2.5 mt-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-onaccent font-semibold disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/30 transition flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={16} /> : 'Sign in →'}
             </button>
           </form>
 
-          <p className="text-center text-xs text-slate-600 mt-6">Authorized personnel only</p>
+          <p className="text-center text-xs text-faint mt-6">Authorized personnel only</p>
         </div>
       </div>
     </div>

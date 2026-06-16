@@ -60,7 +60,7 @@ const STATUS: Record<CheckStatus, StatusStyle> = {
   fail: { label: 'must fix', Icon: AlertCircle, dot: 'text-rose-400', ring: 'border-rose-500/30', bg: 'bg-rose-500/[0.06]', chip: 'bg-rose-500/15 text-rose-300 border-rose-500/20' },
   warn: { label: 'to review', Icon: AlertTriangle, dot: 'text-amber-400', ring: 'border-amber-500/25', bg: 'bg-amber-500/[0.05]', chip: 'bg-amber-500/15 text-amber-300 border-amber-500/20' },
   pass: { label: 'passing', Icon: CheckCircle2, dot: 'text-emerald-400', ring: 'border-emerald-500/20', bg: 'bg-emerald-500/[0.04]', chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20' },
-  skipped: { label: 'not verified', Icon: null, dot: 'text-slate-500', ring: 'border-white/[0.07]', bg: 'bg-white/[0.02]', chip: 'bg-white/[0.05] text-slate-400 border-white/[0.08]' },
+  skipped: { label: 'not verified', Icon: null, dot: 'text-faint', ring: 'border-line', bg: 'bg-overlay', chip: 'bg-overlay text-faint border-line' },
 };
 
 function StatusMark({ status }: { status: CheckStatus }) {
@@ -70,7 +70,7 @@ function StatusMark({ status }: { status: CheckStatus }) {
     return <Icon size={18} className={`${s.dot} shrink-0 mt-0.5`} />;
   }
   // skipped — a muted dashed marker rather than an icon (it's "not yet run").
-  return <span className="shrink-0 mt-1 w-3.5 h-3.5 rounded-full border-2 border-dashed border-slate-600" aria-hidden />;
+  return <span className="shrink-0 mt-1 w-3.5 h-3.5 rounded-full border-2 border-dashed border-line-strong" aria-hidden />;
 }
 
 function CheckRow({ check }: { check: ReadinessCheck }) {
@@ -81,26 +81,26 @@ function CheckRow({ check }: { check: ReadinessCheck }) {
         <StatusMark status={check.status} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-semibold text-white">{check.name}</span>
+            <span className="text-sm font-semibold text-ink">{check.name}</span>
             {check.blocking && (
               <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-semibold">blocking</span>
             )}
-            <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-white/[0.05] text-slate-400">{check.category}</span>
+            <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-overlay text-faint">{check.category}</span>
             {check.status === 'skipped' && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/[0.04] text-slate-500">needs {check.dependsOn}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-overlay text-faint">needs {check.dependsOn}</span>
             )}
           </div>
-          <p className="text-sm text-slate-400 mt-1">{check.summary}</p>
+          <p className="text-sm text-faint mt-1">{check.summary}</p>
           {check.evidence && check.evidence.length > 0 && (
             <ul className="mt-2 space-y-0.5">
               {check.evidence.map((e, i) => (
-                <li key={i} className="text-xs text-slate-500 font-mono break-words">· {e}</li>
+                <li key={i} className="text-xs text-faint font-mono break-words">· {e}</li>
               ))}
             </ul>
           )}
           {check.remediation && (
-            <p className="text-xs text-slate-300 mt-2">
-              <span className="text-slate-500">Fix: </span>{check.remediation}
+            <p className="text-xs text-muted mt-2">
+              <span className="text-faint">Fix: </span>{check.remediation}
             </p>
           )}
         </div>
@@ -117,14 +117,14 @@ function CheckGroup({ title, hint, status, checks, defaultOpen }: { title: strin
     <div>
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          <h3 className="text-sm font-semibold text-ink">{title}</h3>
           <span className={`text-xs px-2 py-0.5 rounded-full border ${chip} font-medium`}>{checks.length}</span>
         </div>
-        <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`w-4 h-4 text-faint transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="space-y-2.5">
-          {hint && <p className="text-xs text-slate-500 -mt-1 mb-1">{hint}</p>}
+          {hint && <p className="text-xs text-faint -mt-1 mb-1">{hint}</p>}
           {checks.map((c) => <CheckRow key={c.id} check={c} />)}
         </div>
       )}
@@ -136,7 +136,7 @@ const PILL_TONE: Record<CheckStatus, string> = {
   fail: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
   warn: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
   pass: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
-  skipped: 'bg-white/[0.04] text-slate-400 border-white/[0.08]',
+  skipped: 'bg-overlay text-faint border-line',
 };
 
 function CountPill({ n, status }: { n: number; status: CheckStatus }) {
@@ -166,62 +166,62 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Radio className="w-4 h-4 text-cyan-400" />
-        <h3 className="text-sm font-semibold text-white">What actually fired</h3>
-        <span className="text-xs text-slate-500">captured from the deployed site</span>
+        <h3 className="text-sm font-semibold text-ink">What actually fired</h3>
+        <span className="text-xs text-faint">captured from the deployed site</span>
       </div>
 
-      <div className="bg-white/[0.04] rounded-2xl border border-white/[0.08] p-5">
+      <div className="bg-overlay rounded-2xl border border-line p-5">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {stats.map(([label, value]) => (
-            <div key={label} className="bg-white/[0.03] rounded-lg border border-white/[0.05] p-3 text-center">
-              <p className="text-xl font-bold text-white">{value}</p>
-              <p className="text-[11px] text-slate-500 mt-0.5">{label}</p>
+            <div key={label} className="bg-overlay rounded-lg border border-line p-3 text-center">
+              <p className="text-xl font-bold text-ink">{value}</p>
+              <p className="text-[11px] text-faint mt-0.5">{label}</p>
             </div>
           ))}
         </div>
 
         <div className="flex flex-wrap gap-2 mb-4">
-          <span className="text-[11px] px-2 py-1 rounded-md bg-white/[0.04] text-slate-400 border border-white/[0.06]">
-            consent banner: <span className="text-slate-300">{yesNoUnknown(summary.consentBannerDetected)}</span>
+          <span className="text-[11px] px-2 py-1 rounded-md bg-overlay text-faint border border-line">
+            consent banner: <span className="text-muted">{yesNoUnknown(summary.consentBannerDetected)}</span>
           </span>
-          <span className="text-[11px] px-2 py-1 rounded-md bg-white/[0.04] text-slate-400 border border-white/[0.06]">
-            accepted: <span className="text-slate-300">{yesNoUnknown(summary.consentAccepted)}</span>
+          <span className="text-[11px] px-2 py-1 rounded-md bg-overlay text-faint border border-line">
+            accepted: <span className="text-muted">{yesNoUnknown(summary.consentAccepted)}</span>
           </span>
         </div>
 
         {sorted.length > 0 ? (
-          <div className="rounded-lg overflow-hidden border border-white/[0.06]">
+          <div className="rounded-lg overflow-hidden border border-line">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-white/[0.03]">
-                  <th className="text-left px-3 py-2 text-slate-500 font-medium">Event</th>
-                  <th className="text-left px-3 py-2 text-slate-500 font-medium">Vendor</th>
-                  <th className="text-left px-3 py-2 text-slate-500 font-medium hidden sm:table-cell">Destination</th>
-                  <th className="text-right px-3 py-2 text-slate-500 font-medium">Count</th>
+                <tr className="bg-overlay">
+                  <th className="text-left px-3 py-2 text-faint font-medium">Event</th>
+                  <th className="text-left px-3 py-2 text-faint font-medium">Vendor</th>
+                  <th className="text-left px-3 py-2 text-faint font-medium hidden sm:table-cell">Destination</th>
+                  <th className="text-right px-3 py-2 text-faint font-medium">Count</th>
                 </tr>
               </thead>
               <tbody>
                 {sorted.map((e, i) => (
-                  <tr key={`${e.name}-${e.vendor ?? ''}-${i}`} className="border-t border-white/[0.04]">
+                  <tr key={`${e.name}-${e.vendor ?? ''}-${i}`} className="border-t border-line">
                     <td className="px-3 py-1.5 text-cyan-300 font-mono break-all">{e.name}</td>
-                    <td className="px-3 py-1.5 text-slate-300">{e.vendor ?? '—'}</td>
-                    <td className="px-3 py-1.5 text-slate-500 font-mono hidden sm:table-cell break-all">{e.destinationId ?? '—'}</td>
-                    <td className="px-3 py-1.5 text-slate-400 text-right">{e.count ?? 0}</td>
+                    <td className="px-3 py-1.5 text-muted">{e.vendor ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-faint font-mono hidden sm:table-cell break-all">{e.destinationId ?? '—'}</td>
+                    <td className="px-3 py-1.5 text-faint text-right">{e.count ?? 0}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">No tracking events were captured.</p>
+          <p className="text-sm text-faint">No tracking events were captured.</p>
         )}
 
         {summary.unplannedObservedEvents.length > 0 && (
           <div className="mt-4">
-            <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Fired but not in the plan</p>
+            <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Fired but not in the plan</p>
             <div className="flex flex-wrap gap-1.5">
               {summary.unplannedObservedEvents.map((name) => (
-                <code key={name} className="text-[11px] text-slate-300 bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.06] font-mono break-all">{name}</code>
+                <code key={name} className="text-[11px] text-muted bg-overlay px-2 py-0.5 rounded border border-line font-mono break-all">{name}</code>
               ))}
             </div>
           </div>
@@ -276,10 +276,10 @@ function StatusTag({ status }: { status: CheckStatus }) {
 function TransitionRow({ name, from, to, ring, bg }: { name: string; from: CheckStatus; to: CheckStatus; ring: string; bg: string }) {
   return (
     <div className={`rounded-xl border ${ring} ${bg} p-3 flex items-center gap-3`}>
-      <span className="text-sm font-semibold text-white min-w-0 flex-1 truncate">{name}</span>
+      <span className="text-sm font-semibold text-ink min-w-0 flex-1 truncate">{name}</span>
       <span className="flex items-center gap-1.5 shrink-0">
         <StatusTag status={from} />
-        <ArrowRight size={12} className="text-slate-500" />
+        <ArrowRight size={12} className="text-faint" />
         <StatusTag status={to} />
       </span>
     </div>
@@ -321,20 +321,20 @@ function DriftSection({ drift, nameById }: { drift: GovernanceDrift; nameById: (
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
-            <History size={13} className="text-slate-500" />
-            <span className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold">Drift since last run</span>
+            <History size={13} className="text-faint" />
+            <span className="text-[11px] uppercase tracking-widest text-faint font-semibold">Drift since last run</span>
           </div>
           <h2 className={`text-lg font-bold ${v.text} mt-0.5`}>{v.label}</h2>
-          <p className="text-slate-400 text-sm mt-0.5">{sub}</p>
+          <p className="text-faint text-sm mt-0.5">{sub}</p>
         </div>
       </div>
 
       {/* Decision change, when the top-level verdict moved between runs. */}
       {drift.decisionChange && (
         <div className="mt-4 flex items-center gap-2 flex-wrap text-sm">
-          <span className="text-slate-500">Launch decision</span>
+          <span className="text-faint">Launch decision</span>
           <span className={`font-semibold ${DECISION[drift.decisionChange.from].text}`}>{DECISION[drift.decisionChange.from].label}</span>
-          <ArrowRight size={13} className="text-slate-500" />
+          <ArrowRight size={13} className="text-faint" />
           <span className={`font-semibold ${DECISION[drift.decisionChange.to].text}`}>{DECISION[drift.decisionChange.to].label}</span>
         </div>
       )}
@@ -354,10 +354,10 @@ function DriftSection({ drift, nameById }: { drift: GovernanceDrift; nameById: (
       {/* Inconclusive — de-emphasized; couldn't verify, NOT a failure. */}
       {unverifiable.length > 0 && (
         <div className="mt-4">
-          <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Couldn&apos;t verify this run · not a break</p>
+          <p className="text-[10px] uppercase tracking-widest text-faint mb-2">Couldn&apos;t verify this run · not a break</p>
           <div className="space-y-2">
             {unverifiable.map((t) => (
-              <TransitionRow key={t.id} name={nameById(t.id)} from={t.from} to={t.to} ring="border-white/[0.07]" bg="bg-white/[0.02]" />
+              <TransitionRow key={t.id} name={nameById(t.id)} from={t.from} to={t.to} ring="border-line" bg="bg-overlay" />
             ))}
           </div>
         </div>
@@ -384,22 +384,22 @@ export default function LaunchReadinessScreen({ report, onReset, drift, baseline
   const nameById = (id: string) => report.checks.find((c) => c.id === id)?.name ?? id;
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#0b1120] overflow-hidden">
-      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-white/[0.08] bg-[#0d1525] z-10">
+    <div className="h-full w-full flex flex-col bg-app overflow-hidden">
+      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-line bg-surface z-10">
         <div className="flex items-center gap-3 min-w-0">
           {onReset && (
-            <button onClick={onReset} className="p-2 rounded-lg hover:bg-white/[0.05] text-slate-400 hover:text-slate-200 transition shrink-0">
+            <button onClick={onReset} className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0">
               <ArrowLeft size={18} />
             </button>
           )}
           <div className="min-w-0">
-            <div className="text-sm font-semibold text-white truncate">Launch Readiness</div>
-            <div className="text-xs text-slate-400 truncate">{report.meta.url}</div>
+            <div className="text-sm font-semibold text-ink truncate">Launch Readiness</div>
+            <div className="text-xs text-faint truncate">{report.meta.url}</div>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 scroll-area bg-[#0b1120]">
+      <div className="flex-1 scroll-area bg-app">
         <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
           {/* 1 — Decision headline */}
           <motion.div
@@ -412,10 +412,10 @@ export default function LaunchReadinessScreen({ report, onReset, drift, baseline
               </div>
               <div className="min-w-0 flex-1">
                 <h1 className={`text-2xl font-bold ${d.text}`}>{d.label}</h1>
-                <p className="text-slate-400 text-sm mt-0.5">{d.sub}</p>
+                <p className="text-faint text-sm mt-0.5">{d.sub}</p>
                 <div className="flex items-center gap-2 mt-3">
                   <ShieldCheck size={14} className={report.approval.required ? 'text-amber-400' : 'text-emerald-400'} />
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-muted">
                     {report.approval.required ? 'Human approval required before launch' : 'No approval gate'}
                     {report.approval.approvedBy ? ` · approved by ${report.approval.approvedBy}` : ''}
                   </span>
@@ -436,11 +436,11 @@ export default function LaunchReadinessScreen({ report, onReset, drift, baseline
           {drift ? (
             <DriftSection drift={drift} nameById={nameById} />
           ) : baselineNote ? (
-            <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-4 flex items-start gap-3">
-              <History size={16} className="text-slate-500 shrink-0 mt-0.5" />
+            <div className="rounded-2xl border border-line bg-overlay p-4 flex items-start gap-3">
+              <History size={16} className="text-faint shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-slate-200">First governance run — baseline saved</p>
-                <p className="text-xs text-slate-500 mt-0.5">No prior run to compare against yet. Re-run this check later to see drift since now.</p>
+                <p className="text-sm font-medium text-muted">First governance run — baseline saved</p>
+                <p className="text-xs text-faint mt-0.5">No prior run to compare against yet. Re-run this check later to see drift since now.</p>
               </div>
             </div>
           ) : null}

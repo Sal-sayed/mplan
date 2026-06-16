@@ -159,8 +159,8 @@ export default function ExportButton({ plan, score, type }: ExportButtonProps) {
 
   const buttonStyles =
     type === 'excel'
-      ? 'flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600/20 to-green-600/20 backdrop-blur-xl rounded-xl border border-emerald-500/30 text-sm text-emerald-300 hover:text-white hover:border-emerald-400/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]'
-      : 'flex items-center gap-2 px-4 py-2.5 bg-white/[0.05] backdrop-blur-xl rounded-xl border border-white/10 text-sm text-slate-300 hover:text-white hover:border-purple-500/30 transition-all duration-300';
+      ? 'flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600/20 to-green-600/20 backdrop-blur-xl rounded-xl border border-emerald-500/30 text-sm text-emerald-300 hover:text-ink hover:border-emerald-400/50 transition-all duration-300 hover:shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+      : 'flex items-center gap-2 px-4 py-2.5 bg-overlay backdrop-blur-xl rounded-xl border border-line text-sm text-muted hover:text-ink hover:border-purple-500/30 transition-all duration-300';
 
   return (
     <motion.button

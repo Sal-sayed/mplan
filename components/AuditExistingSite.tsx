@@ -70,17 +70,17 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden">
+    <div className="bg-surface border border-line rounded-2xl overflow-hidden">
 
       {/* ─── HEADER ─── */}
-      <div className="px-6 py-5 border-b border-slate-700/60">
+      <div className="px-6 py-5 border-b border-line">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg text-slate-100 font-semibold flex items-center gap-2">
+            <h2 className="text-lg text-ink font-semibold flex items-center gap-2">
               <Search size={18} className="text-blue-400" />
               Audit Existing Site
             </h2>
-            <p className="text-sm text-slate-400 mt-0.5">Scrape live GA4 / GTM setup and email the report</p>
+            <p className="text-sm text-faint mt-0.5">Scrape live GA4 / GTM setup and email the report</p>
           </div>
           <span className="text-xs bg-blue-600/20 text-blue-300 px-3 py-1 rounded-full font-medium">
             {recommendedEvents.length} planned events
@@ -91,27 +91,27 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
       {/* ─── FORM ─── */}
       <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
         <div>
-          <label className="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1.5 block">Site URL</label>
-          <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition">
-            <Globe size={15} className="text-slate-500 ml-3" />
+          <label className="text-xs text-faint uppercase tracking-wider font-medium mb-1.5 block">Site URL</label>
+          <div className="flex items-center bg-overlay border border-line rounded-lg overflow-hidden focus-within:border-blue-500/50 transition">
+            <Globe size={15} className="text-faint ml-3" />
             <input
               type="url" required value={url}
               onChange={e => setUrl(e.target.value)}
               placeholder="https://example.com"
-              className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 px-3 py-3 text-sm outline-none"
+              className="flex-1 bg-transparent text-ink placeholder:text-faint px-3 py-3 text-sm outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-xs text-slate-400 uppercase tracking-wider font-medium mb-1.5 block">Send report to (email)</label>
-          <div className="flex items-center bg-slate-800 border border-slate-700 rounded-lg overflow-hidden focus-within:border-blue-500/50 transition">
-            <Mail size={15} className="text-slate-500 ml-3" />
+          <label className="text-xs text-faint uppercase tracking-wider font-medium mb-1.5 block">Send report to (email)</label>
+          <div className="flex items-center bg-overlay border border-line rounded-lg overflow-hidden focus-within:border-blue-500/50 transition">
+            <Mail size={15} className="text-faint ml-3" />
             <input
               type="email" required value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@company.com"
-              className="flex-1 bg-transparent text-slate-100 placeholder-slate-500 px-3 py-3 text-sm outline-none"
+              className="flex-1 bg-transparent text-ink placeholder:text-faint px-3 py-3 text-sm outline-none"
             />
           </div>
         </div>
@@ -119,7 +119,7 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
         <button
           type="submit"
           disabled={!canSubmit}
-          className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold text-sm flex items-center justify-center gap-2 transition"
+          className="w-full py-3 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:bg-overlay-strong disabled:text-faint text-onaccent font-semibold text-sm flex items-center justify-center gap-2 transition"
         >
           {loading ? (
             <><Loader2 size={16} className="animate-spin" /> Scraping &amp; Emailing&hellip;</>
@@ -155,17 +155,17 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
             </div>
 
             {/* Detected Tracking */}
-            <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5">
-              <h3 className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Detected Tracking</h3>
+            <div className="bg-overlay border border-line rounded-xl p-5">
+              <h3 className="text-xs text-faint uppercase tracking-widest font-semibold mb-3">Detected Tracking</h3>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-400">GA4 Measurement IDs</span>
+                  <span className="text-sm text-faint">GA4 Measurement IDs</span>
                   <span className="font-mono text-sm text-blue-300">
                     {result.scrapeReport.measurementIds.length > 0 ? result.scrapeReport.measurementIds.join(', ') : 'None'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-400">GTM Containers</span>
+                  <span className="text-sm text-faint">GTM Containers</span>
                   <span className="font-mono text-sm text-blue-300">
                     {result.scrapeReport.gtmContainers.map((c: any) => c.id).join(', ') || 'None'}
                   </span>
@@ -187,27 +187,27 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
                 { label: 'Total Missing', value: result.diff.summary.missing, color: 'text-amber-400' },
                 { label: 'Extra Events', value: result.diff.summary.extraEventsFound, color: 'text-emerald-400' },
               ].map(stat => (
-                <div key={stat.label} className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 text-center">
+                <div key={stat.label} className="bg-overlay border border-line rounded-xl p-4 text-center">
                   <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-                  <div className="text-[10px] text-slate-400 mt-1 uppercase tracking-wider">{stat.label}</div>
+                  <div className="text-[10px] text-faint mt-1 uppercase tracking-wider">{stat.label}</div>
                 </div>
               ))}
             </div>
 
             {/* Event Comparison */}
-            <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5">
-              <h3 className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Event-by-Event Comparison</h3>
+            <div className="bg-overlay border border-line rounded-xl p-5">
+              <h3 className="text-xs text-faint uppercase tracking-widest font-semibold mb-3">Event-by-Event Comparison</h3>
               <div className="space-y-2">
                 {result.diff.comparison.map((c: any, i: number) => {
                   const pri = priColor(c.priority);
                   return (
-                    <div key={i} className="flex items-center gap-3 py-2 border-b border-slate-700/40 last:border-0">
+                    <div key={i} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
                       <span className="text-lg shrink-0">
                         {c.status === 'implemented' ? '\u2705' : '\u274C'}
                       </span>
                       <div className="flex-1 min-w-0">
                         <code className="text-sm text-blue-300 font-mono">{c.name}</code>
-                        {c.description && <p className="text-xs text-slate-500 mt-0.5 truncate">{c.description}</p>}
+                        {c.description && <p className="text-xs text-faint mt-0.5 truncate">{c.description}</p>}
                       </div>
                       <span className={`text-[10px] px-2 py-0.5 rounded-md font-semibold border ${pri.bg} ${pri.text} ${pri.border}`}>
                         {c.priority} HAVE
@@ -220,8 +220,8 @@ export default function AuditExistingSite({ recommendedEvents, defaultUrl = '' }
 
             {/* Extra Events */}
             {result.diff.extraEvents.length > 0 && (
-              <div className="bg-slate-800/60 border border-slate-700/60 rounded-xl p-5">
-                <h3 className="text-xs text-slate-400 uppercase tracking-widest font-semibold mb-3">Extra Events Detected (not in plan)</h3>
+              <div className="bg-overlay border border-line rounded-xl p-5">
+                <h3 className="text-xs text-faint uppercase tracking-widest font-semibold mb-3">Extra Events Detected (not in plan)</h3>
                 <div className="flex flex-wrap gap-2">
                   {result.diff.extraEvents.map((e: string, i: number) => (
                     <span key={i} className="font-mono text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/15 px-2.5 py-1 rounded-md">{e}</span>

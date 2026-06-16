@@ -28,27 +28,27 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0b1120] p-6">
-      <div className="w-full max-w-sm rounded-2xl border border-white/[0.1] bg-[#0d1525] p-8 text-center">
-        <h1 className="text-xl font-bold text-white">Sign in</h1>
-        <p className="text-sm text-slate-400 mt-1 mb-6">Use your Google account.</p>
+    <div className="min-h-screen flex items-center justify-center bg-app p-6">
+      <div className="w-full max-w-sm rounded-2xl border border-line-strong bg-surface p-8 text-center">
+        <h1 className="text-xl font-bold text-ink">Sign in</h1>
+        <p className="text-sm text-faint mt-1 mb-6">Use your Google account.</p>
 
         {user === undefined ? (
-          <p className="text-sm text-slate-500">Checking…</p>
+          <p className="text-sm text-faint">Checking…</p>
         ) : user ? (
           <div className="space-y-3">
-            <p className="text-sm text-slate-200">
+            <p className="text-sm text-muted">
               Signed in as <span className="font-semibold">{user.email || user.user_id}</span>
             </p>
             <Link
               href="/"
-              className="block w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-white font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition"
+              className="block w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition"
             >
               Go to the app →
             </Link>
             <button
               onClick={signOut}
-              className="w-full py-2.5 rounded-xl bg-white/[0.05] border border-white/[0.1] text-slate-200 text-sm hover:bg-white/[0.1] transition"
+              className="w-full py-2.5 rounded-xl bg-overlay border border-line-strong text-muted text-sm hover:bg-overlay-strong transition"
             >
               Sign out
             </button>
@@ -56,7 +56,7 @@ export default function SignInPage() {
         ) : (
           <a
             href="/api/auth/google/start"
-            className="block w-full py-2.5 rounded-xl bg-white text-slate-900 font-semibold text-sm hover:bg-slate-100 transition"
+            className="block w-full py-2.5 rounded-xl bg-contrast text-contrast-ink font-semibold text-sm hover:opacity-90 transition"
           >
             Sign in with Google
           </a>

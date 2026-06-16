@@ -71,7 +71,7 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
         </motion.div>
 
         <motion.p initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}
-          className="text-base text-slate-400 text-center max-w-2xl mb-10 font-medium relative z-10">
+          className="text-base text-faint text-center max-w-2xl mb-10 font-medium relative z-10">
           Hand us your website and email — we&apos;ll hand back a complete measurement plan, ready to implement.
         </motion.p>
 
@@ -80,12 +80,12 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
           className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl relative z-10">
 
           <button onClick={() => setView('new')}
-            className="group text-left p-6 bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08] rounded-xl hover:border-blue-400/40 hover:bg-white/[0.10] transition-all duration-200">
+            className="group text-left p-6 bg-overlay backdrop-blur-2xl border border-line rounded-xl hover:border-blue-400/40 hover:bg-overlay-strong transition-all duration-200">
             <div className="p-2.5 rounded-lg bg-blue-500/15 inline-flex mb-4">
               <Sparkles className="text-blue-400" size={20} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-1 leading-tight">New website</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+            <h3 className="text-xl font-bold text-ink mb-1 leading-tight">New website</h3>
+            <p className="text-sm text-faint leading-relaxed mb-4">
               No measurement plan yet. We&apos;ll build one from scratch — objectives, KPIs, events, and a roadmap.
             </p>
             <span className="text-sm text-blue-400 font-medium inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all">
@@ -94,12 +94,12 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
           </button>
 
           <button onClick={() => setView('existing')}
-            className="group text-left p-6 bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08] rounded-xl hover:border-orange-400/40 hover:bg-white/[0.10] transition-all duration-200">
+            className="group text-left p-6 bg-overlay backdrop-blur-2xl border border-line rounded-xl hover:border-orange-400/40 hover:bg-overlay-strong transition-all duration-200">
             <div className="p-2.5 rounded-lg bg-orange-500/15 inline-flex mb-4">
               <FileSearch className="text-orange-400" size={20} />
             </div>
-            <h3 className="text-xl font-bold text-white mb-1 leading-tight">Existing website</h3>
-            <p className="text-sm text-slate-400 leading-relaxed mb-4">
+            <h3 className="text-xl font-bold text-ink mb-1 leading-tight">Existing website</h3>
+            <p className="text-sm text-faint leading-relaxed mb-4">
               Already have a plan? Drop your Excel and we&apos;ll suggest which events to add, fix, or remove.
             </p>
             <span className="text-sm text-orange-400 font-medium inline-flex items-center gap-1.5 group-hover:gap-2.5 transition-all">
@@ -119,7 +119,7 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
     <div className="h-full w-full flex flex-col items-center justify-center p-6 overflow-hidden relative">
 
       <button onClick={() => { setView('choose'); setUrl(''); setEmail(''); setPlanFile(null); setError(''); }}
-        className="absolute top-6 left-6 flex items-center gap-2 text-slate-400 hover:text-white transition text-sm z-20">
+        className="absolute top-6 left-6 flex items-center gap-2 text-faint hover:text-ink transition text-sm z-20">
         <ArrowLeft size={14} /> Back
       </button>
 
@@ -128,10 +128,10 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
         <p className={`text-[10px] uppercase tracking-[0.2em] mb-3 font-medium ${isNew ? 'text-blue-400' : 'text-orange-400'}`}>
           {isNew ? 'New Website' : 'Existing Website'}
         </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+        <h1 className="text-3xl sm:text-4xl font-bold text-ink leading-tight">
           {isNew ? "Let's build your" : "Let's audit your"}
           <br />
-          <span className="text-slate-300">{isNew ? 'measurement plan' : 'current tracking'}</span>
+          <span className="text-muted">{isNew ? 'measurement plan' : 'current tracking'}</span>
         </h1>
       </motion.div>
 
@@ -139,28 +139,28 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
         onSubmit={handleSubmit} className="w-full max-w-md space-y-3 relative z-10">
 
         {/* URL */}
-        <div className="flex items-center bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08] rounded-xl overflow-hidden focus-within:border-blue-400/40 transition-all">
+        <div className="flex items-center bg-overlay backdrop-blur-2xl border border-line rounded-xl overflow-hidden focus-within:border-blue-400/40 transition-all">
           <div className="flex items-center pl-4 pr-2">
-            <Globe className="w-4 h-4 text-slate-500" />
+            <Globe className="w-4 h-4 text-faint" />
           </div>
           <input
             type="text" required value={url} autoFocus
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com"
-            className="flex-1 bg-transparent py-4 px-2 text-white placeholder-slate-500 outline-none text-sm"
+            className="flex-1 bg-transparent py-4 px-2 text-ink placeholder-slate-500 outline-none text-sm"
           />
         </div>
 
         {/* Email */}
-        <div className="flex items-center bg-white/[0.06] backdrop-blur-2xl border border-white/[0.08] rounded-xl overflow-hidden focus-within:border-blue-400/40 transition-all">
+        <div className="flex items-center bg-overlay backdrop-blur-2xl border border-line rounded-xl overflow-hidden focus-within:border-blue-400/40 transition-all">
           <div className="flex items-center pl-4 pr-2">
-            <Mail className="w-4 h-4 text-slate-500" />
+            <Mail className="w-4 h-4 text-faint" />
           </div>
           <input
             type="email" required value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@gmail.com"
-            className="flex-1 bg-transparent py-4 px-2 text-white placeholder-slate-500 outline-none text-sm"
+            className="flex-1 bg-transparent py-4 px-2 text-ink placeholder-slate-500 outline-none text-sm"
           />
         </div>
 
@@ -168,11 +168,11 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
         {!isNew && (
           <div>
             {!planFile ? (
-              <label className="flex flex-col items-center justify-center gap-2 py-5 bg-white/[0.04] border-2 border-dashed border-white/[0.12] rounded-xl cursor-pointer hover:border-orange-400/30 hover:bg-white/[0.06] transition-all">
-                <Upload className="text-slate-500" size={20} />
+              <label className="flex flex-col items-center justify-center gap-2 py-5 bg-overlay border-2 border-dashed border-line-strong rounded-xl cursor-pointer hover:border-orange-400/30 hover:bg-overlay transition-all">
+                <Upload className="text-faint" size={20} />
                 <div className="text-center">
-                  <div className="text-sm text-white font-medium">Drop your current plan</div>
-                  <div className="text-xs text-slate-500">Excel file (.xlsx) — optional, max 5MB</div>
+                  <div className="text-sm text-ink font-medium">Drop your current plan</div>
+                  <div className="text-xs text-faint">Excel file (.xlsx) — optional, max 5MB</div>
                 </div>
                 <input type="file" accept=".xlsx,.xls" onChange={handleFileChange} className="hidden" />
               </label>
@@ -181,17 +181,17 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
                 <div className="flex items-center gap-3 min-w-0">
                   <FileSpreadsheet className="text-orange-400 flex-shrink-0" size={18} />
                   <div className="min-w-0">
-                    <div className="text-sm text-white font-medium truncate">{planFile.name}</div>
-                    <div className="text-xs text-slate-400">{(planFile.size / 1024).toFixed(0)} KB</div>
+                    <div className="text-sm text-ink font-medium truncate">{planFile.name}</div>
+                    <div className="text-xs text-faint">{(planFile.size / 1024).toFixed(0)} KB</div>
                   </div>
                 </div>
-                <button type="button" onClick={() => setPlanFile(null)} className="text-slate-400 hover:text-white p-1">
+                <button type="button" onClick={() => setPlanFile(null)} className="text-faint hover:text-ink p-1">
                   <X size={16} />
                 </button>
               </div>
             )}
             {!planFile && (
-              <p className="text-xs text-slate-500 mt-2 text-center">
+              <p className="text-xs text-faint mt-2 text-center">
                 No file? We&apos;ll still audit your live site and recommend improvements.
               </p>
             )}
@@ -203,7 +203,7 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
         {/* Submit */}
         <motion.button type="submit" disabled={!canSubmit}
           whileHover={canSubmit ? { scale: 1.02 } : {}} whileTap={canSubmit ? { scale: 0.98 } : {}}
-          className={`w-full py-4 mt-1 rounded-xl text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-25 disabled:cursor-not-allowed transition-all ${
+          className={`w-full py-4 mt-1 rounded-xl text-onaccent font-semibold flex items-center justify-center gap-2 disabled:opacity-25 disabled:cursor-not-allowed transition-all ${
             isNew
               ? 'bg-gradient-to-r from-blue-500 to-cyan-400 hover:shadow-[0_0_30px_rgba(96,165,250,0.3)]'
               : 'bg-gradient-to-r from-orange-500 to-amber-400 hover:shadow-[0_0_30px_rgba(249,115,22,0.3)]'
@@ -215,7 +215,7 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
           )}
         </motion.button>
 
-        <p className="text-xs text-slate-500 text-center pt-1">
+        <p className="text-xs text-faint text-center pt-1">
           Delivered as an Excel workbook, ready to implement
         </p>
       </motion.form>

@@ -60,7 +60,7 @@ export default function URLInput({ onSubmit, isLoading }: URLInputProps) {
           }}
         />
 
-        <div className="relative flex items-center bg-white/[0.05] backdrop-blur-2xl rounded-2xl border border-white/[0.08] overflow-hidden">
+        <div className="relative flex items-center bg-overlay backdrop-blur-2xl rounded-2xl border border-line overflow-hidden">
           <div className="flex items-center pl-5 pr-2">
             <Globe
               className={`w-5 h-5 transition-colors duration-300 ${
@@ -68,7 +68,7 @@ export default function URLInput({ onSubmit, isLoading }: URLInputProps) {
                   ? 'text-emerald-400'
                   : isValid === false
                   ? 'text-red-400'
-                  : 'text-slate-400'
+                  : 'text-faint'
               }`}
             />
           </div>
@@ -83,7 +83,7 @@ export default function URLInput({ onSubmit, isLoading }: URLInputProps) {
             onFocus={() => setIsFocused(true)}
             onBlur={() => setIsFocused(false)}
             placeholder="Enter website URL (e.g., example.com)"
-            className="flex-1 bg-transparent py-5 px-2 text-white placeholder-slate-500 outline-none text-lg"
+            className="flex-1 bg-transparent py-5 px-2 text-ink placeholder-slate-500 outline-none text-lg"
             disabled={isLoading}
           />
 
@@ -92,7 +92,7 @@ export default function URLInput({ onSubmit, isLoading }: URLInputProps) {
             disabled={isLoading || !url}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="m-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.4)]"
+            className="m-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-onaccent font-semibold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-300 hover:shadow-[0_0_30px_rgba(139,92,246,0.4)]"
           >
             {isLoading ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

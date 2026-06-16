@@ -31,7 +31,7 @@ export default function DirectDownloadButtons({ plan, score, scrapeData }: { pla
       {buttons.map(b => (
         <motion.button key={b.format} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
           onClick={() => download(b.format)} disabled={loading !== null}
-          className={`px-3 py-2 rounded-xl bg-gradient-to-br ${b.color} border text-white text-sm font-medium flex items-center gap-1.5 transition-all disabled:opacity-50`}>
+          className={`px-3 py-2 rounded-xl bg-gradient-to-br ${b.color} border text-onaccent text-sm font-medium flex items-center gap-1.5 transition-all disabled:opacity-50`}>
           {loading === b.format ? <Loader2 size={14} className="animate-spin" /> : done === b.format ? <Check size={14} className="text-emerald-400" /> : <b.icon size={14} />}
           {b.label}
         </motion.button>

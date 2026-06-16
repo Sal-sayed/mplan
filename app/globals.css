@@ -1,10 +1,61 @@
 @import "tailwindcss";
 
+/* ── Theme tokens ──────────────────────────────────────────────────────────
+   DARK is the :root default, so server-rendered HTML (and the no-JS case) keeps
+   the established look with no flash. `html.light` overrides for light mode; the
+   toggle just adds/removes that class. Components use the semantic utilities
+   below (bg-app, text-ink, border-line, bg-overlay, …) so a single var flip
+   re-themes the whole app instead of editing every color literal. */
 @theme inline {
-  --color-background: #0b1120;
-  --color-foreground: #f1f5f9;
+  --color-app: var(--app);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-overlay: var(--overlay);
+  --color-overlay-strong: var(--overlay-strong);
+  --color-contrast: var(--contrast);
+  --color-contrast-ink: var(--contrast-ink);
+  --color-onaccent: #ffffff;
+  /* kept for back-compat with anything referencing the originals */
+  --color-background: var(--app);
+  --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  /* DARK — the default theme (matches the original hardcoded palette). */
+  --app: #0b1120;
+  --surface: #0d1525;
+  --elevated: #131c30;
+  --ink: #ffffff;
+  --muted: #cbd5e1;   /* slate-300 — secondary text */
+  --faint: #94a3b8;   /* slate-400 — muted/labels   */
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.14);
+  --overlay: rgba(255, 255, 255, 0.04);
+  --overlay-strong: rgba(255, 255, 255, 0.10);
+  --contrast: #ffffff;     /* high-contrast button surface (white on dark) */
+  --contrast-ink: #0f172a; /* …its text                                    */
+}
+
+html.light {
+  --app: #eef2f7;
+  --surface: #ffffff;
+  --elevated: #ffffff;
+  --ink: #0f172a;     /* slate-900 */
+  --muted: #334155;   /* slate-700 — secondary text stays readable */
+  --faint: #5b6b82;   /* desaturated slate-500/600 for labels      */
+  --line: rgba(15, 23, 42, 0.10);
+  --line-strong: rgba(15, 23, 42, 0.18);
+  --overlay: rgba(15, 23, 42, 0.035);
+  --overlay-strong: rgba(15, 23, 42, 0.07);
+  --contrast: #0f172a;     /* inverts: dark button on light */
+  --contrast-ink: #ffffff;
 }
 
 html, body {
@@ -16,10 +67,22 @@ html, body {
   padding: 0;
   position: fixed;
   inset: 0;
-  background: #0b1120;
-  color: #f1f5f9;
+  background: var(--app);
+  color: var(--ink);
   font-family: var(--font-sans, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Page backdrop (AnimatedBackground). Dark = the canvas cityscape + dark
+   gradient. Light = a clean light gradient with the dark canvas FX hidden. */
+.app-backdrop {
+  background: linear-gradient(170deg, #0d1525 0%, #0a1028 30%, #0e1530 50%, #091020 80%, #0b1322 100%);
+}
+html.light .app-backdrop {
+  background: linear-gradient(170deg, #eef2f7 0%, #e6edf6 40%, #edf2f9 70%, #f4f7fb 100%);
+}
+html.light .backdrop-fx {
+  display: none;
 }
 
 .scroll-area {
