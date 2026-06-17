@@ -17,7 +17,19 @@
 // 'inconclusive' for that dimension (mirror the gate's skipped pattern), NEVER a
 // false fail / false violation. The overall verdict is the worst across both.
 
-import type { ConsentModeStatus, ConsentPlan, MeasurementPlan, ObservedEvent, PreConsentObservation } from './types.ts';
+import type { ConsentCategory, ConsentModeStatus, ConsentPlan, MeasurementPlan, ObservedEvent, PreConsentObservation, TrackedEvent } from './types.ts';
+
+// The consent category a consent-gated (requiresConsent) event must be covered by.
+// SINGLE SOURCE OF TRUTH shared by the coherence check (computeConsentCoherenceProblems)
+// and the per-event coverage view (consent-coverage.ts) so they can never disagree.
+export const GATED_EVENT_CONSENT_CATEGORY: ConsentCategory = 'analytics';
+
+// Is this event's consent requirement covered by the plan's consent categories?
+// Non-gated events are always covered.
+export function isEventConsentCovered(event: TrackedEvent, consent: ConsentPlan): boolean {
+  if (!event.requiresConsent) return true;
+  return consent.categoriesUsed.includes(GATED_EVENT_CONSENT_CATEGORY);
+}
 
 // Outbound third-party trackers — an actual collect/hit going OUT to a vendor.
 // Excludes 'GTM' (a dataLayer push is app-level, not itself an outbound hit), so a
@@ -79,8 +91,8 @@ export function computeConsentCoherenceProblems(plan: MeasurementPlan): string[]
   const consent: ConsentPlan = plan.consent;
   const problems: string[] = [];
   const anyRequiresConsent = plan.events.some((e) => e.requiresConsent);
-  if (anyRequiresConsent && !consent.categoriesUsed.includes('analytics')) {
-    problems.push("events set requiresConsent but consent.categoriesUsed is missing 'analytics'");
+  if (anyRequiresConsent && !consent.categoriesUsed.includes(GATED_EVENT_CONSENT_CATEGORY)) {
+    problems.push(`events set requiresConsent but consent.categoriesUsed is missing '${GATED_EVENT_CONSENT_CATEGORY}'`);
   }
   if (consent.consentModeRequired && consent.categoriesUsed.length === 0) {
     problems.push('consentModeRequired is true but consent.categoriesUsed is empty');

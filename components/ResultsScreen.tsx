@@ -12,6 +12,7 @@ import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
 import MetricHealthScreen from './MetricHealthScreen';
 import ImplementationGuideScreen from './ImplementationGuideScreen';
+import { buildConsentCoverage } from '@/lib/measurement/consent-coverage';
 import type { ImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
@@ -19,6 +20,68 @@ import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
 import type { GovernanceDrift } from '@/lib/measurement/governance-diff';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// Plan-level, per-event consent coverage — reads the plan only (no live site), so
+// it always renders. Shows whether the plan accounts for every event's consent
+// requirement; needs_attention rows sort first. Distinct from the live slice 1/2
+// checks in the Launch Readiness screen.
+function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
+  const coverage = buildConsentCoverage(plan);
+  if (coverage.rows.length === 0) return null;
+  const { summary } = coverage;
+  return (
+    <div className="bg-overlay rounded-xl border border-line p-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+        <h4 className="text-sm font-semibold text-ink">Per-event consent coverage</h4>
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="text-faint">{summary.requiresConsentCount}/{summary.totalEvents} require consent</span>
+          {summary.needsAttentionCount > 0 ? (
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium">{summary.needsAttentionCount} need attention</span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium">all covered</span>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-faint mb-3">Every planned event and whether the plan&apos;s consent categories account for it — no live site needed.</p>
+      <div className="rounded-lg overflow-hidden border border-line">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="bg-overlay text-faint">
+              <th className="text-left px-3 py-2 font-medium">Event</th>
+              <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Category</th>
+              <th className="text-center px-3 py-2 font-medium">Requires consent</th>
+              <th className="text-center px-3 py-2 font-medium">Covered</th>
+              <th className="text-left px-3 py-2 font-medium">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {coverage.rows.map((r) => (
+              <tr key={r.eventId} className="border-t border-line align-top">
+                <td className="px-3 py-2">
+                  <div className="flex items-center gap-1.5">
+                    <code className="text-blue-300 font-mono break-all">{r.eventName}</code>
+                    {r.isKeyEvent && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
+                  </div>
+                  <p className="text-[11px] text-faint mt-0.5">{r.note}</p>
+                </td>
+                <td className="px-3 py-2 text-muted hidden sm:table-cell capitalize">{r.category}</td>
+                <td className="px-3 py-2 text-center text-muted">{r.requiresConsent ? 'yes' : 'no'}</td>
+                <td className="px-3 py-2 text-center text-muted">{r.requiresConsent ? (r.consentCategoryCovered ? 'yes' : 'no') : '—'}</td>
+                <td className="px-3 py-2">
+                  {r.status === 'needs_attention' ? (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium whitespace-nowrap"><AlertTriangle className="w-3 h-3" /> needs attention</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> ok</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 const TABS = [
   { key: 'overview', label: 'Overview', icon: Target },
@@ -493,6 +556,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               </div>
               {plan.consent?.notes && <p className="text-sm text-faint mt-2">{plan.consent.notes}</p>}
             </div>
+            <ConsentCoverageSection plan={plan} />
           </div></div>);
 
       case 'tooling': return (
