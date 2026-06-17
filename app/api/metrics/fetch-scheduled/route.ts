@@ -57,6 +57,16 @@ interface MetricFetchResult {
   error?: string;
 }
 
+// An EXPECTED, skippable per-property condition: the owner hasn't connected
+// Google, their session expired, or the connected account lacks access to that
+// GA4 property (401/403). These are routine for an unattended fan-out across many
+// owners — the cron logs them as warnings and keeps going, rather than failing the
+// whole run. Anything else (GA4 5xx, a store write failure, a bug) is a genuine
+// error. Matches the messages thrown by token-store + ga4-data.
+function isSkippableAccessError(message: string): boolean {
+  return /not connected|reconnect google|does not have access|no access|lacks access|permission denied|forbidden|unauthorized|\b40[13]\b/i.test(message);
+}
+
 export async function POST(req: NextRequest) {
   if (!process.env.MONITOR_SECRET) {
     return NextResponse.json({ success: false, error: 'MONITOR_SECRET is not configured on the server.' }, { status: 500 });
@@ -118,7 +128,10 @@ export async function POST(req: NextRequest) {
       await saveMetrics(rows);
       results.push({ propertyId, rowsSaved: rows.length });
     } catch (err) {
-      results.push({ propertyId, error: (err as Error)?.message || 'metric fetch failed' });
+      const message = (err as Error)?.message || 'metric fetch failed';
+      // Flag not-connected / no-access as a SKIP (expected) vs a real error, so
+      // the cron can warn-and-continue rather than fail the whole run.
+      results.push({ propertyId, error: message, ...(isSkippableAccessError(message) ? { skipped: true } : {}) });
     }
   }
 

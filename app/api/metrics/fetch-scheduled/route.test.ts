@@ -16,6 +16,7 @@ const mockModule = (mock as unknown as { module: MockModuleFn }).module.bind(moc
 let persistedRuns: any[] = [];
 let tokenThrows = false;
 let ga4ThrowsForProp: string | null = null;
+let ga4ThrowMessage = 'GA4 boom';
 let ga4ReportByProp: Record<string, any> = {};
 let savedBatches: any[][] = [];
 
@@ -31,7 +32,7 @@ mockModule('@/lib/google/token-store', {
 mockModule('@/lib/measurement/ga4-data', {
   namedExports: {
     runGa4Report: async (req: any) => {
-      if (ga4ThrowsForProp && req.propertyId === ga4ThrowsForProp) throw new Error('GA4 boom');
+      if (ga4ThrowsForProp && req.propertyId === ga4ThrowsForProp) throw new Error(ga4ThrowMessage);
       return ga4ReportByProp[req.propertyId] ?? { dimensionHeaders: ['date', 'eventName'], metricHeaders: ['eventCount'], rows: [] };
     },
   },
@@ -62,6 +63,7 @@ beforeEach(() => {
   persistedRuns = [];
   tokenThrows = false;
   ga4ThrowsForProp = null;
+  ga4ThrowMessage = 'GA4 boom';
   ga4ReportByProp = {};
   savedBatches = [];
 });
@@ -120,14 +122,35 @@ test('per-property isolation: one property failing does not abort the others', a
   assert.equal(savedBatches.length, 1); // only the good property persisted
 });
 
-test("a property whose owner hasn't connected Google → that property errors, no crash, nothing saved", async () => {
+test("a property whose owner hasn't connected Google → SKIPPED (expected), no crash, nothing saved", async () => {
   persistedRuns = [runWithProp('111')];
-  tokenThrows = true; // getValidAccessToken throws for this owner
+  tokenThrows = true; // getValidAccessToken throws 'Google account not connected'
   const res = await POST(makeReq({}, auth('topsecret')));
   assert.equal(res.status, 200);
   const body = await res.json();
-  assert.ok(body.results[0].error, 'the property is recorded with an error');
+  assert.equal(body.results[0].skipped, true, 'not-connected is a skip, not a hard error');
+  assert.ok(body.results[0].error, 'a reason is still recorded');
   assert.equal(savedBatches.length, 0);
+});
+
+test('a property the account lacks access to (403) → SKIPPED (expected)', async () => {
+  persistedRuns = [runWithProp('111')];
+  ga4ThrowsForProp = '111';
+  ga4ThrowMessage = 'Your connected Google account does not have access to this GA4 property.';
+  const res = await POST(makeReq({}, auth('topsecret')));
+  const body = await res.json();
+  assert.equal(body.results[0].skipped, true);
+  assert.match(body.results[0].error, /does not have access/);
+});
+
+test('an UNEXPECTED per-property error (GA4 5xx) → NOT skipped (a real failure the cron should surface)', async () => {
+  persistedRuns = [runWithProp('111')];
+  ga4ThrowsForProp = '111';
+  ga4ThrowMessage = 'GA4 Data API error (500): backend error';
+  const res = await POST(makeReq({}, auth('topsecret')));
+  const body = await res.json();
+  assert.notEqual(body.results[0].skipped, true, 'a 5xx is a genuine error, not a skip');
+  assert.ok(body.results[0].error);
 });
 
 test('dedupes properties across persisted runs', async () => {
