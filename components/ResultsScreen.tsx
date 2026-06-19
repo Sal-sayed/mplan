@@ -21,6 +21,29 @@ import type { GovernanceDrift } from '@/lib/measurement/governance-diff';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+// Parse a JSON API response defensively. The long-running checks (launch
+// readiness / drift / backfill) open a headless browser server-side; if that
+// request times out or the server runs out of memory, the proxy can close the
+// connection with an EMPTY or non-JSON body — a bare res.json() then throws the
+// cryptic "Unexpected end of JSON input". Turn that into a clear, actionable
+// message instead of leaking the raw parser error.
+async function readJsonResponse(res: Response): Promise<any> {
+  const text = await res.text().catch(() => '');
+  if (!text.trim()) {
+    if ([502, 503, 504].includes(res.status) || res.status === 0) {
+      throw new Error(
+        'The live check didn’t finish — opening the site timed out or the server ran low on memory. Try again, or leave the URL blank to run the instant plan-consistency check only.'
+      );
+    }
+    throw new Error(`The server returned an empty response (HTTP ${res.status}). Please try again in a moment.`);
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Unexpected server response (HTTP ${res.status}). Please try again in a moment.`);
+  }
+}
+
 // Plan-level, per-event consent coverage — reads the plan only (no live site), so
 // it always renders. Shows whether the plan accounts for every event's consent
 // requirement; needs_attention rows sort first. Distinct from the live slice 1/2
@@ -173,7 +196,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         const res = await fetch('/api/launch-readiness', {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }),
         });
-        const json = await res.json();
+        const json = await readJsonResponse(res);
         if (cancelled) return;
         if (!res.ok || !json.success) { setConsistencyState('error'); return; }
         setConsistency(json.report as LaunchReadinessReport);
@@ -248,7 +271,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const res = await fetch('/api/launch-readiness', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      const json = await res.json();
+      const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Launch readiness check failed');
       setRdReport(json.report as LaunchReadinessReport);
       setRdDrift((json.drift as GovernanceDrift | undefined) ?? null);
@@ -271,7 +294,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const res = await fetch('/api/governance/check', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
-      const json = await res.json();
+      const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Governance check failed');
       setRdReport(json.report as LaunchReadinessReport);
       const drift = (json.drift as GovernanceDrift | undefined) ?? null;
@@ -295,7 +318,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     const res = await fetch('/api/metrics/validate', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan, ...connectorBody() }),
     });
-    const json = await res.json();
+    const json = await readJsonResponse(res);
     if (!res.ok || !json.success) throw new Error(json.error || 'Metric validation failed');
     setMhResults((json.results as MetricHealthEntry[] | undefined) ?? []);
     setMhChecked(json.propertyChecked === true);
@@ -320,7 +343,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const res = await fetch('/api/implementation/proposal', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan }),
       });
-      const json = await res.json();
+      const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Could not build the implementation guide.');
       setIgProposal(json.proposal as ImplementationProposal);
       setIgPhase('done');
@@ -341,7 +364,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, ...connectorBody(), startDate: bfStart, endDate: bfEnd }),
       });
-      const json = await res.json();
+      const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Backfill failed');
       await loadMetricHealth(); // history is now populated → real verdicts
       setRdPhase('done');
