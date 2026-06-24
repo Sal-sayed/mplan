@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createContainerAndApply, NeedsAccountSelection, type CreateContainerClient } from './gtm-apply.ts';
+import { resolveInjectContainerId } from './inject-link.ts';
 import type { MeasurementPlan } from './types.ts';
 
 function plan(): MeasurementPlan {
@@ -127,6 +128,23 @@ test('Meta Pixel id → the new container also gets the Meta base + per-event ta
   const result = await createContainerAndApply(input({ metaPixelId: '123456789012345' }), client);
   assert.ok(result.created.tags.includes('Meta Pixel — Base'));
   assert.ok(result.created.tags.includes('Meta — purchase'));
+});
+
+test('CREATE → INJECT: the new container public id (GTM-XXXX) flows into the inject step', async () => {
+  const { client } = fakeClient();
+  const result = await createContainerAndApply(input(), client);
+  // create returns the PUBLIC id (what injection needs), and it links straight in.
+  assert.match(result.newContainerId, /^GTM-/);
+  assert.equal(resolveInjectContainerId({ createdId: result.newContainerId }), result.newContainerId);
+});
+
+test('CREATE → INJECT: an "already exists" container id links into inject the same way', async () => {
+  const { client } = fakeClient({
+    listContainers: async () => [{ path: 'accounts/100/containers/9', name: 'shop.example.com', publicId: 'GTM-OLD999' }],
+  });
+  const result = await createContainerAndApply(input(), client);
+  assert.equal(result.alreadyExisted, true);
+  assert.equal(resolveInjectContainerId({ existingId: result.newContainerId }), 'GTM-OLD999');
 });
 
 test('CHECK-BEFORE-CREATE: an existing container with the site name is reused, not duplicated', async () => {

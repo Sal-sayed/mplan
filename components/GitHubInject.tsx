@@ -11,6 +11,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { GitBranch, GitPullRequest, Check, Loader2, ClipboardCopy, ShieldCheck, Sparkles } from 'lucide-react';
 import type { MeasurementPlan } from '@/lib/measurement/types';
+import { resolveInjectContainerId } from '@/lib/measurement/inject-link';
 
 interface GhStatus { configured: boolean; connected: boolean; login?: string; }
 interface GWriteStatus { configured: boolean; connected: boolean; canWrite: boolean; }
@@ -35,7 +36,6 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const [repos, setRepos] = useState<RepoSummary[]>([]);
   const [selected, setSelected] = useState('');
   const [typed, setTyped] = useState('');
-  const containerId = typed || defaultContainerId;
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<InjectResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -56,6 +56,15 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
 
   // CHECK-BEFORE-CREATE: what already exists for this site on the connected account.
   const [provision, setProvision] = useState<ProvisionStatus | null>(null);
+
+  // CREATE → INJECT link: the just-created / already-existing container id flows
+  // into the inject field automatically; a manual entry still wins.
+  const containerId = resolveInjectContainerId({
+    typed,
+    createdId: createResult?.gtmContainerId,
+    existingId: provision?.gtm.exists ? provision.gtm.containerId : undefined,
+    fallback: defaultContainerId,
+  });
 
   const fetchStatus = useCallback(async () => {
     try { const res = await fetch('/api/github/status'); if (res.ok) setStatus(await res.json()); } catch { /* hidden */ }
