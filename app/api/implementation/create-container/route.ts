@@ -52,6 +52,10 @@ export async function POST(req: NextRequest) {
   if (measurementId && !/^G-[A-Z0-9]+$/i.test(measurementId)) {
     return NextResponse.json({ success: false, error: 'GA4 Measurement ID must look like G-XXXXXXX (or leave it blank).' }, { status: 400 });
   }
+  const metaPixelId = typeof body.metaPixelId === 'string' ? body.metaPixelId.trim() : '';
+  if (metaPixelId && !/^\d{10,20}$/.test(metaPixelId)) {
+    return NextResponse.json({ success: false, error: 'Meta Pixel ID must be the numeric id (or leave it blank).' }, { status: 400 });
+  }
   const containerName = typeof body.containerName === 'string' ? body.containerName.trim() : '';
   const accountId = typeof body.accountId === 'string' ? body.accountId.trim() : '';
 
@@ -78,6 +82,7 @@ export async function POST(req: NextRequest) {
       accountId: accountId || undefined,
       containerName: containerName || undefined,
       measurementId: measurementId || undefined,
+      metaPixelId: metaPixelId || undefined,
     });
     return NextResponse.json({ success: true, result }, { headers: rateLimitHeaders(rl) });
   } catch (err) {

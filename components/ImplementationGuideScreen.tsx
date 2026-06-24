@@ -123,6 +123,7 @@ export default function ImplementationGuideScreen({
   const [writeStatus, setWriteStatus] = useState<{ canConnect: boolean; canWrite: boolean } | null>(null);
   const [containerId, setContainerId] = useState('');
   const [measurementId, setMeasurementId] = useState('');
+  const [metaPixel, setMetaPixel] = useState('');
   const [applyState, setApplyState] = useState<'idle' | 'applying' | 'done' | 'error'>('idle');
   const [applyResult, setApplyResult] = useState<ApplyResult | null>(null);
   const [applyError, setApplyError] = useState('');
@@ -130,6 +131,7 @@ export default function ImplementationGuideScreen({
   // ── Create a BRAND-NEW container, then populate it (no existing GTM-XXXX needed) ──
   const [createName, setCreateName] = useState('');
   const [createMeasurementId, setCreateMeasurementId] = useState('');
+  const [createMetaPixel, setCreateMetaPixel] = useState('');
   const [createAccountId, setCreateAccountId] = useState('');
   const [accountOptions, setAccountOptions] = useState<GtmAccount[]>([]);
   const [createState, setCreateState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
@@ -176,7 +178,7 @@ export default function ImplementationGuideScreen({
     try {
       const res = await fetch('/api/implementation/apply', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, gtm: { containerId }, measurementId }),
+        body: JSON.stringify({ plan, gtm: { containerId }, measurementId, metaPixelId: metaPixel }),
       });
       const json = await res.json();
       if (res.status === 409 && json.needsWriteConnect) {
@@ -201,7 +203,7 @@ export default function ImplementationGuideScreen({
     try {
       const res = await fetch('/api/implementation/create-container', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan, containerName: createName, measurementId: createMeasurementId, accountId: createAccountId || undefined }),
+        body: JSON.stringify({ plan, containerName: createName, measurementId: createMeasurementId, metaPixelId: createMetaPixel, accountId: createAccountId || undefined }),
       });
       const json = await res.json();
       if (res.status === 409 && json.needsWriteConnect) {
@@ -326,6 +328,8 @@ export default function ImplementationGuideScreen({
                     <input value={measurementId} onChange={(e) => setMeasurementId(e.target.value)} placeholder="GA4 Measurement ID — G-XXXXXXX"
                       className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                   </div>
+                  <input value={metaPixel} onChange={(e) => setMetaPixel(e.target.value)} placeholder="Meta Pixel ID — optional (numeric)"
+                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                   <button onClick={applyToGtm} disabled={applyState === 'applying'}
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/20 transition disabled:opacity-60">
                     {applyState === 'applying' ? 'Creating workspace…' : 'Create GTM workspace (no publish)'}
@@ -344,6 +348,8 @@ export default function ImplementationGuideScreen({
                     <input value={createMeasurementId} onChange={(e) => setCreateMeasurementId(e.target.value)} placeholder="GA4 Measurement ID — optional (G-XXXXXXX)"
                       className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                   </div>
+                  <input value={createMetaPixel} onChange={(e) => setCreateMetaPixel(e.target.value)} placeholder="Meta Pixel ID — optional (numeric)"
+                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
                   {accountOptions.length > 0 && (
                     <select value={createAccountId} onChange={(e) => setCreateAccountId(e.target.value)}
                       className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40">
@@ -355,7 +361,7 @@ export default function ImplementationGuideScreen({
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/20 transition disabled:opacity-60">
                     {createState === 'creating' ? 'Creating container…' : 'Create a new GTM container (no publish)'}
                   </button>
-                  <p className="text-[10px] text-faint">Leave the GA4 ID blank to add GA4 later — the container, variables &amp; triggers are still created. Nothing is published.</p>
+                  <p className="text-[10px] text-faint">GA4 &amp; Meta IDs are optional — add either to include those tags. The container, variables &amp; triggers are still created. Nothing is published.</p>
 
                   {createError && createState !== 'error' && <p className="text-xs text-amber-300">{createError}</p>}
                   {createState === 'error' && <p className="text-sm text-rose-400">{createError}</p>}

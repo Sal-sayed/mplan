@@ -178,3 +178,24 @@ export async function createGa4EventTag(workspacePath: string, spec: Ga4TagSpec,
   ensureOk(r, `Create tag ${spec.name}`);
   return { name: r.json.name };
 }
+
+// A Custom HTML tag — used for the Meta Pixel (base loader + per-event fbq calls),
+// since GTM has no first-class Meta tag template. Fires on the given trigger.
+export async function createCustomHtmlTag(
+  workspacePath: string,
+  spec: { name: string; html: string; firingTriggerId: string },
+  token: string
+): Promise<{ name: string }> {
+  const r = await gtmPost(
+    `${workspacePath}/tags`,
+    {
+      name: spec.name,
+      type: 'html',
+      parameter: [{ type: 'template', key: 'html', value: spec.html }],
+      firingTriggerId: [spec.firingTriggerId],
+    },
+    token
+  );
+  ensureOk(r, `Create tag ${spec.name}`);
+  return { name: r.json.name };
+}

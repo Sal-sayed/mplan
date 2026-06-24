@@ -49,6 +49,10 @@ export async function POST(req: NextRequest) {
   if (!/^G-[A-Z0-9]+$/i.test(measurementId)) {
     return NextResponse.json({ success: false, error: 'Provide a GA4 Measurement ID (G-XXXXXXX) for the tags.' }, { status: 400 });
   }
+  const metaPixelId = typeof body.metaPixelId === 'string' ? body.metaPixelId.trim() : '';
+  if (metaPixelId && !/^\d{10,20}$/.test(metaPixelId)) {
+    return NextResponse.json({ success: false, error: 'Meta Pixel ID must be the numeric id (or leave it blank).' }, { status: 400 });
+  }
 
   // Require the WRITE grant specifically (read-only users must "Connect for write").
   const status = await getStatus(ownerId);
@@ -67,7 +71,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = await applyPlanToGtm({ plan: body.plan as MeasurementPlan, containerId, measurementId, token });
+    const result = await applyPlanToGtm({ plan: body.plan as MeasurementPlan, containerId, measurementId, metaPixelId: metaPixelId || undefined, token });
     return NextResponse.json({ success: true, result }, { headers: rateLimitHeaders(rl) });
   } catch (err) {
     return NextResponse.json({ success: false, error: (err as Error)?.message || 'Apply to GTM failed.' }, { status: 500, headers: rateLimitHeaders(rl) });

@@ -42,6 +42,7 @@ function fakeClient(overrides: Partial<CreateContainerClient> = {}): { client: C
     createDataLayerVariable: async (_wp, key) => { calls.variables.push(key); return { name: `dlv.${key}` }; },
     createTrigger: async (_wp, spec) => { calls.triggers.push(spec.name); return { triggerId: `trig_${spec.name}`, name: spec.name }; },
     createGa4EventTag: async (_wp, spec) => { calls.tags.push(spec.name); return { name: spec.name }; },
+    createCustomHtmlTag: async (_wp, spec) => { calls.tags.push(spec.name); return { name: spec.name }; },
   };
   return { client: { ...base, ...overrides }, calls };
 }
@@ -118,4 +119,11 @@ test('INVARIANT: never publishes (result.published is always false)', async () =
   const { client } = fakeClient();
   const result = await createContainerAndApply(input({ measurementId: 'G-ABC123' }), client);
   assert.equal(result.published, false);
+});
+
+test('Meta Pixel id → the new container also gets the Meta base + per-event tags', async () => {
+  const { client } = fakeClient();
+  const result = await createContainerAndApply(input({ metaPixelId: '123456789012345' }), client);
+  assert.ok(result.created.tags.includes('Meta Pixel — Base'));
+  assert.ok(result.created.tags.includes('Meta — purchase'));
 });

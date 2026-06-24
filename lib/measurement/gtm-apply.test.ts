@@ -36,6 +36,7 @@ function fakeClient(overrides: Partial<GtmApplyClient> = {}): { client: GtmApply
     createDataLayerVariable: async (_wp, key) => { calls.variables.push(key); return { name: `dlv.${key}` }; },
     createTrigger: async (_wp, spec) => { calls.triggers.push(spec.name); return { triggerId: `trig_${spec.name}`, name: spec.name }; },
     createGa4EventTag: async (_wp, spec) => { calls.tags.push(spec.name); return { name: spec.name }; },
+    createCustomHtmlTag: async (_wp, spec) => { calls.tags.push(spec.name); return { name: spec.name }; },
   };
   return { client: { ...base, ...overrides }, calls };
 }
@@ -57,6 +58,22 @@ test('INVARIANT: never publishes (result.published is always false)', async () =
   const { client } = fakeClient();
   const result = await applyPlanToGtm(input(), client);
   assert.equal(result.published, false);
+});
+
+test('Meta Pixel id → adds the base pixel tag + per-event Meta tags (page events use the base PageView)', async () => {
+  const { client } = fakeClient();
+  // No GA4 (measurementId blank), Meta only.
+  const result = await applyPlanToGtm({ ...input(), measurementId: '', metaPixelId: '123456789012345' }, client);
+  assert.ok(result.created.tags.includes('Meta Pixel — Base'), 'base pixel tag created');
+  assert.ok(result.created.tags.includes('Meta — purchase'), 'per-event Meta tag for non-page event');
+  assert.ok(!result.created.tags.includes('Meta — page_view'), 'page event covered by base PageView, not duplicated');
+  assert.ok(!result.created.tags.some((t) => t.startsWith('GA4 —')), 'no GA4 tags without a measurement id');
+});
+
+test('no Meta Pixel id → no Meta tags', async () => {
+  const { client } = fakeClient();
+  const result = await applyPlanToGtm(input(), client);
+  assert.ok(!result.created.tags.some((t) => t.startsWith('Meta')), 'no Meta tags when no pixel id');
 });
 
 test('key events are applied first', async () => {

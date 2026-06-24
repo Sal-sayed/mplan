@@ -26,6 +26,7 @@ export interface GtmApplyClient {
   createDataLayerVariable: typeof gtmWrite.createDataLayerVariable;
   createTrigger: typeof gtmWrite.createTrigger;
   createGa4EventTag: typeof gtmWrite.createGa4EventTag;
+  createCustomHtmlTag: typeof gtmWrite.createCustomHtmlTag;
 }
 
 // The create-container flow needs two more capabilities. Kept as a SEPARATE
@@ -45,7 +46,28 @@ const defaultClient: GtmApplyClient = {
   createDataLayerVariable: gtmWrite.createDataLayerVariable,
   createTrigger: gtmWrite.createTrigger,
   createGa4EventTag: gtmWrite.createGa4EventTag,
+  createCustomHtmlTag: gtmWrite.createCustomHtmlTag,
 };
+
+// The official Meta Pixel base loader (init + PageView). Pixel id is numeric.
+function metaPixelBaseHtml(pixelId: string): string {
+  return (
+    `<script>\n` +
+    `!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?\n` +
+    `n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;\n` +
+    `n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;\n` +
+    `t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,\n` +
+    `document,'script','https://connect.facebook.net/en_US/fbevents.js');\n` +
+    `fbq('init','${pixelId}');\nfbq('track','PageView');\n` +
+    `</script>`
+  );
+}
+
+// A per-event Meta tag — trackCustom with the plan's event name (no risky mapping
+// to Meta's fixed standard-event names). JSON.stringify keeps the name safe.
+function metaEventHtml(eventName: string): string {
+  return `<script>fbq('trackCustom', ${JSON.stringify(eventName)});</script>`;
+}
 
 const defaultCreateClient: CreateContainerClient = {
   ...defaultClient,
@@ -57,6 +79,7 @@ export interface GtmApplyInput {
   plan: MeasurementPlan;
   containerId: string; // public GTM-XXXX
   measurementId: string; // G-XXXXXXX
+  metaPixelId?: string; // optional — when set, also add Meta Pixel tags
   token: string;
   now?: Date;
 }
@@ -82,7 +105,8 @@ async function populateWorkspace(
   container: gtmWrite.GtmContainerRef,
   measurementId: string | undefined,
   token: string,
-  now: Date
+  now: Date,
+  metaPixelId?: string
 ): Promise<GtmApplyResult> {
   const host = plan.meta.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const workspaceName = `Sirah — ${host} — ${now.toISOString().slice(0, 10)}`;
@@ -119,6 +143,31 @@ async function populateWorkspace(
     }
   }
 
+  // 1b) Meta Pixel base loader (init + PageView) on an All-Pages trigger, when a
+  //     Pixel id is supplied. Idempotent by tag/trigger name.
+  if (metaPixelId) {
+    const metaTrigName = 'All Pages (Meta)';
+    const metaBaseTag = 'Meta Pixel — Base';
+    try {
+      let metaTrigId = existingTriggers.get(metaTrigName);
+      if (!metaTrigId) {
+        const t = await client.createTrigger(ws.path, { name: metaTrigName, kind: 'pageview' }, token);
+        metaTrigId = t.triggerId;
+        created.triggers.push(metaTrigName);
+        existingTriggers.set(metaTrigName, metaTrigId);
+      }
+      if (existingTags.has(metaBaseTag)) {
+        skipped.tags.push(metaBaseTag);
+      } else {
+        await client.createCustomHtmlTag(ws.path, { name: metaBaseTag, html: metaPixelBaseHtml(metaPixelId), firingTriggerId: metaTrigId }, token);
+        created.tags.push(metaBaseTag);
+        existingTags.add(metaBaseTag);
+      }
+    } catch (e) {
+      failures.push({ item: 'Meta Pixel base', error: msg(e) });
+    }
+  }
+
   // 2) per event: a trigger (always) + a GA4 event tag wired to it (only when a
   //    measurement id is supplied). Key events first.
   const events = [...plan.events].sort((a, b) => (b.isKeyEvent ? 1 : 0) - (a.isKeyEvent ? 1 : 0));
@@ -137,6 +186,23 @@ async function populateWorkspace(
         triggerId = trig.triggerId;
         created.triggers.push(triggerName);
         existingTriggers.set(triggerName, triggerId);
+      }
+
+      // Meta per-event tag (independent of GA4 + isolated). Page views are already
+      // covered by the Meta base PageView, so skip them here.
+      if (metaPixelId && ev.category !== 'page') {
+        const metaTagName = `Meta — ${ev.name}`;
+        try {
+          if (existingTags.has(metaTagName)) {
+            skipped.tags.push(metaTagName);
+          } else {
+            await client.createCustomHtmlTag(ws.path, { name: metaTagName, html: metaEventHtml(ev.name), firingTriggerId: triggerId }, token);
+            created.tags.push(metaTagName);
+            existingTags.add(metaTagName);
+          }
+        } catch (e) {
+          failures.push({ item: `Meta ${ev.name}`, error: msg(e) });
+        }
       }
 
       // GA4 tags deferred when no measurement id (GTM-only creation).
@@ -183,7 +249,7 @@ export async function applyPlanToGtm(input: GtmApplyInput, client: GtmApplyClien
   const { plan, containerId, measurementId, token } = input;
   const container = await client.resolveContainer(containerId, token);
   if (!container) throw new Error(`GTM container ${containerId} not found or not accessible by your account.`);
-  return populateWorkspace(client, plan, container, measurementId, token, input.now ?? new Date());
+  return populateWorkspace(client, plan, container, measurementId, token, input.now ?? new Date(), input.metaPixelId);
 }
 
 // ── Create a brand-new container, then populate it ──
@@ -194,6 +260,7 @@ export interface CreateContainerInput {
   accountId?: string; // which GTM account to create under; omitted = the only one
   containerName?: string; // default: the site host
   measurementId?: string; // optional — GA4 tags added only if provided
+  metaPixelId?: string; // optional — Meta Pixel tags added only if provided
   now?: Date;
 }
 
@@ -238,7 +305,7 @@ export async function createContainerAndApply(
   const name = input.containerName?.trim() || host || 'Sirah container';
 
   const container = await client.createContainer(account.accountId, name, input.token);
-  const base = await populateWorkspace(client, input.plan, container, input.measurementId, input.token, input.now ?? new Date());
+  const base = await populateWorkspace(client, input.plan, container, input.measurementId, input.token, input.now ?? new Date(), input.metaPixelId);
 
   return { ...base, newContainerId: container.publicId, accountName: account.name };
 }
