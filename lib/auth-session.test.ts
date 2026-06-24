@@ -33,9 +33,12 @@ test('a tampered/invalid token → null (never throws)', async () => {
 
 test('a token signed with a different secret → null', async () => {
   const token = await createSessionToken({ user_id: 'sub_123' });
-  // Flip a character in the signature segment to invalidate it.
+  // Flip the FIRST char of the signature to invalidate it. (Flipping the LAST char
+  // is unreliable: a canonical base64url HS256 signature ends in a char whose low 2
+  // bits are unused, so an A↔B swap there is a no-op ~1/16 of the time — a flake. The
+  // first char's 6 bits are all significant, so this change is always material.)
   const parts = token.split('.');
-  parts[2] = parts[2].slice(0, -1) + (parts[2].endsWith('A') ? 'B' : 'A');
+  parts[2] = (parts[2][0] === 'A' ? 'B' : 'A') + parts[2].slice(1);
   const user = await getSessionUser(reqWith(parts.join('.')));
   assert.equal(user, null);
 });

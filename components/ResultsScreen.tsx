@@ -12,6 +12,7 @@ import KPICard from './KPICard';
 import LaunchReadinessScreen from './LaunchReadinessScreen';
 import MetricHealthScreen from './MetricHealthScreen';
 import ImplementationGuideScreen from './ImplementationGuideScreen';
+import GitHubInject from './GitHubInject';
 import { buildConsentCoverage } from '@/lib/measurement/consent-coverage';
 import type { ImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
@@ -848,6 +849,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                         </div>
                       )}
                     </div>
+
+                    {/* Connect GitHub → open a PR adding the GTM snippet to the site's <head>. */}
+                    <GitHubInject defaultContainerId={rdGtm} />
                   </div>
                 </div>
               </div>

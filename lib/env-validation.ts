@@ -90,6 +90,14 @@ export function validateEnv(): void {
   } else if (googleSet.length === 0) {
     warnings.push('GOOGLE_CLIENT_ID/SECRET not set — GA4/GTM launch-readiness checks disabled');
   }
+  // Optional GitHub OAuth (connect a repo → open a PR adding the GTM snippet to
+  // <head>). Additive: absent creds just hide the "Connect GitHub" UI. Warn, never fail.
+  const githubSet = ['GITHUB_CLIENT_ID', 'GITHUB_CLIENT_SECRET'].filter(k => process.env[k]);
+  if (githubSet.length === 1) {
+    warnings.push('GitHub OAuth half-configured — set BOTH GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET for the GTM-snippet PR feature');
+  } else if (githubSet.length === 0) {
+    warnings.push('GITHUB_CLIENT_ID/SECRET not set — the "Connect GitHub → open a PR" feature is disabled');
+  }
   for (const { key, fallback } of OPTIONAL_WITH_DEFAULTS) {
     if (!process.env[key]) {
       warnings.push(`${key} not set — using default "${fallback}"`);
