@@ -173,6 +173,27 @@ export default function GitHubInject({ defaultContainerId = '' }: { defaultConta
             </button>
           </div>
 
+          {/* What to set up. Only GTM is wired up today; GA4 + Meta Pixel are
+              placeholders — once the GTM snippet is in the <head>, those fire as
+              tags INSIDE GTM (no further code injection), so they'll plug in here. */}
+          <div>
+            <p className="text-[11px] text-faint mb-1.5">What to set up:</p>
+            <div className="flex flex-wrap gap-1.5">
+              <span className="px-2.5 py-1 rounded-lg bg-blue-500/15 border border-blue-500/30 text-blue-200 text-[11px] font-medium flex items-center gap-1">
+                <Check size={11} /> GTM container
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-overlay border border-line text-faint text-[11px] flex items-center gap-1 opacity-70">
+                GA4 <span className="text-[9px] uppercase tracking-wide">soon</span>
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-overlay border border-line text-faint text-[11px] flex items-center gap-1 opacity-70">
+                Meta Pixel <span className="text-[9px] uppercase tracking-wide">soon</span>
+              </span>
+            </div>
+            <p className="text-[10px] text-faint mt-1">
+              Once GTM is on your site, GA4 &amp; Meta Pixel fire as tags inside GTM — those options are coming soon.
+            </p>
+          </div>
+
           <div className="grid sm:grid-cols-2 gap-2">
             <select
               value={selected}
