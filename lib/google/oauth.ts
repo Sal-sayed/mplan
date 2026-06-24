@@ -63,8 +63,13 @@ export function buildAuthUrl(state: string): string {
 // scopes keeps the existing read scopes, so the upgraded token still does reads.
 export const GTM_WRITE_SCOPE = 'https://www.googleapis.com/auth/tagmanager.edit.containers';
 
+// GA4 Admin write scope — lets the app CREATE a GA4 property + web data stream.
+// Bundled into the single "Connect for write" consent so one re-consent grants
+// both GTM-write and GA4-write (the user picks up whichever feature they use).
+export const ANALYTICS_WRITE_SCOPE = 'https://www.googleapis.com/auth/analytics.edit';
+
 export function buildWriteAuthUrl(state: string): string {
-  return buildAuthUrlForScopes([...GOOGLE_SCOPES, GTM_WRITE_SCOPE], state);
+  return buildAuthUrlForScopes([...GOOGLE_SCOPES, GTM_WRITE_SCOPE, ANALYTICS_WRITE_SCOPE], state);
 }
 
 function buildAuthUrlForScopes(scopes: string[], state: string): string {

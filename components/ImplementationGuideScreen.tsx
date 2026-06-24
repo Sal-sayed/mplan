@@ -29,6 +29,13 @@ interface GtmAccount {
   name: string;
 }
 
+interface Ga4Result {
+  propertyId: string;
+  measurementId: string; // G-XXXXXXX
+  displayName: string;
+  accountName: string;
+}
+
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -129,6 +136,16 @@ export default function ImplementationGuideScreen({
   const [createResult, setCreateResult] = useState<CreateResult | null>(null);
   const [createError, setCreateError] = useState('');
 
+  // ── Create a brand-new GA4 property (needs analytics.edit) ──
+  const [ga4Name, setGa4Name] = useState('');
+  const [ga4TimeZone, setGa4TimeZone] = useState('');
+  const [ga4Currency, setGa4Currency] = useState('');
+  const [ga4AccountId, setGa4AccountId] = useState('');
+  const [ga4AccountOptions, setGa4AccountOptions] = useState<GtmAccount[]>([]);
+  const [ga4State, setGa4State] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
+  const [ga4Result, setGa4Result] = useState<Ga4Result | null>(null);
+  const [ga4Error, setGa4Error] = useState('');
+
   const fetchWriteStatus = useCallback(async () => {
     try {
       const [sRes, meRes] = await Promise.all([fetch('/api/google/status'), fetch('/api/auth/me')]);
@@ -201,6 +218,31 @@ export default function ImplementationGuideScreen({
       setCreateResult(json.result as CreateResult); setCreateState('done');
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Could not create the container.'); setCreateState('error');
+    }
+  };
+
+  // Create a brand-new GA4 property + web data stream → returns the Measurement ID.
+  const createGa4 = async () => {
+    setGa4State('creating'); setGa4Error('');
+    try {
+      const res = await fetch('/api/implementation/create-ga4', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, displayName: ga4Name, timeZone: ga4TimeZone, currencyCode: ga4Currency, accountId: ga4AccountId || undefined }),
+      });
+      const json = await res.json();
+      if (res.status === 409 && json.needsWriteConnect) {
+        setGa4Error('Connect Google for write access first.'); setGa4State('error'); fetchWriteStatus(); return;
+      }
+      if (res.status === 409 && json.needsAccount) {
+        setGa4AccountOptions(Array.isArray(json.accounts) ? json.accounts : []);
+        setGa4Error('You have more than one Analytics account — pick which one to create the property in, then try again.');
+        setGa4State('idle');
+        return;
+      }
+      if (!res.ok || !json.success) throw new Error(json.error || 'Could not create the GA4 property.');
+      setGa4Result(json.result as Ga4Result); setGa4State('done');
+    } catch (e) {
+      setGa4Error(e instanceof Error ? e.message : 'Could not create the GA4 property.'); setGa4State('error');
     }
   };
 
@@ -331,6 +373,47 @@ export default function ImplementationGuideScreen({
                       <a href={createResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 underline">
                         Review &amp; publish in Tag Manager <ExternalLink size={11} />
                       </a>
+                    </div>
+                  )}
+
+                  {/* divider */}
+                  <div className="flex items-center gap-2 py-1">
+                    <span className="h-px flex-1 bg-line" /><span className="text-[10px] uppercase tracking-widest text-faint">or</span><span className="h-px flex-1 bg-line" />
+                  </div>
+
+                  {/* Option C — CREATE a brand-new GA4 property (gives you a G-XXXX). */}
+                  <p className="text-[11px] text-faint">…or create a brand-new GA4 property for this site (gives you a Measurement ID):</p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <input value={ga4Name} onChange={(e) => setGa4Name(e.target.value)} placeholder={`Property name (default: ${url || 'your site'})`}
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
+                    <input value={ga4TimeZone} onChange={(e) => setGa4TimeZone(e.target.value)} placeholder="Time zone — optional (e.g. Asia/Kolkata)"
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <input value={ga4Currency} onChange={(e) => setGa4Currency(e.target.value)} placeholder="Currency — optional (e.g. USD, INR)"
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
+                    {ga4AccountOptions.length > 0 && (
+                      <select value={ga4AccountId} onChange={(e) => setGa4AccountId(e.target.value)}
+                        className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40">
+                        <option value="">Choose an Analytics account…</option>
+                        {ga4AccountOptions.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
+                      </select>
+                    )}
+                  </div>
+                  <button onClick={createGa4} disabled={ga4State === 'creating' || (ga4AccountOptions.length > 0 && !ga4AccountId)}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-amber-500/20 transition disabled:opacity-60">
+                    {ga4State === 'creating' ? 'Creating GA4 property…' : 'Create a new GA4 property'}
+                  </button>
+                  <p className="text-[10px] text-faint">Creates the property + a web data stream and returns the Measurement ID (G-XXXXXXX). Defaults: time zone UTC, currency USD — change anytime in GA4.</p>
+
+                  {ga4Error && ga4State !== 'error' && <p className="text-xs text-amber-300">{ga4Error}</p>}
+                  {ga4State === 'error' && <p className="text-sm text-rose-400">{ga4Error}</p>}
+                  {ga4State === 'done' && ga4Result && (
+                    <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3 space-y-1.5">
+                      <p className="text-sm text-amber-200 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> GA4 property created</p>
+                      <p className="text-sm text-ink">Measurement ID: <code className="font-mono font-semibold text-amber-200">{ga4Result.measurementId}</code></p>
+                      <p className="text-xs text-faint">Property “{ga4Result.displayName}” (id {ga4Result.propertyId}) in {ga4Result.accountName}.</p>
+                      <p className="text-[11px] text-blue-200/90">Next: paste <code className="font-mono">{ga4Result.measurementId}</code> into the “GA4 Measurement ID” box above when you create the GTM container, so the GA4 tags get added too.</p>
                     </div>
                   )}
                 </>
