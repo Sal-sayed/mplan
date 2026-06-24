@@ -36,6 +36,30 @@ export interface GtmContainerRef {
   publicId: string;
 }
 
+export interface GtmAccountRef {
+  accountId: string;
+  name: string;
+}
+
+// The Tag Manager accounts the token can see. A container is created UNDER an
+// account — the API cannot create an account itself (that's done once in the GTM
+// UI), so the caller must have at least one.
+export async function listAccounts(token: string): Promise<GtmAccountRef[]> {
+  const r = await gtmGet('accounts', token);
+  ensureOk(r, 'List Tag Manager accounts');
+  const arr: any[] = Array.isArray(r.json?.account) ? r.json.account : [];
+  return arr.map((a) => ({ accountId: String(a.accountId), name: String(a.name ?? a.accountId) }));
+}
+
+// Create a NEW web container under an existing account. Returns its public id
+// (GTM-XXXX) + API path. Does NOT publish anything — a new container's live
+// version is empty until the user publishes a workspace.
+export async function createContainer(accountId: string, name: string, token: string): Promise<GtmContainerRef> {
+  const r = await gtmPost(`accounts/${accountId}/containers`, { name, usageContext: ['web'] }, token);
+  ensureOk(r, 'Create container');
+  return { path: r.json.path, name: r.json.name, publicId: r.json.publicId };
+}
+
 // Resolve a public GTM-XXXX id to its API container path (list accounts → containers).
 export async function resolveContainer(publicId: string, token: string): Promise<GtmContainerRef | null> {
   const want = publicId.trim().toUpperCase();

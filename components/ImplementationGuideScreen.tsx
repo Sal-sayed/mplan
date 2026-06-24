@@ -19,6 +19,16 @@ interface ApplyResult {
   failures: { item: string; error: string }[];
 }
 
+interface CreateResult extends ApplyResult {
+  newContainerId: string; // the brand-new GTM-XXXX
+  accountName: string;
+}
+
+interface GtmAccount {
+  accountId: string;
+  name: string;
+}
+
 function CodeBlock({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   const copy = () => {
@@ -110,6 +120,15 @@ export default function ImplementationGuideScreen({
   const [applyResult, setApplyResult] = useState<ApplyResult | null>(null);
   const [applyError, setApplyError] = useState('');
 
+  // ── Create a BRAND-NEW container, then populate it (no existing GTM-XXXX needed) ──
+  const [createName, setCreateName] = useState('');
+  const [createMeasurementId, setCreateMeasurementId] = useState('');
+  const [createAccountId, setCreateAccountId] = useState('');
+  const [accountOptions, setAccountOptions] = useState<GtmAccount[]>([]);
+  const [createState, setCreateState] = useState<'idle' | 'creating' | 'done' | 'error'>('idle');
+  const [createResult, setCreateResult] = useState<CreateResult | null>(null);
+  const [createError, setCreateError] = useState('');
+
   const fetchWriteStatus = useCallback(async () => {
     try {
       const [sRes, meRes] = await Promise.all([fetch('/api/google/status'), fetch('/api/auth/me')]);
@@ -155,6 +174,33 @@ export default function ImplementationGuideScreen({
     } catch (e) {
       setApplyError(e instanceof Error ? e.message : 'Could not apply to GTM.');
       setApplyState('error');
+    }
+  };
+
+  // Create a brand-new container + populate it. The app makes the GTM-XXXX, so the
+  // user doesn't need to own one first. Still no publish.
+  const createNewContainer = async () => {
+    setCreateState('creating'); setCreateError('');
+    try {
+      const res = await fetch('/api/implementation/create-container', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ plan, containerName: createName, measurementId: createMeasurementId, accountId: createAccountId || undefined }),
+      });
+      const json = await res.json();
+      if (res.status === 409 && json.needsWriteConnect) {
+        setCreateError('Connect Google for write access first.'); setCreateState('error'); fetchWriteStatus(); return;
+      }
+      if (res.status === 409 && json.needsAccount) {
+        // More than one GTM account — let the user pick which to create under.
+        setAccountOptions(Array.isArray(json.accounts) ? json.accounts : []);
+        setCreateError('You have more than one Tag Manager account — pick which one to create the container in, then try again.');
+        setCreateState('idle');
+        return;
+      }
+      if (!res.ok || !json.success) throw new Error(json.error || 'Could not create the container.');
+      setCreateResult(json.result as CreateResult); setCreateState('done');
+    } catch (e) {
+      setCreateError(e instanceof Error ? e.message : 'Could not create the container.'); setCreateState('error');
     }
   };
 
@@ -230,6 +276,8 @@ export default function ImplementationGuideScreen({
                 </div>
               ) : (
                 <>
+                  {/* Option A — populate a container you ALREADY have. */}
+                  <p className="text-[11px] text-faint">Use a GTM container you already have:</p>
                   <div className="grid sm:grid-cols-2 gap-2">
                     <input value={containerId} onChange={(e) => setContainerId(e.target.value)} placeholder="GTM container — GTM-XXXXXXX"
                       className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
@@ -240,6 +288,51 @@ export default function ImplementationGuideScreen({
                     className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-cyan-500/20 transition disabled:opacity-60">
                     {applyState === 'applying' ? 'Creating workspace…' : 'Create GTM workspace (no publish)'}
                   </button>
+
+                  {/* divider */}
+                  <div className="flex items-center gap-2 py-1">
+                    <span className="h-px flex-1 bg-line" /><span className="text-[10px] uppercase tracking-widest text-faint">or</span><span className="h-px flex-1 bg-line" />
+                  </div>
+
+                  {/* Option B — CREATE a brand-new container (no GTM-XXXX needed). */}
+                  <p className="text-[11px] text-faint">…or let the app create a brand-new GTM container for this site:</p>
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <input value={createName} onChange={(e) => setCreateName(e.target.value)} placeholder={`Container name (default: ${url || 'your site'})`}
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
+                    <input value={createMeasurementId} onChange={(e) => setCreateMeasurementId(e.target.value)} placeholder="GA4 Measurement ID — optional (G-XXXXXXX)"
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-cyan-500/40" />
+                  </div>
+                  {accountOptions.length > 0 && (
+                    <select value={createAccountId} onChange={(e) => setCreateAccountId(e.target.value)}
+                      className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40">
+                      <option value="">Choose a Tag Manager account…</option>
+                      {accountOptions.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
+                    </select>
+                  )}
+                  <button onClick={createNewContainer} disabled={createState === 'creating' || (accountOptions.length > 0 && !createAccountId)}
+                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-emerald-500/20 transition disabled:opacity-60">
+                    {createState === 'creating' ? 'Creating container…' : 'Create a new GTM container (no publish)'}
+                  </button>
+                  <p className="text-[10px] text-faint">Leave the GA4 ID blank to add GA4 later — the container, variables &amp; triggers are still created. Nothing is published.</p>
+
+                  {createError && createState !== 'error' && <p className="text-xs text-amber-300">{createError}</p>}
+                  {createState === 'error' && <p className="text-sm text-rose-400">{createError}</p>}
+                  {createState === 'done' && createResult && (
+                    <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3 space-y-1.5">
+                      <p className="text-sm text-emerald-200 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Container created — nothing published</p>
+                      <p className="text-sm text-ink">New container: <code className="font-mono font-semibold text-emerald-200">{createResult.newContainerId}</code> <span className="text-faint">in {createResult.accountName}</span></p>
+                      <p className="text-xs text-faint">
+                        {createResult.created.tags.length} tag(s), {createResult.created.triggers.length} trigger(s), {createResult.created.variables.length} variable(s) created.
+                      </p>
+                      {createResult.failures.length > 0 && (
+                        <p className="text-xs text-amber-300">{createResult.failures.length} item(s) need manual attention: {createResult.failures.map((f) => f.item).join(', ')}.</p>
+                      )}
+                      <p className="text-[11px] text-blue-200/90">Next: use <code className="font-mono">{createResult.newContainerId}</code> in the “Connect GitHub” step to add it to your site via a pull request.</p>
+                      <a href={createResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 underline">
+                        Review &amp; publish in Tag Manager <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  )}
                 </>
               )}
 
