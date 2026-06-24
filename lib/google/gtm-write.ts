@@ -60,6 +60,22 @@ export async function createContainer(accountId: string, name: string, token: st
   return { path: r.json.path, name: r.json.name, publicId: r.json.publicId };
 }
 
+// Every container across all of the user's accounts — used to CHECK whether a
+// container for this site already exists (matched by name) before creating one.
+export async function listContainers(token: string): Promise<GtmContainerRef[]> {
+  const accountsRes = await gtmGet('accounts', token);
+  ensureOk(accountsRes, 'List Tag Manager accounts');
+  const accounts: any[] = Array.isArray(accountsRes.json?.account) ? accountsRes.json.account : [];
+  const out: GtmContainerRef[] = [];
+  for (const acc of accounts) {
+    const contRes = await gtmGet(`accounts/${acc.accountId}/containers`, token);
+    if (contRes.status !== 200) continue;
+    const containers: any[] = Array.isArray(contRes.json?.container) ? contRes.json.container : [];
+    for (const c of containers) out.push({ path: c.path, name: c.name, publicId: c.publicId });
+  }
+  return out;
+}
+
 // Resolve a public GTM-XXXX id to its API container path (list accounts → containers).
 export async function resolveContainer(publicId: string, token: string): Promise<GtmContainerRef | null> {
   const want = publicId.trim().toUpperCase();

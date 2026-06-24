@@ -22,6 +22,8 @@ function fakeClient(overrides: Partial<Ga4ProvisionClient> = {}): { client: Ga4P
   const calls = { properties: [] as any[], streams: [] as any[] };
   const base: Ga4ProvisionClient = {
     listAccounts: async () => [{ accountId: '900', name: 'My GA Account' }],
+    listProperties: async () => [], // default: none exist
+    getMeasurementId: async () => 'G-EXISTING9',
     createProperty: async (args) => { calls.properties.push(args); return { propertyId: '456', displayName: args.displayName }; },
     createWebDataStream: async (args) => { calls.streams.push(args); return { measurementId: 'G-TEST123', streamId: '789' }; },
   };
@@ -86,4 +88,29 @@ test('throws if the stream returns no Measurement ID is surfaced by the writer (
   // The provisioner trusts the client to throw on a missing id; simulate it.
   const { client } = fakeClient({ createWebDataStream: async () => { throw new Error('GA4 created the stream but returned no Measurement ID.'); } });
   await assert.rejects(() => createGa4Property(input(), client), /no Measurement ID/i);
+});
+
+test('CHECK-BEFORE-CREATE: an existing property with the site name is reused, returns its G-id, not duplicated', async () => {
+  const { client, calls } = fakeClient({
+    listProperties: async () => [{ propertyId: '111', displayName: 'shop.example.com' }],
+    getMeasurementId: async () => 'G-EXISTING9',
+  });
+  const result = await createGa4Property(input(), client);
+  assert.equal(result.alreadyExisted, true);
+  assert.equal(result.propertyId, '111');
+  assert.equal(result.measurementId, 'G-EXISTING9');
+  assert.equal(calls.properties.length, 0, 'did NOT create a duplicate property');
+});
+
+test('duplicate-name on GA4 create → converted to already-exists', async () => {
+  let n = 0;
+  const { client } = fakeClient({
+    listProperties: async () => { n += 1; return n === 1 ? [] : [{ propertyId: '222', displayName: 'shop.example.com' }]; },
+    getMeasurementId: async () => 'G-DUP2',
+    createProperty: async () => { throw new Error('Create GA4 property failed (400): Found entity with duplicate name'); },
+  });
+  const result = await createGa4Property(input(), client);
+  assert.equal(result.alreadyExisted, true);
+  assert.equal(result.propertyId, '222');
+  assert.equal(result.measurementId, 'G-DUP2');
 });

@@ -15,6 +15,7 @@
 
 import type { MeasurementPlan } from './types.ts';
 import * as gtmWrite from '../google/gtm-write.ts';
+import { isDuplicateNameError } from './provision-check.ts';
 
 export interface GtmApplyClient {
   resolveContainer: typeof gtmWrite.resolveContainer;
@@ -34,6 +35,7 @@ export interface GtmApplyClient {
 export interface CreateContainerClient extends GtmApplyClient {
   listAccounts: typeof gtmWrite.listAccounts;
   createContainer: typeof gtmWrite.createContainer;
+  listContainers: typeof gtmWrite.listContainers;
 }
 
 const defaultClient: GtmApplyClient = {
@@ -73,6 +75,7 @@ const defaultCreateClient: CreateContainerClient = {
   ...defaultClient,
   listAccounts: gtmWrite.listAccounts,
   createContainer: gtmWrite.createContainer,
+  listContainers: gtmWrite.listContainers,
 };
 
 export interface GtmApplyInput {
@@ -265,8 +268,9 @@ export interface CreateContainerInput {
 }
 
 export interface CreateContainerResult extends GtmApplyResult {
-  newContainerId: string; // the new public GTM-XXXX
+  newContainerId: string; // the new (or existing) public GTM-XXXX
   accountName: string;
+  alreadyExisted: boolean; // true → we reused an existing container, didn't create
 }
 
 // Thrown when the user has >1 GTM account and didn't pick one. The route turns
@@ -303,9 +307,34 @@ export async function createContainerAndApply(
 
   const host = input.plan.meta.url.replace(/^https?:\/\//, '').replace(/\/$/, '');
   const name = input.containerName?.trim() || host || 'Sirah container';
+  const wanted = name.trim().toLowerCase();
 
-  const container = await client.createContainer(account.accountId, name, input.token);
+  // CHECK BEFORE CREATE: reuse an existing same-named container instead of failing
+  // on GTM's duplicate-name error.
+  const findExisting = async () =>
+    (await client.listContainers(input.token)).find((c) => (c.name ?? '').trim().toLowerCase() === wanted) ?? null;
+
+  let container = await findExisting();
+  let alreadyExisted = Boolean(container);
+
+  if (!container) {
+    try {
+      container = await client.createContainer(account.accountId, name, input.token);
+    } catch (e) {
+      // Lost a race / it actually existed — convert the raw duplicate-name 400 into
+      // "already exists" by resolving the existing one.
+      if (isDuplicateNameError(e)) {
+        const found = await findExisting();
+        if (!found) throw e;
+        container = found;
+        alreadyExisted = true;
+      } else {
+        throw e;
+      }
+    }
+  }
+
   const base = await populateWorkspace(client, input.plan, container, input.measurementId, input.token, input.now ?? new Date(), input.metaPixelId);
 
-  return { ...base, newContainerId: container.publicId, accountName: account.name };
+  return { ...base, newContainerId: container.publicId, accountName: account.name, alreadyExisted };
 }

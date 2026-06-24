@@ -8,17 +8,22 @@
 
 import type { MeasurementPlan } from './types.ts';
 import * as ga4Write from '../google/ga4-write.ts';
+import { isDuplicateNameError } from './provision-check.ts';
 
 export interface Ga4ProvisionClient {
   listAccounts: typeof ga4Write.listAccounts;
   createProperty: typeof ga4Write.createProperty;
   createWebDataStream: typeof ga4Write.createWebDataStream;
+  listProperties: typeof ga4Write.listProperties;
+  getMeasurementId: typeof ga4Write.getMeasurementId;
 }
 
 const defaultClient: Ga4ProvisionClient = {
   listAccounts: ga4Write.listAccounts,
   createProperty: ga4Write.createProperty,
   createWebDataStream: ga4Write.createWebDataStream,
+  listProperties: ga4Write.listProperties,
+  getMeasurementId: ga4Write.getMeasurementId,
 };
 
 export interface Ga4ProvisionInput {
@@ -31,10 +36,11 @@ export interface Ga4ProvisionInput {
 }
 
 export interface Ga4ProvisionResult {
-  propertyId: string; // numeric GA4 property id
+  propertyId: string; // numeric GA4 property id (new or existing)
   measurementId: string; // G-XXXXXXX
   displayName: string;
   accountName: string;
+  alreadyExisted: boolean; // true → we reused an existing property, didn't create
 }
 
 // Thrown when the user has >1 GA4 account and didn't pick one. The route turns
@@ -76,8 +82,36 @@ export async function createGa4Property(
   const currencyCode = input.currencyCode?.trim().toUpperCase() || 'USD';
   // GA4 wants an absolute URI for the stream.
   const defaultUri = /^https?:\/\//i.test(rawUrl) ? rawUrl.replace(/\/$/, '') : `https://${host}`;
+  const wanted = displayName.trim().toLowerCase();
 
-  const property = await client.createProperty({ accountId: account.accountId, displayName, timeZone, currencyCode }, input.token);
+  // CHECK BEFORE CREATE: reuse an existing same-named property (GA4 doesn't reject
+  // duplicate names, so without this it would silently create a second one).
+  const findExisting = async () =>
+    (await client.listProperties(input.token)).find((p) => (p.displayName ?? '').trim().toLowerCase() === wanted) ?? null;
+
+  const reuse = async (propertyId: string, name: string): Promise<Ga4ProvisionResult> => {
+    let measurementId = '';
+    try {
+      measurementId = (await client.getMeasurementId(propertyId, input.token)) || '';
+    } catch {
+      /* best-effort */
+    }
+    return { propertyId, measurementId, displayName: name, accountName: account.name, alreadyExisted: true };
+  };
+
+  const existing = await findExisting();
+  if (existing) return reuse(existing.propertyId, existing.displayName);
+
+  let property: ga4Write.Ga4PropertyRef;
+  try {
+    property = await client.createProperty({ accountId: account.accountId, displayName, timeZone, currencyCode }, input.token);
+  } catch (e) {
+    if (isDuplicateNameError(e)) {
+      const found = await findExisting();
+      if (found) return reuse(found.propertyId, found.displayName);
+    }
+    throw e;
+  }
   const stream = await client.createWebDataStream({ propertyId: property.propertyId, displayName: `${host} (Web)`, defaultUri }, input.token);
 
   return {
@@ -85,5 +119,6 @@ export async function createGa4Property(
     measurementId: stream.measurementId,
     displayName: property.displayName,
     accountName: account.name,
+    alreadyExisted: false,
   };
 }

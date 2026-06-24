@@ -52,6 +52,36 @@ export interface Ga4PropertyRef {
   displayName: string;
 }
 
+// Every property the user can see (across accounts), via accountSummaries — used
+// to CHECK whether a property for this site already exists (matched by name)
+// before creating one.
+export async function listProperties(token: string): Promise<Ga4PropertyRef[]> {
+  const r = await ga4Get('accountSummaries', token);
+  ensureOk(r, 'List GA4 properties');
+  const summaries: any[] = Array.isArray(r.json?.accountSummaries) ? r.json.accountSummaries : [];
+  const out: Ga4PropertyRef[] = [];
+  for (const acc of summaries) {
+    const props: any[] = Array.isArray(acc.propertySummaries) ? acc.propertySummaries : [];
+    for (const p of props) {
+      const propertyId = String(p.property ?? '').replace(/^properties\//, '');
+      if (propertyId) out.push({ propertyId, displayName: String(p.displayName ?? '') });
+    }
+  }
+  return out;
+}
+
+// The Measurement ID (G-XXXX) of a property's first web data stream, or null.
+export async function getMeasurementId(propertyId: string, token: string): Promise<string | null> {
+  const r = await ga4Get(`properties/${propertyId}/dataStreams`, token);
+  if (r.status !== 200) return null;
+  const streams: any[] = Array.isArray(r.json?.dataStreams) ? r.json.dataStreams : [];
+  for (const s of streams) {
+    const mid = s?.webStreamData?.measurementId;
+    if (mid) return String(mid);
+  }
+  return null;
+}
+
 // Create a new GA4 property under an account. timeZone is an IANA zone (e.g.
 // "Etc/UTC"); currencyCode is ISO-4217 (e.g. "USD").
 export async function createProperty(

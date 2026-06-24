@@ -16,7 +16,12 @@ interface GhStatus { configured: boolean; connected: boolean; login?: string; }
 interface GWriteStatus { configured: boolean; connected: boolean; canWrite: boolean; }
 interface RepoSummary { fullName: string; owner: string; name: string; private: boolean; defaultBranch: string; }
 interface Account { accountId: string; name: string; }
-interface CreateResult { gtmContainerId: string; measurementId?: string; metaCreated: boolean; }
+interface CreateResult { gtmContainerId: string; measurementId?: string; metaCreated: boolean; alreadyExisted?: boolean; }
+interface ProvisionStatus {
+  gtm: { exists: boolean; containerId?: string; name?: string };
+  ga4: { exists: boolean; propertyId?: string; measurementId?: string; name?: string };
+  meta: { status: 'unknown' };
+}
 
 type InjectResult =
   | { status: 'pr_opened'; filePath: string; base: string; prUrl: string; prNumber: number }
@@ -48,6 +53,9 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const [gtmAccountId, setGtmAccountId] = useState('');
   const [ga4Accounts, setGa4Accounts] = useState<Account[]>([]);
   const [ga4AccountId, setGa4AccountId] = useState('');
+
+  // CHECK-BEFORE-CREATE: what already exists for this site on the connected account.
+  const [provision, setProvision] = useState<ProvisionStatus | null>(null);
 
   const fetchStatus = useCallback(async () => {
     try { const res = await fetch('/api/github/status'); if (res.ok) setStatus(await res.json()); } catch { /* hidden */ }
@@ -105,6 +113,25 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
     return () => window.removeEventListener('message', onMsg);
   }, [fetchStatus, fetchGoogle]);
 
+  // Once Google is connected, CHECK what already exists for this site so we don't
+  // offer to create duplicates.
+  useEffect(() => {
+    if (!gWrite?.connected) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/implementation/provision-status?url=${encodeURIComponent(plan.meta.url)}`);
+        if (!cancelled && res.ok) {
+          const d = await res.json();
+          if (d.success && d.connected && d.status) setProvision(d.status as ProvisionStatus);
+        }
+      } catch {
+        /* leave null — just no existence hints */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [gWrite?.connected, plan.meta.url]);
+
   const connect = () => window.open('/api/github/start', 'github_oauth', 'width=620,height=720');
   const connectWrite = () => window.open('/api/google/oauth/start-write', 'gtm_write', 'width=520,height=680');
   const disconnect = async () => {
@@ -117,8 +144,10 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const createInGtm = async () => {
     setCreating(true); setCreateError('');
     try {
-      let measurementId = '';
-      if (wantGa4) {
+      // Reuse an existing GA4 property if one already exists; only create when asked AND none exists.
+      let measurementId = provision?.ga4?.exists ? (provision.ga4.measurementId || '') : '';
+      let ga4Made = false;
+      if (wantGa4 && !provision?.ga4?.exists) {
         const r = await fetch('/api/implementation/create-ga4', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ plan, accountId: ga4AccountId || undefined }),
@@ -128,6 +157,7 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
         if (r.status === 409 && j.needsAccount) { setGa4Accounts(Array.isArray(j.accounts) ? j.accounts : []); setCreateError('You have more than one Analytics account — pick one below, then try again.'); return; }
         if (!r.ok || !j.success) throw new Error(j.error || 'Could not create the GA4 property.');
         measurementId = j.result.measurementId;
+        ga4Made = true;
       }
       const r2 = await fetch('/api/implementation/create-container', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -138,8 +168,14 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
       if (r2.status === 409 && j2.needsAccount) { setGtmAccounts(Array.isArray(j2.accounts) ? j2.accounts : []); setCreateError('You have more than one Tag Manager account — pick one below, then try again.'); return; }
       if (!r2.ok || !j2.success) throw new Error(j2.error || 'Could not create the GTM container.');
       const gtmId = j2.result.newContainerId as string;
-      setCreateResult({ gtmContainerId: gtmId, measurementId: measurementId || undefined, metaCreated: wantMeta && Boolean(metaPixelId) });
+      setCreateResult({ gtmContainerId: gtmId, measurementId: measurementId || undefined, metaCreated: wantMeta && Boolean(metaPixelId), alreadyExisted: Boolean(j2.result.alreadyExisted) });
       setTyped(gtmId); // auto-fill the inject field below
+      // Reflect the new state so the create buttons turn into "✓ exists".
+      setProvision((p) => ({
+        gtm: { exists: true, containerId: gtmId, name: containerName || undefined },
+        ga4: ga4Made ? { exists: true, measurementId } : (p?.ga4 ?? { exists: false }),
+        meta: p?.meta ?? { status: 'unknown' },
+      }));
     } catch (e) {
       setCreateError(e instanceof Error ? e.message : 'Setup failed.');
     } finally {
@@ -202,58 +238,88 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
           {/* ── STEP 1: create in GTM (GA4 + Meta optional) ── */}
           <div className="rounded-lg border border-line bg-overlay/40 p-2.5 space-y-2">
             <p className="text-[11px] text-ink font-medium">1. Create in GTM (no publish)</p>
-            <p className="text-[11px] text-faint">What to set up — GTM container is always created; add GA4 and/or Meta to include their tags:</p>
-            <div className="flex flex-wrap gap-1.5">
-              <span className={chip(true)}><Check size={11} /> GTM container</span>
-              <button type="button" onClick={() => setWantGa4((v) => !v)} className={chip(wantGa4)}>
-                {wantGa4 && <Check size={11} />} GA4 property
-              </button>
-              <button type="button" onClick={() => setWantMeta((v) => !v)} className={chip(wantMeta)}>
-                {wantMeta && <Check size={11} />} Meta Pixel
-              </button>
-            </div>
-
-            <input value={containerName} onChange={(e) => setContainerName(e.target.value)} placeholder="New container name — optional"
-              className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
-            {wantMeta && (
-              <input value={metaPixelId} onChange={(e) => setMetaPixelId(e.target.value)} placeholder="Meta Pixel ID (numeric)"
-                className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
-            )}
-            {wantGa4 && ga4Accounts.length > 0 && (
-              <select value={ga4AccountId} onChange={(e) => setGa4AccountId(e.target.value)}
-                className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
-                <option value="">Choose an Analytics account…</option>
-                {ga4Accounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
-              </select>
-            )}
-            {gtmAccounts.length > 0 && (
-              <select value={gtmAccountId} onChange={(e) => setGtmAccountId(e.target.value)}
-                className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
-                <option value="">Choose a Tag Manager account…</option>
-                {gtmAccounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
-              </select>
-            )}
-
-            {gWrite && !gWrite.canWrite ? (
-              <div>
-                <p className="text-[11px] text-faint mb-1.5">Creating in GTM/GA4 needs a one-time write consent.</p>
-                <button type="button" onClick={connectWrite}
-                  className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
-                  <ShieldCheck size={12} /> Connect Google for write
-                </button>
+            {/* What ALREADY exists for this site (check-before-create) — no duplicates. */}
+            {provision && (provision.gtm.exists || provision.ga4.exists) && (
+              <div className="rounded-lg bg-overlay border border-line p-2 text-[11px] space-y-1">
+                <p className="text-faint">Already set up for this site:</p>
+                {provision.gtm.exists && (
+                  <p className="text-emerald-300 flex items-center gap-1 flex-wrap">
+                    <Check size={11} /> GTM container <code className="font-mono text-emerald-200">{provision.gtm.containerId}</code>
+                    <button type="button" onClick={() => setTyped(provision.gtm.containerId || '')} className="ml-1 text-blue-400 underline">Use it ↓</button>
+                  </p>
+                )}
+                {provision.ga4.exists && (
+                  <p className="text-emerald-300 flex items-center gap-1">
+                    <Check size={11} /> GA4 property {provision.ga4.measurementId
+                      ? <code className="font-mono text-emerald-200">{provision.ga4.measurementId}</code>
+                      : <span className="text-faint">id {provision.ga4.propertyId}</span>}
+                  </p>
+                )}
               </div>
+            )}
+
+            {provision?.gtm.exists ? (
+              <p className="text-[11px] text-faint">Your GTM container already exists — no need to create another. Click <span className="text-blue-300">Use it</span> above, then add it to your site below.</p>
             ) : (
-              <button type="button" onClick={createInGtm} disabled={creating || !metaOk}
-                className="w-full py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs font-medium hover:bg-emerald-500/20 transition flex items-center justify-center gap-1.5 disabled:opacity-50">
-                {creating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                Create in GTM{wantGa4 ? ' + GA4' : ''}{wantMeta ? ' + Meta' : ''} (no publish)
-              </button>
+              <>
+                <p className="text-[11px] text-faint">What to set up — GTM container is always created; add GA4 and/or Meta to include their tags:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className={chip(true)}><Check size={11} /> GTM container</span>
+                  {provision?.ga4.exists ? (
+                    <span className={chip(true)}><Check size={11} /> GA4 (exists — linked)</span>
+                  ) : (
+                    <button type="button" onClick={() => setWantGa4((v) => !v)} className={chip(wantGa4)}>
+                      {wantGa4 && <Check size={11} />} GA4 property
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setWantMeta((v) => !v)} className={chip(wantMeta)}>
+                    {wantMeta && <Check size={11} />} Meta Pixel
+                  </button>
+                </div>
+
+                <input value={containerName} onChange={(e) => setContainerName(e.target.value)} placeholder="New container name — optional"
+                  className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                {wantMeta && (
+                  <input value={metaPixelId} onChange={(e) => setMetaPixelId(e.target.value)} placeholder="Meta Pixel ID (numeric)"
+                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                )}
+                {wantGa4 && !provision?.ga4.exists && ga4Accounts.length > 0 && (
+                  <select value={ga4AccountId} onChange={(e) => setGa4AccountId(e.target.value)}
+                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                    <option value="">Choose an Analytics account…</option>
+                    {ga4Accounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
+                  </select>
+                )}
+                {gtmAccounts.length > 0 && (
+                  <select value={gtmAccountId} onChange={(e) => setGtmAccountId(e.target.value)}
+                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                    <option value="">Choose a Tag Manager account…</option>
+                    {gtmAccounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
+                  </select>
+                )}
+
+                {gWrite && !gWrite.canWrite ? (
+                  <div>
+                    <p className="text-[11px] text-faint mb-1.5">Creating in GTM/GA4 needs a one-time write consent.</p>
+                    <button type="button" onClick={connectWrite}
+                      className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
+                      <ShieldCheck size={12} /> Connect Google for write
+                    </button>
+                  </div>
+                ) : (
+                  <button type="button" onClick={createInGtm} disabled={creating || !metaOk}
+                    className="w-full py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 text-xs font-medium hover:bg-emerald-500/20 transition flex items-center justify-center gap-1.5 disabled:opacity-50">
+                    {creating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                    Create in GTM{wantGa4 ? ' + GA4' : ''}{wantMeta ? ' + Meta' : ''} (no publish)
+                  </button>
+                )}
+              </>
             )}
 
             {createError && <p className="text-[11px] text-amber-300">{createError}</p>}
             {createResult && (
               <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-[11px] text-emerald-200 space-y-0.5">
-                <p>Created container <code className="font-mono text-emerald-100">{createResult.gtmContainerId}</code> (unpublished).</p>
+                <p>{createResult.alreadyExisted ? 'Using existing container' : 'Created container'} <code className="font-mono text-emerald-100">{createResult.gtmContainerId}</code>{createResult.alreadyExisted ? '.' : ' (unpublished).'}</p>
                 {createResult.measurementId && <p>GA4 Measurement ID: <code className="font-mono text-emerald-100">{createResult.measurementId}</code></p>}
                 {createResult.metaCreated && <p>Meta Pixel tags added.</p>}
                 <p className="text-emerald-300/80">Filled in below — now add it to your site. Review &amp; publish in Tag Manager when ready.</p>

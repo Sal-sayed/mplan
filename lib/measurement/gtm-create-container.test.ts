@@ -29,6 +29,7 @@ function fakeClient(overrides: Partial<CreateContainerClient> = {}): { client: C
   const calls = { createdContainers: [] as any[], workspace: [] as string[], variables: [] as string[], triggers: [] as string[], tags: [] as string[] };
   const base: CreateContainerClient = {
     listAccounts: async () => [{ accountId: '100', name: 'My GTM Account' }],
+    listContainers: async () => [], // default: none exist
     createContainer: async (accountId, name) => {
       calls.createdContainers.push({ accountId, name });
       return { path: `accounts/${accountId}/containers/55`, name, publicId: 'GTM-NEW123' };
@@ -126,4 +127,28 @@ test('Meta Pixel id → the new container also gets the Meta base + per-event ta
   const result = await createContainerAndApply(input({ metaPixelId: '123456789012345' }), client);
   assert.ok(result.created.tags.includes('Meta Pixel — Base'));
   assert.ok(result.created.tags.includes('Meta — purchase'));
+});
+
+test('CHECK-BEFORE-CREATE: an existing container with the site name is reused, not duplicated', async () => {
+  const { client, calls } = fakeClient({
+    listContainers: async () => [{ path: 'accounts/100/containers/9', name: 'shop.example.com', publicId: 'GTM-OLD999' }],
+  });
+  const result = await createContainerAndApply(input(), client);
+  assert.equal(result.alreadyExisted, true);
+  assert.equal(result.newContainerId, 'GTM-OLD999');
+  assert.equal(calls.createdContainers.length, 0, 'did NOT create a duplicate');
+});
+
+test('duplicate-name 400 on create → converted to already-exists, surfaces the existing id', async () => {
+  let listCalls = 0;
+  const { client } = fakeClient({
+    listContainers: async () => {
+      listCalls += 1;
+      return listCalls === 1 ? [] : [{ path: 'accounts/100/containers/9', name: 'shop.example.com', publicId: 'GTM-DUP777' }];
+    },
+    createContainer: async () => { throw new Error('Create container failed (400): Found entity with duplicate name'); },
+  });
+  const result = await createContainerAndApply(input(), client);
+  assert.equal(result.alreadyExisted, true, 'raw 400 became a friendly already-exists');
+  assert.equal(result.newContainerId, 'GTM-DUP777');
 });
