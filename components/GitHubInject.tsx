@@ -38,6 +38,13 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<InjectResult | null>(null);
+  // Assistive dataLayer PR (separate reference file — never edits handlers).
+  const [dlBusy, setDlBusy] = useState(false);
+  const [dlResult, setDlResult] = useState<
+    | { status: 'pr_opened'; prUrl: string; prNumber: number; eventCount: number }
+    | { status: 'error'; error: string }
+    | null
+  >(null);
   const [copied, setCopied] = useState(false);
 
   // ── Google write (create in GTM/GA4) ──
@@ -210,6 +217,27 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
     }
   };
 
+  // Assistive dataLayer PR: adds ONE reference file (snippets + placement TODOs).
+  // It never edits existing handlers — the human places + verifies + merges.
+  const injectDataLayer = async () => {
+    const repo = repos.find((r) => r.fullName === selected);
+    if (!repo) return;
+    setDlBusy(true); setDlResult(null);
+    try {
+      const res = await fetch('/api/github/inject-datalayer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner: repo.owner, repo: repo.name, plan }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.status === 'error') setDlResult({ status: 'error', error: j.error || 'Could not open the PR.' });
+      else setDlResult(j);
+    } catch {
+      setDlResult({ status: 'error', error: 'Network error reaching the server.' });
+    } finally {
+      setDlBusy(false);
+    }
+  };
+
   const copyPaste = async (snippet: string) => {
     try { await navigator.clipboard.writeText(snippet); setCopied(true); } catch { /* blocked */ }
   };
@@ -354,6 +382,23 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
               Add GTM to my site (opens a PR)
             </button>
             <p className="text-[10px] text-faint">Opens a pull request for you to review &amp; merge. Never pushes to your default branch, never merges for you.</p>
+
+            {/* Assistive dataLayer PR — a separate reference file, never edits handlers. */}
+            <div className="pt-2 mt-1 border-t border-line/60 space-y-1.5">
+              <button type="button" onClick={injectDataLayer} disabled={dlBusy || !selected}
+                className="w-full py-2 rounded-lg bg-overlay border border-line text-muted text-xs font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-1.5 disabled:opacity-50">
+                {dlBusy ? <Loader2 size={12} className="animate-spin" /> : <GitPullRequest size={12} />}
+                Add dataLayer snippets (opens a PR)
+              </button>
+              <p className="text-[10px] text-faint">Adds a file with your event snippets + where to place them — it never edits your existing code. You review, place, and merge.</p>
+              {dlResult?.status === 'pr_opened' && (
+                <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-[11px] text-emerald-200">
+                  PR opened with {dlResult.eventCount} snippet{dlResult.eventCount === 1 ? '' : 's'} to place.{' '}
+                  <a href={dlResult.prUrl} target="_blank" rel="noreferrer" className="underline text-emerald-100">Review PR #{dlResult.prNumber} →</a>
+                </div>
+              )}
+              {dlResult?.status === 'error' && <p className="text-[11px] text-amber-300">{dlResult.error}</p>}
+            </div>
 
             {result?.status === 'pr_opened' && (
               <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-[11px] text-emerald-200">
