@@ -850,8 +850,8 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                       )}
                     </div>
 
-                    {/* Connect GitHub → open a PR adding the GTM snippet to the site's <head>. */}
-                    <GitHubInject defaultContainerId={rdGtm} />
+                    {/* One-stop: create GTM/GA4/Meta, then open a PR adding GTM to the site. */}
+                    <GitHubInject plan={plan} defaultContainerId={rdGtm} />
                   </div>
                 </div>
               </div>
