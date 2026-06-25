@@ -7,9 +7,10 @@
 // banner makes clear that auto-applying to GTM is a separate, later step.
 
 import { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, Wrench, CheckCircle2, Copy, Check, Star, Info, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Wrench, CheckCircle2, Copy, Check, Star, Info, ExternalLink, GitPullRequest } from 'lucide-react';
 import type { ImplementationProposal, ProposalItem } from '@/lib/measurement/implementation-proposal';
 import type { MeasurementPlan } from '@/lib/measurement/types';
+import { runApproveApply } from '@/lib/measurement/approve-apply';
 
 interface ApplyResult {
   workspaceName: string;
@@ -148,6 +149,14 @@ export default function ImplementationGuideScreen({
   const [ga4Result, setGa4Result] = useState<Ga4Result | null>(null);
   const [ga4Error, setGa4Error] = useState('');
 
+  // ── GitHub repo (for the assistive dataLayer PR — a SEPARATE file, never edits
+  //    handlers) + that PR's result. Approve opens it too when a repo is connected. ──
+  const [ghRepos, setGhRepos] = useState<{ fullName: string; owner: string; name: string }[]>([]);
+  const [ghRepo, setGhRepo] = useState('');
+  const [dlState, setDlState] = useState<'idle' | 'opening' | 'done' | 'skipped' | 'error'>('idle');
+  const [dlResult, setDlResult] = useState<{ prUrl: string; prNumber: number; eventCount: number } | null>(null);
+  const [dlMessage, setDlMessage] = useState('');
+
   const fetchWriteStatus = useCallback(async () => {
     try {
       const [sRes, meRes] = await Promise.all([fetch('/api/google/status'), fetch('/api/auth/me')]);
@@ -170,6 +179,29 @@ export default function ImplementationGuideScreen({
     window.addEventListener('message', onMsg);
     return () => window.removeEventListener('message', onMsg);
   }, [fetchWriteStatus]);
+
+  // Load the connected GitHub repos (for the assistive dataLayer PR). Auto-select
+  // the first so Approve can open the PR without extra clicks.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const sRes = await fetch('/api/github/status');
+        const s = sRes.ok ? await sRes.json() : {};
+        if (cancelled || !s.connected) return;
+        const rRes = await fetch('/api/github/repos');
+        if (!cancelled && rRes.ok) {
+          const d = await rRes.json();
+          const repos = Array.isArray(d.repos) ? d.repos : [];
+          setGhRepos(repos);
+          if (repos[0]) setGhRepo(repos[0].fullName);
+        }
+      } catch {
+        /* no GitHub — the dataLayer PR step is simply skipped on approve */
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const connectForWrite = () => window.open('/api/google/oauth/start-write', 'gtm_write', 'width=520,height=680');
 
@@ -248,6 +280,41 @@ export default function ImplementationGuideScreen({
     }
   };
 
+  // The assistive dataLayer PR — a SEPARATE reference file with snippets + placement
+  // TODOs. It NEVER edits the developer's handlers/business logic.
+  const openDataLayerPr = async () => {
+    const repo = ghRepos.find((r) => r.fullName === ghRepo);
+    if (!repo) { setDlState('skipped'); setDlMessage('Connect GitHub to also get the dataLayer snippets as a PR.'); return; }
+    setDlState('opening'); setDlMessage('');
+    try {
+      const res = await fetch('/api/github/inject-datalayer', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner: repo.owner, repo: repo.name, plan }),
+      });
+      const j = await res.json();
+      if (!res.ok || j.status === 'error') { setDlState('error'); setDlMessage(j.error || 'Could not open the dataLayer PR.'); return; }
+      setDlResult(j); setDlState('done');
+    } catch {
+      setDlState('error'); setDlMessage('Network error opening the dataLayer PR.');
+    }
+  };
+
+  // Approve → run the two existing SAFE actions together (for convenience): the GTM
+  // unpublished-workspace apply (auto-create container) + the assistive dataLayer PR
+  // when a repo is connected. The standalone buttons below still work on their own.
+  const approveAndApply = async () => {
+    setApproved(true);
+    fetchWriteStatus();
+    const outcome = await runApproveApply({
+      githubConnected: Boolean(ghRepo),
+      applyToGtm: createNewContainer, // existing unpublished-workspace create (no manual IDs)
+      openDataLayerPr,
+    });
+    if (!outcome.dataLayerPrOpened && outcome.skippedReason) {
+      setDlState('skipped'); setDlMessage(outcome.skippedReason);
+    }
+  };
+
   return (
     <div className="h-full w-full flex flex-col bg-app overflow-hidden">
       <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-line bg-surface">
@@ -280,14 +347,40 @@ export default function ImplementationGuideScreen({
               <p className="text-xs text-faint mt-0.5">{summary.keyEvents} key event{summary.keyEvents === 1 ? '' : 's'} · {summary.tagCount} GA4 tag{summary.tagCount === 1 ? '' : 's'} proposed</p>
             </div>
             {approved ? (
-              <span className="text-sm text-emerald-300 flex items-center gap-1.5"><CheckCircle2 size={16} /> Approved — nothing was applied to GTM</span>
+              <span className="text-sm text-emerald-300 flex items-center gap-1.5"><CheckCircle2 size={16} /> Approved — applying below</span>
             ) : (
-              <button onClick={() => { setApproved(true); fetchWriteStatus(); }}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition shrink-0">
-                Approve this implementation plan
-              </button>
+              <div className="flex flex-col items-stretch gap-2 shrink-0">
+                {ghRepos.length > 0 && (
+                  <select value={ghRepo} onChange={(e) => setGhRepo(e.target.value)}
+                    className="bg-overlay border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                    {ghRepos.map((r) => <option key={r.fullName} value={r.fullName}>dataLayer PR → {r.fullName}</option>)}
+                  </select>
+                )}
+                <button onClick={approveAndApply}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                  Approve &amp; apply
+                </button>
+                <p className="text-[10px] text-faint max-w-[14rem]">Creates an unpublished GTM workspace{ghRepos.length > 0 ? ' + opens a PR with your dataLayer snippets to place' : ''}. Nothing publishes or merges automatically.</p>
+              </div>
             )}
           </div>
+
+          {/* dataLayer assistive PR result (from Approve) — a separate file you place + verify. */}
+          {approved && dlState !== 'idle' && (
+            <div className="rounded-2xl border border-line bg-overlay p-4 text-sm space-y-1">
+              <p className="font-semibold text-ink flex items-center gap-1.5"><GitPullRequest size={15} className="text-blue-400" /> dataLayer snippets (assistive PR)</p>
+              {dlState === 'opening' && <p className="text-xs text-faint">Opening a PR with your dataLayer snippets…</p>}
+              {dlState === 'done' && dlResult && (
+                <p className="text-xs text-emerald-200">
+                  PR opened with {dlResult.eventCount} snippet{dlResult.eventCount === 1 ? '' : 's'} to place —{' '}
+                  <a href={dlResult.prUrl} target="_blank" rel="noreferrer" className="underline text-emerald-100">review, place &amp; merge #{dlResult.prNumber} →</a>.{' '}
+                  These are in a file for you to place into your handlers and verify — nothing was auto-wired into your code.
+                </p>
+              )}
+              {dlState === 'skipped' && <p className="text-xs text-amber-300">{dlMessage}</p>}
+              {dlState === 'error' && <p className="text-xs text-rose-400">{dlMessage}</p>}
+            </div>
+          )}
 
           {/* Apply to GTM (only after approval) — creates an UNPUBLISHED workspace */}
           {approved && (
