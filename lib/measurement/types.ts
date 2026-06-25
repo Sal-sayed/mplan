@@ -62,7 +62,18 @@ export type EventCategory =
 
 export type ParameterType = 'string' | 'number' | 'boolean';
 
-export type ParameterSource = 'dataLayer' | 'gtm' | 'page';
+// WHERE a parameter's value comes from — the STRUCTURAL signal the router uses to
+// decide if GTM can read it (generically, never from the param/event name):
+//   - 'page'      — readable from the page/DOM/URL (visible text, a data-attribute,
+//                   a query param). GTM CAN read it.
+//   - 'gtm'       — provided by GTM itself (auto-event vars: click text/url, etc.).
+//   - 'static'    — a fixed literal value. Not app-state.
+//   - 'appState'  — dynamic app internal state (monetary value, currency, item/
+//                   product ids, dynamic names, counts). GTM CANNOT read it → rich.
+//   - 'dataLayer' — legacy synonym of 'appState' (value pushed to the dataLayer).
+//   - 'unknown'   — source can't be determined → treated as rich (conservative).
+// Anything not explicitly readable ('page'/'gtm'/'static') is treated as rich.
+export type ParameterSource = 'dataLayer' | 'gtm' | 'page' | 'static' | 'appState' | 'unknown';
 
 export interface EventParameter {
   name: string;
@@ -72,12 +83,27 @@ export interface EventParameter {
   source: ParameterSource;
 }
 
+// The kind of user action — the STRUCTURAL hint that maps to a GTM built-in trigger
+// (used by the router instead of the event name). Optional: when absent the router
+// falls back to a coarse mapping from `category`.
+export type EventTriggerType =
+  | 'formSubmit' // a form submission → GTM Form Submit trigger
+  | 'click' // a click on a button/element → GTM Click trigger (All Elements)
+  | 'linkClick' // a click on a link (incl. tel:/mailto:/outbound) → GTM Click (Just Links)
+  | 'elementVisibility' // an element/impression becoming visible → GTM Element Visibility
+  | 'historyChange' // a route/page/screen change → GTM History Change
+  | 'pageView' // a page load → GTM Page View / enhanced measurement
+  | 'none'; // not captured by any built-in trigger → needs a placed push
+
 export interface TrackedEvent {
   id: string;
   name: string; // GA4 snake_case — /^[a-z0-9_]+$/
   category: EventCategory;
   description: string;
   trigger: string;
+  // OPTIONAL structural action hint. When the generator can determine the action
+  // kind it sets this; the router prefers it over `category`. Absent on older plans.
+  triggerType?: EventTriggerType;
   isKeyEvent: boolean;
   requiresConsent: boolean;
   parameters: EventParameter[];
