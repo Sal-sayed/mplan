@@ -52,10 +52,20 @@ const { POST } = (await import('./route.ts')) as { POST: (req: any) => Promise<R
 const plan = () => ({
   meta: { url: 'https://shop.example.com', businessModel: 'ecommerce' },
   events: [
-    { id: 'e1', name: 'purchase', category: 'ecommerce', description: 'Orders', isKeyEvent: true, parameters: [{ name: 'value', type: 'number' }] },
+    { id: 'e1', name: 'purchase', category: 'ecommerce', description: 'Orders', isKeyEvent: true, parameters: [{ name: 'value', type: 'number', source: 'dataLayer' }] },
     { id: 'e2', name: 'page_view', category: 'page', description: 'Page views', isKeyEvent: false, parameters: [] },
   ],
   dataLayer: [{ key: 'value', type: 'number', example: '10' }],
+});
+
+// A plan whose events are ALL GTM-capturable (no rich pushes to place).
+const allGtmPlan = () => ({
+  meta: { url: 'https://shop.example.com', businessModel: 'ecommerce' },
+  events: [
+    { id: 'e1', name: 'page_view', category: 'page', description: '', isKeyEvent: false, parameters: [] },
+    { id: 'e2', name: 'contact_submit', category: 'form', description: '', isKeyEvent: false, parameters: [] },
+  ],
+  dataLayer: [],
 });
 
 const makeReq = (body: any) => ({ cookies: { get: () => undefined }, json: async () => body });
@@ -74,7 +84,8 @@ test('opens a PR: new branch + commit ONLY the artifact file + base=default, nev
   assert.equal(res.status, 200);
   assert.equal(body.status, 'pr_opened');
   assert.equal(body.filePath, ARTIFACT);
-  assert.equal(body.eventCount, 2);
+  // Only the rich event (purchase) needs a placed push; page_view is GTM-captured.
+  assert.equal(body.eventCount, 1);
 
   assert.equal(calls.createBranch.length, 1);
   const newBranch = calls.createBranch[0][3];
@@ -88,6 +99,8 @@ test('opens a PR: new branch + commit ONLY the artifact file + base=default, nev
   assert.equal(commitArgs.branch, newBranch);
   assert.notEqual(commitArgs.branch, 'main', 'NEVER commits to the default branch');
   assert.match(commitArgs.content, /dataLayer\.push\(/, 'artifact carries the push snippets');
+  assert.ok(commitArgs.content.includes('purchase'), 'rich event is in the file');
+  assert.ok(!commitArgs.content.includes('page_view'), 'GTM-captured event is NOT in the file');
 
   // PR targets default from the new branch.
   assert.equal(calls.openPullRequest.length, 1);
@@ -101,6 +114,15 @@ test('SAFETY: the only path it ever reads is the artifact’s own — never a ha
   for (const path of calls.getFileContents) assert.equal(path, ARTIFACT, 'never reads a non-artifact file');
   // And it writes only the artifact path.
   for (const c of calls.commitFile) assert.equal(c[3].path, ARTIFACT, 'never writes a non-artifact file');
+});
+
+test('all events GTM-capturable → none_needed, NO PR opened (no branch/commit)', async () => {
+  const res = await POST(makeReq({ owner: 'o', repo: 'r', plan: allGtmPlan() }));
+  const body = await res.json();
+  assert.equal(body.status, 'none_needed');
+  assert.equal(calls.createBranch.length, 0, 'no PR when nothing needs placing');
+  assert.equal(calls.commitFile.length, 0);
+  assert.equal(calls.openPullRequest.length, 0);
 });
 
 test('anonymous / not-connected caller → 401, no GitHub calls at all', async () => {

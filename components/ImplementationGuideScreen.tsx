@@ -11,6 +11,7 @@ import { ArrowLeft, Wrench, CheckCircle2, Copy, Check, Star, Info, ExternalLink,
 import type { ImplementationProposal, ProposalItem } from '@/lib/measurement/implementation-proposal';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 import { runApproveApply } from '@/lib/measurement/approve-apply';
+import { classifyEvents } from '@/lib/measurement/event-routing';
 
 interface ApplyResult {
   workspaceName: string;
@@ -117,6 +118,9 @@ export default function ImplementationGuideScreen({
 }) {
   const [approved, setApproved] = useState(false);
   const { summary, items } = proposal;
+
+  // Split: what GTM can capture on its own vs what needs a developer-placed push.
+  const { gtmCapturable, needsRichPush } = classifyEvents(plan);
 
   // ── Phase B apply (write to an UNPUBLISHED GTM workspace) ──
   // canConnect = signed-in OR admin (allowed to grant a write token at all);
@@ -293,6 +297,7 @@ export default function ImplementationGuideScreen({
       });
       const j = await res.json();
       if (!res.ok || j.status === 'error') { setDlState('error'); setDlMessage(j.error || 'Could not open the dataLayer PR.'); return; }
+      if (j.status === 'none_needed') { setDlState('skipped'); setDlMessage(j.message || 'All events are captured by GTM — no dataLayer pushes need placing.'); return; }
       setDlResult(j); setDlState('done');
     } catch {
       setDlState('error'); setDlMessage('Network error opening the dataLayer PR.');
@@ -338,6 +343,30 @@ export default function ImplementationGuideScreen({
               <span className="font-semibold">Review-only.</span> This is what to add to GTM and your site to implement the plan. Nothing here is written to GTM —
               <span className="text-blue-200"> auto-applying is a separate step coming later</span>. For now, copy these into GTM / your site manually.
             </p>
+          </div>
+
+          {/* The split — what GTM captures on its own vs what needs a placed push. */}
+          <div className="rounded-2xl border border-line bg-overlay p-5 space-y-3">
+            <p className="text-sm font-semibold text-ink">How each event is handled</p>
+            <div>
+              <p className="text-xs font-medium text-emerald-300 flex items-center gap-1.5"><Check size={13} /> Handled automatically in GTM (no code)</p>
+              {gtmCapturable.length ? (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {gtmCapturable.map((e) => <code key={e.id} className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 font-mono">{e.name}</code>)}
+                </div>
+              ) : <p className="text-[11px] text-faint mt-1">None — every event carries data that needs placing.</p>}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5"><GitPullRequest size={13} /> Needs a dataLayer push you place in your code</p>
+              {needsRichPush.length ? (
+                <>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {needsRichPush.map((e) => <code key={e.id} className="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-200 font-mono">{e.name}</code>)}
+                  </div>
+                  <p className="text-[10px] text-faint mt-1.5">These carry app data GTM can&apos;t read from the page. They come as a file via PR — place each in the right handler (the component where the action happens, <span className="text-muted">not</span> index.html) and verify. The snippets are below.</p>
+                </>
+              ) : <p className="text-[11px] text-faint mt-1">None — GTM captures everything; no source code needed.</p>}
+            </div>
           </div>
 
           {/* Summary + approve */}

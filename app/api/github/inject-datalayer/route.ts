@@ -21,6 +21,7 @@ import { getValidAccessToken } from '@/lib/github/token-store';
 import { getDefaultBranch, getFileContents, createBranch, commitFile, openPullRequest } from '@/lib/github/repo';
 import { buildDataLayerArtifact, DATALAYER_ARTIFACT_PATH } from '@/lib/github/datalayer-artifact';
 import { buildImplementationProposal } from '@/lib/measurement/implementation-proposal';
+import { classifyEvents } from '@/lib/measurement/event-routing';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
@@ -53,12 +54,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Invalid plan: ${(err as Error)?.message ?? 'unknown shape'}` }, { status: 400 });
   }
 
-  // Build the artifact from the plan's already-generated dataLayer snippets.
-  const proposal = buildImplementationProposal(body.plan as MeasurementPlan);
-  if (proposal.items.length === 0) {
-    return NextResponse.json({ error: 'This plan has no events to add dataLayer snippets for.' }, { status: 400 });
+  // Only the events that GENUINELY need a developer-placed push (rich app-state
+  // data) go into the file — the ones GTM can capture on its own are excluded.
+  const plan = body.plan as MeasurementPlan;
+  const { needsRichPush } = classifyEvents(plan);
+  const richIds = new Set(needsRichPush.map((e) => e.id));
+  const items = buildImplementationProposal(plan).items.filter((it) => richIds.has(it.eventId));
+  if (items.length === 0) {
+    // Everything is GTM-capturable — nothing needs placing in code.
+    return NextResponse.json({
+      status: 'none_needed',
+      message: 'All your events can be captured by GTM automatically — no dataLayer pushes need placing in your code.',
+    });
   }
-  const artifact = buildDataLayerArtifact(proposal.items);
+  const artifact = buildDataLayerArtifact(items);
 
   let token: string;
   try {

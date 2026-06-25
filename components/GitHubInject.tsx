@@ -42,6 +42,7 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const [dlBusy, setDlBusy] = useState(false);
   const [dlResult, setDlResult] = useState<
     | { status: 'pr_opened'; prUrl: string; prNumber: number; eventCount: number }
+    | { status: 'none_needed'; message: string }
     | { status: 'error'; error: string }
     | null
   >(null);
@@ -397,6 +398,7 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
                   <a href={dlResult.prUrl} target="_blank" rel="noreferrer" className="underline text-emerald-100">Review PR #{dlResult.prNumber} →</a>
                 </div>
               )}
+              {dlResult?.status === 'none_needed' && <p className="text-[11px] text-faint">{dlResult.message}</p>}
               {dlResult?.status === 'error' && <p className="text-[11px] text-amber-300">{dlResult.error}</p>}
             </div>
 
