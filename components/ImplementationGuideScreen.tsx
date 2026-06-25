@@ -11,7 +11,7 @@ import { ArrowLeft, Wrench, CheckCircle2, Copy, Check, Star, Info, ExternalLink,
 import type { ImplementationProposal, ProposalItem } from '@/lib/measurement/implementation-proposal';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 import { runApproveApply } from '@/lib/measurement/approve-apply';
-import { classifyEvents } from '@/lib/measurement/event-routing';
+import { classifyEvents, TRIGGER_LABEL } from '@/lib/measurement/event-routing';
 
 interface ApplyResult {
   workspaceName: string;
@@ -349,10 +349,15 @@ export default function ImplementationGuideScreen({
           <div className="rounded-2xl border border-line bg-overlay p-5 space-y-3">
             <p className="text-sm font-semibold text-ink">How each event is handled</p>
             <div>
-              <p className="text-xs font-medium text-emerald-300 flex items-center gap-1.5"><Check size={13} /> Handled automatically in GTM (no code)</p>
+              <p className="text-xs font-medium text-emerald-300 flex items-center gap-1.5"><Check size={13} /> Handled automatically in GTM (no code) — via built-in triggers</p>
               {gtmCapturable.length ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {gtmCapturable.map((e) => <code key={e.id} className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 font-mono">{e.name}</code>)}
+                <div className="mt-1.5 flex flex-col gap-1.5">
+                  {gtmCapturable.map((g) => (
+                    <span key={g.event.id} className="inline-flex items-center gap-2 flex-wrap">
+                      <code className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-200 font-mono">{g.event.name}</code>
+                      <span className="text-[10px] text-emerald-300/80">captured via {TRIGGER_LABEL[g.trigger]} — no code</span>
+                    </span>
+                  ))}
                 </div>
               ) : <p className="text-[11px] text-faint mt-1">None — every event carries data that needs placing.</p>}
             </div>
