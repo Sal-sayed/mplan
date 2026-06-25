@@ -6,6 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { buildDataLayerArtifact, DATALAYER_ARTIFACT_PATH } from './datalayer-artifact.ts';
+import type { LocationSuggestion } from './datalayer-locator.ts';
 import { buildImplementationProposal } from '../measurement/implementation-proposal.ts';
 import type { MeasurementPlan } from '../measurement/types.ts';
 
@@ -67,4 +68,24 @@ test('the snippet contains the real push code (event + params) from the plan', (
   const { contents } = build();
   assert.match(contents, /'event': 'purchase'/);
   assert.match(contents, /'value':/);
+});
+
+test('when suggestions are provided, each event shows the SUGGESTED file + hint + verify wording', () => {
+  const items = buildImplementationProposal(plan()).items;
+  const suggestions: LocationSuggestion[] = [
+    { eventName: 'purchase', suggestedFile: 'src/pages/Checkout.tsx', locationHint: 'Place the push where the purchase happens.', confidence: 'medium', alternatives: ['src/components/Cart.tsx'] },
+  ];
+  const { contents } = buildDataLayerArtifact(items, suggestions);
+  assert.match(contents, /\*\*SUGGESTED file:\*\*/);
+  assert.ok(contents.includes('src/pages/Checkout.tsx'), 'names the suggested file');
+  assert.match(contents, /verify before placing/i);
+  assert.ok(contents.includes('src/components/Cart.tsx'), 'lists the alternative');
+  // The header still makes clear nothing was auto-wired, even with suggestions on.
+  assert.match(contents, /does not wire them up automatically/i);
+  assert.match(contents, /best-effort guess from reading your repo/i);
+});
+
+test('with no suggestions (back-compat), no SUGGESTED line appears', () => {
+  const { contents } = build();
+  assert.ok(!contents.includes('SUGGESTED file:'), 'no suggestion block when none supplied');
 });

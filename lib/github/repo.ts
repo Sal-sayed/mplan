@@ -120,6 +120,28 @@ export async function getFileContents(
   return { path: filePath, content, sha: json.sha };
 }
 
+export interface RepoTreeEntry {
+  path: string;
+  type: 'blob' | 'tree'; // blob = file, tree = directory
+}
+
+// READ-ONLY: the repo's full file tree at a ref (default-branch head SHA), via the
+// Git Trees API (recursive). Used to SUGGEST where a dataLayer push should go — it
+// never writes. Large repos may be `truncated` by GitHub; we just suggest from what
+// we got (best-effort), never fabricating paths.
+export async function listTree(token: string, owner: string, repo: string, ref: string): Promise<RepoTreeEntry[]> {
+  const { status, json } = await ghFetch<{ tree?: Array<{ path?: string; type?: string }> }>(
+    token,
+    `/repos/${owner}/${repo}/git/trees/${encodeURIComponent(ref)}?recursive=1`
+  );
+  if (status !== 200 || !Array.isArray(json.tree)) {
+    throw new Error(errMessage(status, json, 'Could not read repository tree'));
+  }
+  return json.tree
+    .filter((e): e is { path: string; type: 'blob' | 'tree' } => Boolean(e.path) && (e.type === 'blob' || e.type === 'tree'))
+    .map((e) => ({ path: String(e.path), type: e.type }));
+}
+
 // Create a NEW branch ref pointing at fromSha. Never updates an existing ref.
 export async function createBranch(
   token: string,

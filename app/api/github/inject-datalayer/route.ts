@@ -18,8 +18,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import { resolveConnectOwnerId } from '@/lib/auth';
 import { getValidAccessToken } from '@/lib/github/token-store';
-import { getDefaultBranch, getFileContents, createBranch, commitFile, openPullRequest } from '@/lib/github/repo';
+import { getDefaultBranch, getFileContents, listTree, createBranch, commitFile, openPullRequest } from '@/lib/github/repo';
 import { buildDataLayerArtifact, DATALAYER_ARTIFACT_PATH } from '@/lib/github/datalayer-artifact';
+import { suggestLocations, type LocationSuggestion } from '@/lib/github/datalayer-locator';
 import { buildImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import { classifyEvents } from '@/lib/measurement/event-routing';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
@@ -67,7 +68,6 @@ export async function POST(req: NextRequest) {
       message: 'All your events can be captured by GTM automatically — no dataLayer pushes need placing in your code.',
     });
   }
-  const artifact = buildDataLayerArtifact(items);
 
   let token: string;
   try {
@@ -80,11 +80,28 @@ export async function POST(req: NextRequest) {
     // 1. Default branch (PR base + branch point).
     const { branch: defaultBranch, sha: baseSha } = await getDefaultBranch(token, owner, repo);
 
-    // 2. Read ONLY our own artifact path (never the user's source) so a re-run
-    //    updates the same file instead of failing.
+    // 2. READ-ONLY: list the repo tree + read a few candidate files to SUGGEST where
+    //    each push should go. Best-effort — never fails the PR, never edits anything.
+    let suggestions: LocationSuggestion[] = [];
+    try {
+      const tree = await listTree(token, owner, repo, baseSha);
+      const repoTree = tree.filter((e) => e.type === 'blob').map((e) => e.path);
+      suggestions = await suggestLocations({
+        events: needsRichPush.map((e) => ({ name: e.name, category: e.category })),
+        repoTree,
+        readFile: async (p) => (await getFileContents(token, owner, repo, p, defaultBranch))?.content ?? null,
+      });
+    } catch {
+      /* suggestions are best-effort — proceed with the snippets alone */
+    }
+
+    // 3. Build the artifact (snippets + best-effort SUGGESTED file/hint per event).
+    const artifact = buildDataLayerArtifact(items, suggestions);
+
+    // 4. Read ONLY our own artifact path so a re-run updates the same file.
     const existing = await getFileContents(token, owner, repo, DATALAYER_ARTIFACT_PATH, defaultBranch);
 
-    // 3. New branch → commit ONLY the artifact file to it (never the default branch).
+    // 5. New branch → commit ONLY the artifact file to it (never the default branch).
     const newBranch = `add-datalayer-snippets-${randomBytes(3).toString('hex')}`;
     await createBranch(token, owner, repo, newBranch, baseSha);
     await commitFile(token, owner, repo, {
@@ -95,7 +112,7 @@ export async function POST(req: NextRequest) {
       sha: existing?.sha, // update our own artifact if it already exists
     });
 
-    // 4. Open a PR for the human to review, PLACE the snippets, and merge.
+    // 7. Open a PR for the human to review, PLACE the snippets, and merge.
     const pr = await openPullRequest(token, owner, repo, {
       base: defaultBranch,
       head: newBranch,

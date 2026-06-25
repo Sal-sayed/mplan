@@ -19,10 +19,13 @@ let ownerId: string | null = 'user_A';
 const calls = {
   getDefaultBranch: [] as any[],
   getFileContents: [] as any[],
+  listTree: [] as any[],
   createBranch: [] as any[],
   commitFile: [] as any[],
   openPullRequest: [] as any[],
 };
+
+const CANDIDATE = 'src/components/Checkout.tsx';
 
 mockModule('@/lib/auth', { namedExports: { resolveConnectOwnerId: async () => ownerId } });
 mockModule('@/lib/github/token-store', { namedExports: { getValidAccessToken: async () => 'gh-token' } });
@@ -30,7 +33,20 @@ mockModule('@/lib/measurement/generate-plan', { namedExports: { validateMeasurem
 mockModule('@/lib/github/repo', {
   namedExports: {
     getDefaultBranch: async (...a: any[]) => { calls.getDefaultBranch.push(a); return { branch: 'main', sha: 'base-sha-1' }; },
-    getFileContents: async (_t: string, _o: string, _r: string, path: string) => { calls.getFileContents.push(path); return null; },
+    // Reading source files (for suggestions) is allowed; the artifact path is new (null).
+    getFileContents: async (_t: string, _o: string, _r: string, path: string) => {
+      calls.getFileContents.push(path);
+      if (path === CANDIDATE) return { path, content: 'function handleSubmit(){ /* ... */ }', sha: 'cf' };
+      return null;
+    },
+    listTree: async (...a: any[]) => {
+      calls.listTree.push(a);
+      return [
+        { path: CANDIDATE, type: 'blob' },
+        { path: 'README.md', type: 'blob' },
+        { path: 'package.json', type: 'blob' },
+      ];
+    },
     createBranch: async (...a: any[]) => { calls.createBranch.push(a); },
     commitFile: async (...a: any[]) => { calls.commitFile.push(a); },
     openPullRequest: async (...a: any[]) => { calls.openPullRequest.push(a); return { url: 'https://github.com/o/r/pull/12', number: 12 }; },
@@ -72,7 +88,7 @@ const makeReq = (body: any) => ({ cookies: { get: () => undefined }, json: async
 
 beforeEach(() => {
   ownerId = 'user_A';
-  calls.getDefaultBranch = []; calls.getFileContents = []; calls.createBranch = []; calls.commitFile = []; calls.openPullRequest = [];
+  calls.getDefaultBranch = []; calls.getFileContents = []; calls.listTree = []; calls.createBranch = []; calls.commitFile = []; calls.openPullRequest = [];
 });
 
 const ARTIFACT = 'ANALYTICS-DATALAYER.md';
@@ -102,18 +118,25 @@ test('opens a PR: new branch + commit ONLY the artifact file + base=default, nev
   assert.ok(commitArgs.content.includes('purchase'), 'rich event is in the file');
   assert.ok(!commitArgs.content.includes('page_view'), 'GTM-captured event is NOT in the file');
 
+  // The upgrade: the artifact now NAMES a suggested real file (read from the tree).
+  assert.match(commitArgs.content, /\*\*SUGGESTED file:\*\*/, 'includes a suggested location');
+  assert.ok(commitArgs.content.includes(CANDIDATE), 'suggests the real candidate file from the tree');
+  assert.equal(calls.listTree.length, 1, 'read the repo tree (read-only) to suggest');
+
   // PR targets default from the new branch.
   assert.equal(calls.openPullRequest.length, 1);
   assert.equal(calls.openPullRequest[0][3].base, 'main');
   assert.equal(calls.openPullRequest[0][3].head, newBranch);
 });
 
-test('SAFETY: the only path it ever reads is the artifact’s own — never a handler / source file', async () => {
+test('SAFETY: it may READ source files to suggest, but COMMITS only the artifact — never modifies an existing file', async () => {
   await POST(makeReq({ owner: 'o', repo: 'r', plan: plan() }));
-  // It reads only the artifact path (to update its own file), nothing else.
-  for (const path of calls.getFileContents) assert.equal(path, ARTIFACT, 'never reads a non-artifact file');
-  // And it writes only the artifact path.
-  for (const c of calls.commitFile) assert.equal(c[3].path, ARTIFACT, 'never writes a non-artifact file');
+  // Reading source files for suggestions is allowed (that's the upgrade) — here it
+  // read the candidate plus its own artifact path.
+  assert.ok(calls.getFileContents.includes(CANDIDATE), 'read a source file to suggest a location');
+  // The ONLY mutation is the single artifact commit — no existing file is ever written.
+  assert.ok(calls.commitFile.length >= 1);
+  for (const c of calls.commitFile) assert.equal(c[3].path, ARTIFACT, 'the only file ever committed is the artifact');
 });
 
 test('all events GTM-capturable → none_needed, NO PR opened (no branch/commit)', async () => {
