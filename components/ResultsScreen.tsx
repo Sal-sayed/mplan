@@ -60,9 +60,9 @@ function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
         <div className="flex items-center gap-2 text-[11px]">
           <span className="text-ds-muted">{summary.requiresConsentCount}/{summary.totalEvents} require consent</span>
           {summary.needsAttentionCount > 0 ? (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-medium">{summary.needsAttentionCount} need attention</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium">{summary.needsAttentionCount} need attention</span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-medium">all covered</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium">all covered</span>
           )}
         </div>
       </div>
@@ -83,8 +83,8 @@ function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
               <tr key={r.eventId} className="border-t border-ds-line align-top">
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1.5">
-                    <code className="text-blue-700 font-mono break-all">{r.eventName}</code>
-                    {r.isKeyEvent && <Star className="w-3 h-3 text-amber-700 shrink-0" />}
+                    <code className="text-blue-300 font-mono break-all">{r.eventName}</code>
+                    {r.isKeyEvent && <Star className="w-3 h-3 text-amber-300 shrink-0" />}
                   </div>
                   <p className="text-[11px] text-ds-muted mt-0.5">{r.note}</p>
                 </td>
@@ -93,9 +93,9 @@ function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
                 <td className="px-3 py-2 text-center text-ds-secondary">{r.requiresConsent ? (r.consentCategoryCovered ? 'yes' : 'no') : '—'}</td>
                 <td className="px-3 py-2">
                   {r.status === 'needs_attention' ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-medium whitespace-nowrap"><AlertTriangle className="w-3 h-3" /> needs attention</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium whitespace-nowrap"><AlertTriangle className="w-3 h-3" /> needs attention</span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-medium whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> ok</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> ok</span>
                   )}
                 </td>
               </tr>
@@ -122,9 +122,9 @@ const TABS = [
 // whether the plan itself is sound. Live verification is its own step.
 type Verdict = 'clean' | 'review' | 'issues';
 const VERDICT: Record<Verdict, { label: string; sub: string; Icon: typeof CheckCircle2; text: string; ring: string; bg: string; iconBg: string; iconText: string }> = {
-  clean:  { label: 'Plan is consistent', sub: 'All plan-consistency checks pass. Run the full check to verify live tracking.', Icon: CheckCircle2, text: 'text-emerald-700', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-700' },
-  review: { label: 'Review recommended', sub: 'Launchable, but some plan items are worth reviewing first.', Icon: AlertTriangle, text: 'text-amber-700', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', iconBg: 'bg-amber-500/15', iconText: 'text-amber-700' },
-  issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-700', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-700' },
+  clean:  { label: 'Plan is consistent', sub: 'All plan-consistency checks pass. Run the full check to verify live tracking.', Icon: CheckCircle2, text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-300' },
+  review: { label: 'Review recommended', sub: 'Launchable, but some plan items are worth reviewing first.', Icon: AlertTriangle, text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', iconBg: 'bg-amber-500/15', iconText: 'text-amber-300' },
+  issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-300' },
 };
 
 interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; onRegenerate?: () => void; }
@@ -404,21 +404,21 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
         <h3 className="text-xl font-bold text-ds-ink">{title}</h3>
-        {count !== undefined && <span className="text-xs bg-blue-500/20 text-blue-700 px-2.5 py-0.5 rounded-full font-medium">{count}</span>}
+        {count !== undefined && <span className="text-xs bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-medium">{count}</span>}
       </div>
       <button onClick={() => copySection(k, data)} className="flex items-center gap-1.5 text-xs text-ds-muted hover:text-ds-ink transition-colors px-3 py-1.5 rounded-lg hover:bg-ds-panel">
-        {copiedSection === k ? <><Check className="w-3.5 h-3.5 text-emerald-700" /><span className="text-emerald-700">Copied!</span></> : <><Copy className="w-3.5 h-3.5" />Copy JSON</>}
+        {copiedSection === k ? <><Check className="w-3.5 h-3.5 text-emerald-300" /><span className="text-emerald-300">Copied!</span></> : <><Copy className="w-3.5 h-3.5" />Copy JSON</>}
       </button>
     </div>
   );
 
   const CATEGORY_COLOR: Record<string, string> = {
     page: 'bg-slate-500/15 text-slate-300',
-    engagement: 'bg-blue-500/15 text-blue-700',
-    ecommerce: 'bg-emerald-500/15 text-emerald-700',
-    form: 'bg-amber-500/15 text-amber-700',
-    conversion: 'bg-pink-500/15 text-pink-700',
-    custom: 'bg-purple-500/15 text-purple-700',
+    engagement: 'bg-blue-500/15 text-blue-300',
+    ecommerce: 'bg-emerald-500/15 text-emerald-300',
+    form: 'bg-amber-500/15 text-amber-300',
+    conversion: 'bg-pink-500/15 text-pink-300',
+    custom: 'bg-purple-500/15 text-purple-300',
   };
 
   const renderContent = () => {
@@ -429,7 +429,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               without needing the separate Launch readiness screen. */}
           {consistencyState === 'loading' && (
             <div className="rounded-2xl border border-ds-line bg-ds-panel p-5 flex items-center gap-3">
-              <Loader2 className="w-5 h-5 text-blue-700 animate-spin" />
+              <Loader2 className="w-5 h-5 text-blue-300 animate-spin" />
               <p className="text-sm text-ds-secondary">Checking plan consistency…</p>
             </div>
           )}
@@ -446,9 +446,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                   </div>
                   <p className="text-sm text-ds-muted mt-0.5">{v.sub}</p>
                   <div className="flex flex-wrap items-center gap-2 mt-3">
-                    {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-700 border-rose-500/20"><b>{planFails}</b> must fix</span>}
-                    {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-700 border-amber-500/20"><b>{planWarns}</b> to review</span>}
-                    <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-700 border-emerald-500/20"><b>{planPass}</b> passing</span>
+                    {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-300 border-rose-500/20"><b>{planFails}</b> must fix</span>}
+                    {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-300 border-amber-500/20"><b>{planWarns}</b> to review</span>}
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/20"><b>{planPass}</b> passing</span>
                     <span className="text-xs px-2.5 py-1 rounded-full border bg-ds-panel text-ds-muted border-ds-line"><b>{liveCount}</b> need live verification</span>
                   </div>
                 </div>
@@ -493,15 +493,15 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             <div className="bg-ds-panel rounded-2xl border border-ds-line p-5">
               <h4 className="text-sm font-semibold text-ds-ink mb-4">Consent</h4>
               <div className="flex flex-wrap gap-2 mb-3">
-                {(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-700 px-2.5 py-1 rounded-full font-medium capitalize">{c}</span>)}
+                {(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-2.5 py-1 rounded-full font-medium capitalize">{c}</span>)}
               </div>
               <p className="text-xs text-ds-muted">Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}.</p>
             </div>
             <div className="bg-ds-panel rounded-2xl border border-ds-line p-5">
               <h4 className="text-sm font-semibold text-ds-ink mb-4">Tooling</h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-700">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">GA4 key events</p></div>
-                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-700">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">Suggested GTM tags</p></div>
+                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-300">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">GA4 key events</p></div>
+                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-300">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">Suggested GTM tags</p></div>
               </div>
             </div>
           </div>
@@ -519,8 +519,8 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                 className="bg-ds-panel rounded-xl border border-ds-line overflow-hidden hover:border-blue-500/20 transition-all">
                 <button onClick={() => toggleEvent(i)} className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-ds-panel transition-colors">
                   <span className="text-xs text-ds-muted font-mono w-6 shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
-                  {event.isKeyEvent && <Star className="w-3.5 h-3.5 text-amber-700 shrink-0" fill="currentColor" />}
-                  <code className="text-sm text-blue-700 font-mono font-medium flex-1 truncate">{event.name}</code>
+                  {event.isKeyEvent && <Star className="w-3.5 h-3.5 text-amber-300 shrink-0" fill="currentColor" />}
+                  <code className="text-sm text-blue-300 font-mono font-medium flex-1 truncate">{event.name}</code>
                   <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${CATEGORY_COLOR[event.category] || 'bg-ds-panel text-ds-secondary'}`}>{event.category}</span>
                   {event.requiresConsent && <span className="text-[10px] text-ds-muted hidden sm:inline">consent</span>}
                   <ChevronDown className={`w-3.5 h-3.5 text-ds-muted transition-transform duration-200 shrink-0 ${expandedEvents.has(i) ? 'rotate-180' : ''}`} />
@@ -540,7 +540,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                             <table className="w-full text-xs">
                               <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Type</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Req</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Source</th></tr></thead>
                               <tbody>{event.parameters.map((p, j) => (
-                                <tr key={p.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-cyan-700 font-mono">{p.name}</td><td className="px-3 py-1.5 text-ds-muted">{p.type}</td><td className="px-3 py-1.5 text-ds-muted">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-ds-muted font-mono">{p.source}</td></tr>
+                                <tr key={p.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-cyan-300 font-mono">{p.name}</td><td className="px-3 py-1.5 text-ds-muted">{p.type}</td><td className="px-3 py-1.5 text-ds-muted">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-ds-muted font-mono">{p.source}</td></tr>
                               ))}</tbody>
                             </table>
                           </div>
@@ -559,7 +559,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{dataLayer.map((d, i) => (
             <motion.div key={d.key || i} whileHover={{ y: -2 }} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
               className="bg-ds-panel rounded-xl border border-ds-line p-5 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
-              <div className="flex items-center justify-between mb-2"><code className="text-ds-ink font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-700 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
+              <div className="flex items-center justify-between mb-2"><code className="text-ds-ink font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-300 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
               <p className="text-sm text-ds-muted mb-2">{d.description}</p>
               {d.example && <div className="text-xs text-ds-muted bg-ds-panel rounded-lg p-2 font-mono border border-ds-line mb-2 break-words">{d.example}</div>}
               {d.usedByEventIds?.length > 0 && <div className="flex flex-wrap gap-1">{d.usedByEventIds.map((id) => <span key={id} className="text-[10px] font-mono bg-ds-panel text-ds-muted px-1.5 py-0.5 rounded border border-ds-line">{id}</span>)}</div>}
@@ -570,11 +570,11 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <div className="space-y-4">
             <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
               <h4 className="text-sm font-semibold text-ds-ink mb-3">Categories used</h4>
-              <div className="flex flex-wrap gap-2">{(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-700 px-3 py-1.5 rounded-full font-medium capitalize">{c}</span>)}</div>
+              <div className="flex flex-wrap gap-2">{(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-3 py-1.5 rounded-full font-medium capitalize">{c}</span>)}</div>
             </div>
             <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.consent?.consentModeRequired ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'}`}>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.consent?.consentModeRequired ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
                   Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}
                 </span>
               </div>
@@ -589,7 +589,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
               <h4 className="text-sm font-semibold text-ds-ink mb-3">GA4</h4>
               <p className="text-[10px] text-ds-muted uppercase tracking-widest mb-2">Key events</p>
-              <div className="flex flex-wrap gap-2 mb-4">{(plan.tooling?.ga4?.keyEvents || []).map((e) => <code key={e} className="text-xs text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">{e}</code>)}</div>
+              <div className="flex flex-wrap gap-2 mb-4">{(plan.tooling?.ga4?.keyEvents || []).map((e) => <code key={e} className="text-xs text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">{e}</code>)}</div>
               {(plan.tooling?.ga4?.customDimensions?.length || 0) > 0 && (
                 <>
                   <p className="text-[10px] text-ds-muted uppercase tracking-widest mb-2">Custom dimensions</p>
@@ -597,7 +597,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                     <table className="w-full text-xs">
                       <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Scope</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Parameter</th></tr></thead>
                       <tbody>{(plan.tooling?.ga4?.customDimensions || []).map((d, j) => (
-                        <tr key={d.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-secondary">{d.name}</td><td className="px-3 py-1.5 text-ds-muted">{d.scope}</td><td className="px-3 py-1.5 text-cyan-700 font-mono">{d.parameter}</td></tr>
+                        <tr key={d.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-secondary">{d.name}</td><td className="px-3 py-1.5 text-ds-muted">{d.scope}</td><td className="px-3 py-1.5 text-cyan-300 font-mono">{d.parameter}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
@@ -624,13 +624,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       <div className="h-full w-full flex flex-col items-center justify-center bg-ds-page p-6 text-center">
         {igPhase === 'loading' ? (
           <>
-            <Loader2 className="w-10 h-10 text-cyan-700 animate-spin mb-4" />
+            <Loader2 className="w-10 h-10 text-cyan-300 animate-spin mb-4" />
             <p className="text-ds-ink font-semibold text-lg">Building implementation guide…</p>
             <p className="text-ds-muted text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
           </>
         ) : (
           <>
-            <p className="text-rose-700 font-semibold">{igError}</p>
+            <p className="text-rose-300 font-semibold">{igError}</p>
             <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">Back</button>
           </>
         )}
@@ -672,7 +672,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           </button>
           <button onClick={runImplementationGuide}
             className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition">
-            <Wrench size={14} className="text-cyan-700" /> <span className="hidden sm:inline">Implementation guide</span>
+            <Wrench size={14} className="text-cyan-300" /> <span className="hidden sm:inline">Implementation guide</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
         </div>
@@ -680,13 +680,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
       {plan.meta?.source === 'template' && (
         <div className="shrink-0 px-4 lg:px-6 py-2.5 bg-amber-500/[0.08] border-b border-amber-500/20 flex items-center gap-3">
-          <AlertTriangle size={15} className="text-amber-700 shrink-0" />
-          <p className="text-xs text-amber-700/90 flex-1 min-w-0">
+          <AlertTriangle size={15} className="text-amber-300 shrink-0" />
+          <p className="text-xs text-amber-300/90 flex-1 min-w-0">
             <span className="font-semibold">Template starting point.</span> AI tailoring was unavailable, so this is a standards-based GA4/GTM baseline — solid to build from, but not customized to your site.
           </p>
           {onRegenerate && (
             <button onClick={onRegenerate}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-700 text-xs font-medium hover:bg-amber-500/25 transition flex items-center gap-1.5">
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-medium hover:bg-amber-500/25 transition flex items-center gap-1.5">
               <RefreshCw size={12} /> Regenerate with AI
             </button>
           )}
@@ -707,7 +707,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         <div className="lg:hidden shrink-0 absolute top-16 left-0 right-0 z-10 h-12 overflow-x-auto no-scrollbar flex gap-1 px-4 border-b border-ds-line bg-ds-card items-center">
           {TABS.map(t => { const Icon = t.icon; return (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-700 border border-blue-500/25' : 'text-ds-muted'}`}>
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'text-ds-muted'}`}>
               <Icon size={12} />{t.label}</button>);
           })}
         </div>
@@ -730,7 +730,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             </button>
             <div className="min-w-0">
               <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2">
-                <ShieldCheck size={15} className="text-blue-700" /> Launch readiness check
+                <ShieldCheck size={15} className="text-blue-300" /> Launch readiness check
               </div>
               <div className="text-xs text-ds-muted truncate">{meta.url}</div>
             </div>
@@ -739,7 +739,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           {rdPhase === 'loading' ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
-                <Loader2 className="w-10 h-10 text-blue-700 animate-spin mx-auto mb-4" />
+                <Loader2 className="w-10 h-10 text-blue-300 animate-spin mx-auto mb-4" />
                 <p className="text-ds-ink font-semibold text-lg">
                   {rdKind === 'governance' ? 'Checking for drift…' : rdKind === 'metrics' ? 'Checking metric health…' : 'Running launch readiness…'}
                 </p>
@@ -764,7 +764,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                   {/* Layer 1 — plan consistency (already done, no URL) */}
                   <div className="rounded-2xl border border-ds-line bg-ds-panel p-5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 font-semibold">Quick</span>
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
                       <span className="text-sm text-ds-ink font-medium">Plan consistency</span>
                       <span className="ml-auto text-[11px] text-ds-muted">instant · no URL</span>
                     </div>
@@ -776,7 +776,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                   {/* Layer 2 — live verification (optional URL) */}
                   <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-700 font-semibold">Full</span>
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
                       <span className="text-sm text-ds-ink font-medium">Live verification</span>
                       <span className="ml-auto text-[11px] text-ds-muted">~1 min</span>
                     </div>
@@ -798,7 +798,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                       ) : !gStatus.isAdmin ? (
                         <p className="text-[11px] text-ds-muted">
                           Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
-                          <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-700 underline">Sign in as admin</a>, then reopen this.
+                          <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-300 underline">Sign in as admin</a>, then reopen this.
                         </p>
                       ) : !gStatus.connected ? (
                         <div>
@@ -811,7 +811,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                       ) : (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-emerald-700 flex items-center gap-1"><Check size={12} /> Google connected</span>
+                            <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
                             <button type="button" onClick={disconnectGoogle} disabled={gLoading}
                               className="ml-auto text-[11px] text-ds-muted hover:text-ds-secondary underline disabled:opacity-50">Disconnect</button>
                           </div>
@@ -841,7 +841,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                               </label>
                             </div>
                             <button type="button" onClick={runBackfill}
-                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
                               <BarChart3 size={12} /> Backfill &amp; check this range
                             </button>
                             <p className="text-[10px] text-ds-muted mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
@@ -861,7 +861,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-ds-line bg-ds-card p-4 lg:p-5 overflow-y-auto">
                 <div className="max-w-3xl mx-auto space-y-2.5">
                   <h3 className="text-sm font-semibold text-ds-ink mb-1 hidden lg:block">Run a check</h3>
-                  {rdPhase === 'error' && <p className="text-sm text-rose-700">{rdError}</p>}
+                  {rdPhase === 'error' && <p className="text-sm text-rose-300">{rdError}</p>}
                   <button onClick={runReadiness}
                     className="w-full py-2.5 rounded-xl bg-ds-accent text-ds-accent-ink font-semibold text-sm hover:bg-ds-accent-hover shadow-sm transition">
                     Run check
@@ -876,7 +876,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                       firing against its trailing baseline (collected metric history). */}
                   <button onClick={runMetricHealth}
                     className="w-full py-2.5 rounded-xl bg-ds-panel border border-ds-line-strong text-ds-secondary text-sm font-medium hover:bg-ds-panel transition flex items-center justify-center gap-2">
-                    <BarChart3 size={14} className="text-cyan-700" /> Check metric health
+                    <BarChart3 size={14} className="text-cyan-300" /> Check metric health
                   </button>
                   <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
                     className="w-full py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">

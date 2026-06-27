@@ -61,7 +61,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           transition={{ duration: 0.5, ease: 'backOut' }}
           className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6"
         >
-          <CheckCircle2 className="text-emerald-600" size={36} />
+          <CheckCircle2 className="text-emerald-400" size={36} />
         </motion.div>
 
         {/* Heading */}
@@ -90,7 +90,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
         {/* Email warning if failed */}
         {!emailDelivered && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 text-xs text-amber-700 text-center">
+            className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 text-xs text-amber-300 text-center">
             There was an issue sending the email. You can still view and download the plan below.
           </motion.div>
         )}
@@ -100,7 +100,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           className="bg-ds-card border border-ds-line rounded-xl p-5 mb-5">
           <div className="flex items-center gap-3 mb-4">
             <div className={`p-2 rounded-lg ${isAudit ? 'bg-orange-500/15' : 'bg-blue-500/15'}`}>
-              {isAudit ? <Search className="text-orange-600" size={16} /> : <FileSpreadsheet className="text-blue-600" size={16} />}
+              {isAudit ? <Search className="text-orange-400" size={16} /> : <FileSpreadsheet className="text-blue-400" size={16} />}
             </div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-ds-ink">{isAudit ? 'Tracking Audit' : 'Measurement Plan'}</div>
@@ -112,9 +112,9 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
             <div className="grid grid-cols-4 gap-2 pt-4 border-t border-ds-line">
               {[
                 { label: 'To add', value: audit?.eventsToAdd?.length || 0 },
-                { label: 'To modify', value: audit?.eventsToModify?.length || 0, color: 'text-amber-600' },
-                { label: 'Quick wins', value: audit?.quickWins?.length || 0, color: 'text-emerald-600' },
-                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-600' : score?.total >= 50 ? 'text-amber-600' : score?.total ? 'text-rose-600' : 'text-ds-secondary' },
+                { label: 'To modify', value: audit?.eventsToModify?.length || 0, color: 'text-amber-400' },
+                { label: 'Quick wins', value: audit?.quickWins?.length || 0, color: 'text-emerald-400' },
+                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-400' : score?.total >= 50 ? 'text-amber-400' : score?.total ? 'text-rose-400' : 'text-ds-secondary' },
               ].map(s => (
                 <div key={s.label} className="text-center">
                   <div className={`text-xl font-bold ${(s as any).color || 'text-ds-ink'}`}>{s.value}</div>
@@ -128,7 +128,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
                 { label: 'KPIs', value: plan?.kpis?.length || 0 },
                 { label: 'Events', value: plan?.events?.length || 0 },
                 { label: 'Key events', value: (plan?.events || []).filter((e: any) => e?.isKeyEvent).length },
-                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-600' : score?.total >= 50 ? 'text-amber-600' : score?.total ? 'text-rose-600' : 'text-ds-secondary' },
+                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-400' : score?.total >= 50 ? 'text-amber-400' : score?.total ? 'text-rose-400' : 'text-ds-secondary' },
               ].map(s => (
                 <div key={s.label} className="text-center">
                   <div className={`text-xl font-bold ${(s as any).color || 'text-ds-ink'}`}>{s.value}</div>
@@ -161,7 +161,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
               href={process.env.NEXT_PUBLIC_FOLLOWUP_CTA_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3.5 rounded-xl bg-ds-card border border-emerald-400/30 text-emerald-700 font-medium text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
+              className="w-full py-3.5 rounded-xl bg-ds-card border border-emerald-400/30 text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
             >
               <Calendar size={14} />
               {process.env.NEXT_PUBLIC_FOLLOWUP_CTA_LABEL || 'Book a 20-min review of your plan'}
@@ -181,7 +181,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
             className="mt-4 text-center">
             <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-4 py-2">
               <span className="text-lg">{'\ud83d\udc1b'}</span>
-              <span className="text-sm text-amber-700 font-medium">
+              <span className="text-sm text-amber-300 font-medium">
                 You squashed bugs for {gameScore} points while we worked!
               </span>
             </div>

@@ -24,7 +24,7 @@ const STATUS_ICON: Record<ActivityEntry['type'], string> = {
 
 const STATUS_COLOR: Record<ActivityEntry['type'], string> = {
   running: 'text-ds-accent',
-  done: 'text-emerald-600',
+  done: 'text-emerald-400',
   info: 'text-ds-muted',
 };
 

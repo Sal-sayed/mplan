@@ -80,7 +80,7 @@ export default function LeadsPage() {
           </div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
             className="flex items-center gap-3 bg-ds-card border border-ds-line rounded-lg px-4 py-2.5">
-            <Users className="text-blue-600" size={16} />
+            <Users className="text-blue-400" size={16} />
             <div>
               <span className="text-xl font-bold text-ds-ink">{total}</span>
               <span className="text-[10px] text-ds-secondary ml-1.5">exports</span>
@@ -123,8 +123,8 @@ export default function LeadsPage() {
                     <span className="text-sm text-ds-ink font-mono truncate pr-3">{lead.email}</span>
                     <span className={`text-[10px] px-2 py-0.5 rounded uppercase tracking-wider font-medium ${
                       lead.mode === 'audit'
-                        ? 'bg-orange-500/10 text-orange-600'
-                        : 'bg-blue-500/10 text-blue-600'
+                        ? 'bg-orange-500/10 text-orange-400'
+                        : 'bg-blue-500/10 text-blue-400'
                     }`}>
                       {lead.mode === 'audit' ? 'Audit' : 'New'}
                     </span>

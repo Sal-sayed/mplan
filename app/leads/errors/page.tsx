@@ -61,7 +61,7 @@ export default function ErrorsPage() {
               <ArrowLeft size={16} /> Leads
             </Link>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <AlertTriangle size={20} className="text-rose-600" />
+              <AlertTriangle size={20} className="text-rose-400" />
               Critical Errors ({total})
             </h1>
           </div>
@@ -75,7 +75,7 @@ export default function ErrorsPage() {
         )}
 
         {!loading && loadError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-rose-700">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-rose-300">
             {loadError}
           </div>
         )}
@@ -91,7 +91,7 @@ export default function ErrorsPage() {
             {errors.map(err => (
               <div key={err.id} className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
                 <div className="flex items-center justify-between mb-2 text-xs">
-                  <span className="font-mono font-bold text-rose-700">{err.event_type}</span>
+                  <span className="font-mono font-bold text-rose-300">{err.event_type}</span>
                   <span className="text-ds-secondary">{formatDateTime(err.created_at)}</span>
                 </div>
                 <pre className="text-xs text-ds-secondary overflow-x-auto whitespace-pre-wrap break-all">

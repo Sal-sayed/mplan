@@ -249,18 +249,18 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
   const metaOk = !wantMeta || /^\d{10,20}$/.test(metaPixelId.trim());
   const chip = (active: boolean) =>
     `px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1 transition border ${
-      active ? 'bg-blue-500/15 border-blue-500/30 text-blue-200' : 'bg-overlay border-line text-faint hover:text-muted'
+      active ? 'bg-blue-500/15 border-blue-500/30 text-blue-200' : 'bg-ds-card border-ds-line text-ds-muted hover:text-ds-secondary'
     }`;
 
   return (
-    <div className="mt-4 pt-4 border-t border-line">
-      <p className="text-[11px] text-faint mb-2 flex items-center gap-1.5">
+    <div className="mt-4 pt-4 border-t border-ds-line">
+      <p className="text-[11px] text-ds-muted mb-2 flex items-center gap-1.5">
         <Sparkles size={12} /> Set up GTM, GA4 &amp; Meta — then add GTM to your site.
       </p>
 
       {!status.connected ? (
         <button type="button" onClick={connect}
-          className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
+          className="px-3 py-1.5 rounded-lg bg-ds-card border border-ds-line-strong text-ds-ink text-xs font-medium hover:bg-ds-panel transition flex items-center gap-1.5">
           <GitBranch size={12} /> Connect GitHub
         </button>
       ) : (
@@ -270,16 +270,16 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
               <Check size={12} /> GitHub connected{status.login ? ` (@${status.login})` : ''}
             </span>
             <button type="button" onClick={disconnect} disabled={busy}
-              className="ml-auto text-[11px] text-faint hover:text-muted underline disabled:opacity-50">Disconnect</button>
+              className="ml-auto text-[11px] text-ds-muted hover:text-ds-secondary underline disabled:opacity-50">Disconnect</button>
           </div>
 
           {/* ── STEP 1: create in GTM (GA4 + Meta optional) ── */}
-          <div className="rounded-lg border border-line bg-overlay/40 p-2.5 space-y-2">
-            <p className="text-[11px] text-ink font-medium">1. Create in GTM (no publish)</p>
+          <div className="rounded-lg border border-ds-line bg-ds-card/40 p-2.5 space-y-2">
+            <p className="text-[11px] text-ds-ink font-medium">1. Create in GTM (no publish)</p>
             {/* What ALREADY exists for this site (check-before-create) — no duplicates. */}
             {provision && (provision.gtm.exists || provision.ga4.exists) && (
-              <div className="rounded-lg bg-overlay border border-line p-2 text-[11px] space-y-1">
-                <p className="text-faint">Already set up for this site:</p>
+              <div className="rounded-lg bg-ds-card border border-ds-line p-2 text-[11px] space-y-1">
+                <p className="text-ds-muted">Already set up for this site:</p>
                 {provision.gtm.exists && (
                   <p className="text-emerald-300 flex items-center gap-1 flex-wrap">
                     <Check size={11} /> GTM container <code className="font-mono text-emerald-200">{provision.gtm.containerId}</code>
@@ -290,17 +290,17 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
                   <p className="text-emerald-300 flex items-center gap-1">
                     <Check size={11} /> GA4 property {provision.ga4.measurementId
                       ? <code className="font-mono text-emerald-200">{provision.ga4.measurementId}</code>
-                      : <span className="text-faint">id {provision.ga4.propertyId}</span>}
+                      : <span className="text-ds-muted">id {provision.ga4.propertyId}</span>}
                   </p>
                 )}
               </div>
             )}
 
             {provision?.gtm.exists ? (
-              <p className="text-[11px] text-faint">Your GTM container already exists — no need to create another. Click <span className="text-blue-300">Use it</span> above, then add it to your site below.</p>
+              <p className="text-[11px] text-ds-muted">Your GTM container already exists — no need to create another. Click <span className="text-blue-300">Use it</span> above, then add it to your site below.</p>
             ) : (
               <>
-                <p className="text-[11px] text-faint">What to set up — GTM container is always created; add GA4 and/or Meta to include their tags:</p>
+                <p className="text-[11px] text-ds-muted">What to set up — GTM container is always created; add GA4 and/or Meta to include their tags:</p>
                 <div className="flex flex-wrap gap-1.5">
                   <span className={chip(true)}><Check size={11} /> GTM container</span>
                   {provision?.ga4.exists ? (
@@ -316,21 +316,21 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
                 </div>
 
                 <input value={containerName} onChange={(e) => setContainerName(e.target.value)} placeholder="New container name — optional"
-                  className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                  className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40" />
                 {wantMeta && (
                   <input value={metaPixelId} onChange={(e) => setMetaPixelId(e.target.value)} placeholder="Meta Pixel ID (numeric)"
-                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                    className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40" />
                 )}
                 {wantGa4 && !provision?.ga4.exists && ga4Accounts.length > 0 && (
                   <select value={ga4AccountId} onChange={(e) => setGa4AccountId(e.target.value)}
-                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                    className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink focus:outline-none focus:border-blue-500/40">
                     <option value="">Choose an Analytics account…</option>
                     {ga4Accounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
                   </select>
                 )}
                 {gtmAccounts.length > 0 && (
                   <select value={gtmAccountId} onChange={(e) => setGtmAccountId(e.target.value)}
-                    className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                    className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink focus:outline-none focus:border-blue-500/40">
                     <option value="">Choose a Tag Manager account…</option>
                     {gtmAccounts.map((a) => <option key={a.accountId} value={a.accountId}>{a.name}</option>)}
                   </select>
@@ -338,9 +338,9 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
 
                 {gWrite && !gWrite.canWrite ? (
                   <div>
-                    <p className="text-[11px] text-faint mb-1.5">Creating in GTM/GA4 needs a one-time write consent.</p>
+                    <p className="text-[11px] text-ds-muted mb-1.5">Creating in GTM/GA4 needs a one-time write consent.</p>
                     <button type="button" onClick={connectWrite}
-                      className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
+                      className="px-3 py-1.5 rounded-lg bg-ds-card border border-ds-line-strong text-ds-ink text-xs font-medium hover:bg-ds-panel transition flex items-center gap-1.5">
                       <ShieldCheck size={12} /> Connect Google for write
                     </button>
                   </div>
@@ -366,39 +366,39 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
           </div>
 
           {/* ── STEP 2: add the GTM snippet to the site via a PR ── */}
-          <div className="rounded-lg border border-line bg-overlay/40 p-2.5 space-y-2">
-            <p className="text-[11px] text-ink font-medium">2. Add GTM to your site (opens a PR)</p>
+          <div className="rounded-lg border border-ds-line bg-ds-card/40 p-2.5 space-y-2">
+            <p className="text-[11px] text-ds-ink font-medium">2. Add GTM to your site (opens a PR)</p>
             <div className="grid sm:grid-cols-2 gap-2">
               <select value={selected} onChange={(e) => setSelected(e.target.value)}
-                className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-blue-500/40">
+                className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink focus:outline-none focus:border-blue-500/40">
                 <option value="">{repos.length ? 'Choose a repository…' : 'Loading repositories…'}</option>
                 {repos.map((r) => <option key={r.fullName} value={r.fullName}>{r.fullName}{r.private ? ' (private)' : ''}</option>)}
               </select>
               <input value={containerId} onChange={(e) => setTyped(e.target.value)} placeholder="GTM-XXXXXXX"
-                className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                className="w-full bg-ds-card border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40" />
             </div>
             <button type="button" onClick={inject} disabled={busy || !selected || !validGtm}
               className="w-full py-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs font-medium hover:bg-blue-500/20 transition flex items-center justify-center gap-1.5 disabled:opacity-50">
               {busy ? <Loader2 size={12} className="animate-spin" /> : <GitPullRequest size={12} />}
               Add GTM to my site (opens a PR)
             </button>
-            <p className="text-[10px] text-faint">Opens a pull request for you to review &amp; merge. Never pushes to your default branch, never merges for you.</p>
+            <p className="text-[10px] text-ds-muted">Opens a pull request for you to review &amp; merge. Never pushes to your default branch, never merges for you.</p>
 
             {/* Assistive dataLayer PR — a separate reference file, never edits handlers. */}
-            <div className="pt-2 mt-1 border-t border-line/60 space-y-1.5">
+            <div className="pt-2 mt-1 border-t border-ds-line/60 space-y-1.5">
               <button type="button" onClick={injectDataLayer} disabled={dlBusy || !selected}
-                className="w-full py-2 rounded-lg bg-overlay border border-line text-muted text-xs font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-1.5 disabled:opacity-50">
+                className="w-full py-2 rounded-lg bg-ds-card border border-ds-line text-ds-secondary text-xs font-medium hover:bg-ds-panel transition flex items-center justify-center gap-1.5 disabled:opacity-50">
                 {dlBusy ? <Loader2 size={12} className="animate-spin" /> : <GitPullRequest size={12} />}
                 Add dataLayer snippets (opens a PR)
               </button>
-              <p className="text-[10px] text-faint">Adds a file with your event snippets + where to place them — it never edits your existing code. You review, place, and merge.</p>
+              <p className="text-[10px] text-ds-muted">Adds a file with your event snippets + where to place them — it never edits your existing code. You review, place, and merge.</p>
               {dlResult?.status === 'pr_opened' && (
                 <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5 text-[11px] text-emerald-200">
                   PR opened with {dlResult.eventCount} snippet{dlResult.eventCount === 1 ? '' : 's'} to place.{' '}
                   <a href={dlResult.prUrl} target="_blank" rel="noreferrer" className="underline text-emerald-100">Review PR #{dlResult.prNumber} →</a>
                 </div>
               )}
-              {dlResult?.status === 'none_needed' && <p className="text-[11px] text-faint">{dlResult.message}</p>}
+              {dlResult?.status === 'none_needed' && <p className="text-[11px] text-ds-muted">{dlResult.message}</p>}
               {dlResult?.status === 'error' && <p className="text-[11px] text-amber-300">{dlResult.error}</p>}
             </div>
 
@@ -409,7 +409,7 @@ export default function GitHubInject({ plan, defaultContainerId = '' }: { plan: 
               </div>
             )}
             {result?.status === 'already_installed' && (
-              <div className="rounded-lg bg-overlay border border-line p-2.5 text-[11px] text-muted">{result.message}</div>
+              <div className="rounded-lg bg-ds-card border border-ds-line p-2.5 text-[11px] text-ds-secondary">{result.message}</div>
             )}
             {(result?.status === 'manual' || result?.status === 'error') && (
               <div className="rounded-lg bg-amber-500/10 border border-amber-500/20 p-2.5 text-[11px] text-amber-200 space-y-2">

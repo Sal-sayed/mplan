@@ -69,16 +69,16 @@ function AnimatedNumber({ value }: { value: number }) {
 export default function StatsDashboard({ stats, mode }: Props) {
   const boxes: StatBox[] = mode === 'audit'
     ? [
-        { icon: Database, label: 'GTM Containers', value: stats.gtmContainers ?? 0, iconText: 'text-emerald-600', border: 'border-emerald-500/20', glow: 'bg-emerald-500/5' },
-        { icon: Activity, label: 'Events Found',   value: stats.eventsFound ?? 0,   iconText: 'text-blue-600',    border: 'border-blue-500/20',    glow: 'bg-blue-500/5' },
-        { icon: FileText, label: 'Pages Scanned',  value: stats.pagesScanned ?? 0,  iconText: 'text-orange-600',  border: 'border-orange-500/20',  glow: 'bg-orange-500/5' },
-        { icon: Layers,   label: 'Tools Active',   value: stats.toolsActive ?? 0,   iconText: 'text-purple-600',  border: 'border-purple-500/20',  glow: 'bg-purple-500/5' },
+        { icon: Database, label: 'GTM Containers', value: stats.gtmContainers ?? 0, iconText: 'text-emerald-400', border: 'border-emerald-500/20', glow: 'bg-emerald-500/5' },
+        { icon: Activity, label: 'Events Found',   value: stats.eventsFound ?? 0,   iconText: 'text-blue-400',    border: 'border-blue-500/20',    glow: 'bg-blue-500/5' },
+        { icon: FileText, label: 'Pages Scanned',  value: stats.pagesScanned ?? 0,  iconText: 'text-orange-400',  border: 'border-orange-500/20',  glow: 'bg-orange-500/5' },
+        { icon: Layers,   label: 'Tools Active',   value: stats.toolsActive ?? 0,   iconText: 'text-purple-400',  border: 'border-purple-500/20',  glow: 'bg-purple-500/5' },
       ]
     : [
-        { icon: Target,    label: 'Objectives', value: stats.objectives ?? 0, iconText: 'text-emerald-600', border: 'border-emerald-500/20', glow: 'bg-emerald-500/5' },
-        { icon: BarChart3, label: 'KPIs',       value: stats.kpis ?? 0,       iconText: 'text-blue-600',    border: 'border-blue-500/20',    glow: 'bg-blue-500/5' },
-        { icon: Activity,  label: 'Events',     value: stats.events ?? 0,     iconText: 'text-orange-600',  border: 'border-orange-500/20',  glow: 'bg-orange-500/5' },
-        { icon: Sparkles,  label: 'Dimensions', value: stats.dimensions ?? 0, iconText: 'text-purple-600',  border: 'border-purple-500/20',  glow: 'bg-purple-500/5' },
+        { icon: Target,    label: 'Objectives', value: stats.objectives ?? 0, iconText: 'text-emerald-400', border: 'border-emerald-500/20', glow: 'bg-emerald-500/5' },
+        { icon: BarChart3, label: 'KPIs',       value: stats.kpis ?? 0,       iconText: 'text-blue-400',    border: 'border-blue-500/20',    glow: 'bg-blue-500/5' },
+        { icon: Activity,  label: 'Events',     value: stats.events ?? 0,     iconText: 'text-orange-400',  border: 'border-orange-500/20',  glow: 'bg-orange-500/5' },
+        { icon: Sparkles,  label: 'Dimensions', value: stats.dimensions ?? 0, iconText: 'text-purple-400',  border: 'border-purple-500/20',  glow: 'bg-purple-500/5' },
       ];
 
   return (

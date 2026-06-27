@@ -33,18 +33,18 @@ interface DecisionStyle {
 const DECISION: Record<LaunchDecision, DecisionStyle> = {
   go: {
     label: 'Go', sub: 'Ready to launch.', Icon: CheckCircle2,
-    text: 'text-emerald-700', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]',
-    iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-600',
+    text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]',
+    iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-400',
   },
   go_with_warnings: {
     label: 'Go with warnings', sub: 'Launchable, with items to review first.', Icon: AlertTriangle,
-    text: 'text-amber-700', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]',
-    iconBg: 'bg-amber-500/15', iconText: 'text-amber-600',
+    text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]',
+    iconBg: 'bg-amber-500/15', iconText: 'text-amber-400',
   },
   no_go: {
     label: 'No-Go', sub: 'Not ready to launch — the blockers below must be fixed first.', Icon: AlertCircle,
-    text: 'text-rose-700', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]',
-    iconBg: 'bg-rose-500/20', iconText: 'text-rose-600',
+    text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]',
+    iconBg: 'bg-rose-500/20', iconText: 'text-rose-400',
   },
 };
 
@@ -58,9 +58,9 @@ interface StatusStyle {
 }
 
 const STATUS: Record<CheckStatus, StatusStyle> = {
-  fail: { label: 'must fix', Icon: AlertCircle, dot: 'text-rose-600', ring: 'border-rose-500/30', bg: 'bg-rose-500/[0.06]', chip: 'bg-rose-500/15 text-rose-700 border-rose-500/20' },
-  warn: { label: 'to review', Icon: AlertTriangle, dot: 'text-amber-600', ring: 'border-amber-500/25', bg: 'bg-amber-500/[0.05]', chip: 'bg-amber-500/15 text-amber-700 border-amber-500/20' },
-  pass: { label: 'passing', Icon: CheckCircle2, dot: 'text-emerald-600', ring: 'border-emerald-500/20', bg: 'bg-emerald-500/[0.04]', chip: 'bg-emerald-500/15 text-emerald-700 border-emerald-500/20' },
+  fail: { label: 'must fix', Icon: AlertCircle, dot: 'text-rose-400', ring: 'border-rose-500/30', bg: 'bg-rose-500/[0.06]', chip: 'bg-rose-500/15 text-rose-300 border-rose-500/20' },
+  warn: { label: 'to review', Icon: AlertTriangle, dot: 'text-amber-400', ring: 'border-amber-500/25', bg: 'bg-amber-500/[0.05]', chip: 'bg-amber-500/15 text-amber-300 border-amber-500/20' },
+  pass: { label: 'passing', Icon: CheckCircle2, dot: 'text-emerald-400', ring: 'border-emerald-500/20', bg: 'bg-emerald-500/[0.04]', chip: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20' },
   skipped: { label: 'not verified', Icon: null, dot: 'text-ds-secondary', ring: 'border-ds-line', bg: 'bg-ds-card', chip: 'bg-ds-card text-ds-secondary border-ds-line' },
 };
 
@@ -84,7 +84,7 @@ function CheckRow({ check }: { check: ReadinessCheck }) {
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-ds-ink">{check.name}</span>
             {check.blocking && (
-              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-700 font-semibold">blocking</span>
+              <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-semibold">blocking</span>
             )}
             <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-ds-card text-ds-secondary">{check.category}</span>
             {check.status === 'skipped' && (
@@ -134,9 +134,9 @@ function CheckGroup({ title, hint, status, checks, defaultOpen }: { title: strin
 }
 
 const PILL_TONE: Record<CheckStatus, string> = {
-  fail: 'bg-rose-500/10 text-rose-700 border-rose-500/20',
-  warn: 'bg-amber-500/10 text-amber-700 border-amber-500/20',
-  pass: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20',
+  fail: 'bg-rose-500/10 text-rose-300 border-rose-500/20',
+  warn: 'bg-amber-500/10 text-amber-300 border-amber-500/20',
+  pass: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20',
   skipped: 'bg-ds-card text-ds-secondary border-ds-line',
 };
 
@@ -166,7 +166,7 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <Radio className="w-4 h-4 text-cyan-600" />
+        <Radio className="w-4 h-4 text-cyan-400" />
         <h3 className="text-sm font-semibold text-ds-ink">What actually fired</h3>
         <span className="text-xs text-ds-secondary">captured from the deployed site</span>
       </div>
@@ -204,7 +204,7 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
               <tbody>
                 {sorted.map((e, i) => (
                   <tr key={`${e.name}-${e.vendor ?? ''}-${i}`} className="border-t border-ds-line">
-                    <td className="px-3 py-1.5 text-cyan-700 font-mono break-all">{e.name}</td>
+                    <td className="px-3 py-1.5 text-cyan-300 font-mono break-all">{e.name}</td>
                     <td className="px-3 py-1.5 text-ds-secondary">{e.vendor ?? '—'}</td>
                     <td className="px-3 py-1.5 text-ds-secondary font-mono hidden sm:table-cell break-all">{e.destinationId ?? '—'}</td>
                     <td className="px-3 py-1.5 text-ds-secondary text-right">{e.count ?? 0}</td>
@@ -235,9 +235,9 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
 // ─── Consent compliance (slice 1: Consent Mode Verification) ───
 
 const CONSENT_VERDICT: Record<ConsentVerdict, { label: string; text: string; ring: string; bg: string; Icon: typeof CheckCircle2 }> = {
-  pass: { label: 'Consent compliant', text: 'text-emerald-700', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', Icon: CheckCircle2 },
-  warn: { label: 'Consent — review', text: 'text-amber-700', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', Icon: AlertTriangle },
-  fail: { label: 'Consent — not compliant', text: 'text-rose-700', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', Icon: AlertCircle },
+  pass: { label: 'Consent compliant', text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', Icon: CheckCircle2 },
+  warn: { label: 'Consent — review', text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', Icon: AlertTriangle },
+  fail: { label: 'Consent — not compliant', text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', Icon: AlertCircle },
   inconclusive: { label: 'Consent — not verified', text: 'text-ds-secondary', ring: 'border-ds-line', bg: 'bg-ds-card', Icon: ShieldCheck },
 };
 
@@ -245,7 +245,7 @@ const CONSENT_VERDICT: Record<ConsentVerdict, { label: string; text: string; rin
 function ConsentSignalRow({ ok, label, detail }: { ok: boolean; label: string; detail: string }) {
   return (
     <div className="flex items-start gap-3">
-      <span className={`text-base mt-0.5 ${ok ? 'text-emerald-600' : 'text-amber-600'}`}>{ok ? '✓' : '⚠'}</span>
+      <span className={`text-base mt-0.5 ${ok ? 'text-emerald-400' : 'text-amber-400'}`}>{ok ? '✓' : '⚠'}</span>
       <div>
         <div className="text-sm text-ds-secondary font-medium">{label}</div>
         <div className="text-xs text-ds-secondary mt-0.5">{detail}</div>
@@ -323,13 +323,13 @@ function ConsentCompliancePanel({ consent }: { consent: ConsentComplianceResult 
           <p className="text-sm text-ds-secondary">Not verified — needs a deployed URL to observe the pre-consent window.</p>
         ) : !consent.preConsentTracking ? (
           <div className="flex items-start gap-3">
-            <span className="text-base mt-0.5 text-emerald-600">✓</span>
+            <span className="text-base mt-0.5 text-emerald-400">✓</span>
             <div className="text-sm text-ds-secondary">No tracking fired before consent was granted — compliant.</div>
           </div>
         ) : (
           <div className="space-y-2">
             <div className="flex items-start gap-3">
-              <span className="text-base mt-0.5 text-rose-600">✕</span>
+              <span className="text-base mt-0.5 text-rose-400">✕</span>
               <div className="text-sm text-ds-secondary">
                 {consent.preConsentHitCount} tracking hit(s) fired <span className="font-semibold">before</span> consent was granted — this tracks users before they agree.
               </div>
@@ -337,7 +337,7 @@ function ConsentCompliancePanel({ consent }: { consent: ConsentComplianceResult 
             {consent.preConsentEventNames.length > 0 && (
               <div className="flex flex-wrap gap-1.5 pl-7">
                 {consent.preConsentEventNames.map((name) => (
-                  <code key={name} className="text-[11px] text-rose-700 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-mono break-all">{name}</code>
+                  <code key={name} className="text-[11px] text-rose-300 bg-rose-500/10 border border-rose-500/20 px-2 py-0.5 rounded font-mono break-all">{name}</code>
                 ))}
               </div>
             )}
@@ -352,7 +352,7 @@ function ConsentCompliancePanel({ consent }: { consent: ConsentComplianceResult 
           <ul className="space-y-1.5">
             {consent.issues.map((iss, i) => (
               <li key={i} className="flex items-start gap-2 text-sm">
-                <span className={`text-xs mt-0.5 ${iss.severity === 'fail' ? 'text-rose-600' : 'text-amber-600'}`}>
+                <span className={`text-xs mt-0.5 ${iss.severity === 'fail' ? 'text-rose-400' : 'text-amber-400'}`}>
                   {iss.severity === 'fail' ? '✕' : '⚠'}
                 </span>
                 <span className="text-ds-secondary">{iss.message}</span>
@@ -383,18 +383,18 @@ interface VerdictStyle {
 const VERDICT: Record<DriftVerdict, VerdictStyle> = {
   regression: {
     label: 'Regression since last run', Icon: AlertCircle,
-    text: 'text-rose-700', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]',
-    iconBg: 'bg-rose-500/20', iconText: 'text-rose-600',
+    text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]',
+    iconBg: 'bg-rose-500/20', iconText: 'text-rose-400',
   },
   inconclusive: {
     label: 'Inconclusive', Icon: AlertTriangle,
-    text: 'text-amber-700', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]',
-    iconBg: 'bg-amber-500/15', iconText: 'text-amber-600',
+    text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]',
+    iconBg: 'bg-amber-500/15', iconText: 'text-amber-400',
   },
   ok: {
     label: 'No change since last run', Icon: CheckCircle2,
-    text: 'text-emerald-700', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]',
-    iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-600',
+    text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]',
+    iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-400',
   },
 };
 
@@ -476,7 +476,7 @@ function DriftSection({ drift, nameById }: { drift: GovernanceDrift; nameById: (
       {/* Regressions first — what the user must act on. */}
       {regressed.length > 0 && (
         <div className="mt-4">
-          <p className="text-[10px] uppercase tracking-widest text-rose-700/80 mb-2">Regressed · act on these</p>
+          <p className="text-[10px] uppercase tracking-widest text-rose-300/80 mb-2">Regressed · act on these</p>
           <div className="space-y-2">
             {regressed.map((t) => (
               <TransitionRow key={t.id} name={nameById(t.id)} from={t.from} to={t.to} ring="border-rose-500/30" bg="bg-rose-500/[0.06]" />
@@ -548,7 +548,7 @@ export default function LaunchReadinessScreen({ report, onReset, drift, baseline
                 <h1 className={`text-2xl font-bold ${d.text}`}>{d.label}</h1>
                 <p className="text-ds-secondary text-sm mt-0.5">{d.sub}</p>
                 <div className="flex items-center gap-2 mt-3">
-                  <ShieldCheck size={14} className={report.approval.required ? 'text-amber-600' : 'text-emerald-600'} />
+                  <ShieldCheck size={14} className={report.approval.required ? 'text-amber-400' : 'text-emerald-400'} />
                   <span className="text-xs text-ds-secondary">
                     {report.approval.required ? 'Human approval required before launch' : 'No approval gate'}
                     {report.approval.approvedBy ? ` · approved by ${report.approval.approvedBy}` : ''}

@@ -88,21 +88,26 @@ html.light {
 }
 
 :root {
-  --ds-page: #f6f8fb;       /* page background */
-  --ds-card: #ffffff;       /* card surface */
-  --ds-panel: #fbfcfe;      /* subtle panel / inset */
-  --ds-ink: #0f172a;        /* slate-900 — primary text */
-  --ds-secondary: #475569;  /* slate-600 — secondary text */
-  --ds-muted: #8a98ac;      /* muted labels */
-  --ds-line: rgba(15, 23, 42, 0.08);        /* soft hairline border */
-  --ds-line-strong: rgba(15, 23, 42, 0.14); /* stronger hairline */
-  --ds-accent: #2563eb;     /* blue-600 — the one accent */
-  --ds-accent-hover: #1d4ed8;
+  /* Dark premium (violet) — matches the /home marketing aesthetic so the whole
+     product reads as one cohesive dark, glassy, violet-accented UI. Re-themed in
+     ONE place: every screen on the ds-* tokens flips with these values, no
+     per-screen edits. (Semantic status text uses the lighter -300/-400 shades in
+     the components so it stays readable on this dark surface.) */
+  --ds-page: #0a0613;       /* dark violet-black page background */
+  --ds-card: #14101f;       /* card surface (lifted off the page) */
+  --ds-panel: #1a1426;      /* subtle panel / inset */
+  --ds-ink: #f8fafc;        /* near-white primary text */
+  --ds-secondary: #c3cad6;  /* slate-300 — secondary text */
+  --ds-muted: #8b97a8;      /* slate-400 — muted labels */
+  --ds-line: rgba(255, 255, 255, 0.10);      /* soft hairline border */
+  --ds-line-strong: rgba(255, 255, 255, 0.18); /* stronger hairline */
+  --ds-accent: #8b5cf6;     /* violet-500 — the one accent */
+  --ds-accent-hover: #7c3aed;
   --ds-accent-ink: #ffffff;
-  --ds-accent-soft: #eef4ff;
-  --ds-success: #16a34a; --ds-success-soft: #ecfdf3;
-  --ds-warning: #b45309; --ds-warning-soft: #fff7ed;
-  --ds-danger: #dc2626;  --ds-danger-soft: #fef2f2;
+  --ds-accent-soft: rgba(139, 92, 246, 0.16); /* translucent violet wash */
+  --ds-success: #34d399; --ds-success-soft: rgba(16, 185, 129, 0.14);
+  --ds-warning: #fbbf24; --ds-warning-soft: rgba(245, 158, 11, 0.14);
+  --ds-danger: #f87171;  --ds-danger-soft: rgba(239, 68, 68, 0.14);
 }
 
 html, body {

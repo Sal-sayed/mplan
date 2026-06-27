@@ -46,16 +46,16 @@ function EntryRow({ entry }: { entry: MetricHealthEntry }) {
   return (
     <div className={`rounded-xl border ${v.ring} ${v.bg} p-4`}>
       <div className="flex items-start gap-3">
-        {Icon ? <Icon size={18} className={`${v.dot} shrink-0 mt-0.5`} /> : <span className="shrink-0 mt-1 w-3.5 h-3.5 rounded-full border-2 border-dashed border-line-strong" aria-hidden />}
+        {Icon ? <Icon size={18} className={`${v.dot} shrink-0 mt-0.5`} /> : <span className="shrink-0 mt-1 w-3.5 h-3.5 rounded-full border-2 border-dashed border-ds-line-strong" aria-hidden />}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <code className="text-sm font-semibold text-ink font-mono break-all">{entry.eventName}</code>
+            <code className="text-sm font-semibold text-ds-ink font-mono break-all">{entry.eventName}</code>
             <span className={`text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded border ${v.chip} font-semibold`}>{VERDICT_LABEL[entry.verdict]}</span>
             {entry.finding?.severity === 'critical' && (
               <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-rose-500/15 text-rose-300 font-semibold">critical</span>
             )}
           </div>
-          <p className="text-sm text-faint mt-1">{entry.finding?.detail ?? entry.summary}</p>
+          <p className="text-sm text-ds-muted mt-1">{entry.finding?.detail ?? entry.summary}</p>
         </div>
       </div>
     </div>
@@ -89,35 +89,35 @@ export default function MetricHealthScreen({
   const TIcon = tone.Icon;
 
   return (
-    <div className="h-full w-full flex flex-col bg-app overflow-hidden">
-      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-line bg-surface z-10">
+    <div className="h-full w-full flex flex-col bg-ds-page overflow-hidden">
+      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-ds-line bg-ds-card z-10">
         <div className="flex items-center gap-3 min-w-0">
           {onReset && (
-            <button onClick={onReset} className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0">
+            <button onClick={onReset} className="p-2 rounded-lg hover:bg-ds-card text-ds-muted hover:text-ds-secondary transition shrink-0">
               <ArrowLeft size={18} />
             </button>
           )}
           <div className="min-w-0 flex items-center gap-2">
             <BarChart3 size={16} className="text-cyan-400 shrink-0" />
-            <div className="text-sm font-semibold text-ink truncate">Metric health</div>
+            <div className="text-sm font-semibold text-ds-ink truncate">Metric health</div>
           </div>
         </div>
       </header>
 
-      <div className="flex-1 scroll-area bg-app">
+      <div className="flex-1 scroll-area bg-ds-page">
         <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-6">
           {!propertyChecked ? (
             // No operator + GA4 property → nothing to judge. A quiet note, not an error.
-            <div className="rounded-2xl border border-line bg-overlay p-6 flex items-start gap-3">
-              <History size={18} className="text-faint shrink-0 mt-0.5" />
+            <div className="rounded-2xl border border-ds-line bg-ds-card p-6 flex items-start gap-3">
+              <History size={18} className="text-ds-muted shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-muted">No metric history to check yet</p>
-                <p className="text-xs text-faint mt-1">Sign in as the operator and enter your GA4 property ID in the readiness check, with the metric collector running, to validate that your key events keep firing.</p>
+                <p className="text-sm font-medium text-ds-secondary">No metric history to check yet</p>
+                <p className="text-xs text-ds-muted mt-1">Sign in as the operator and enter your GA4 property ID in the readiness check, with the metric collector running, to validate that your key events keep firing.</p>
               </div>
             </div>
           ) : results.length === 0 ? (
-            <div className="rounded-2xl border border-line bg-overlay p-6">
-              <p className="text-sm text-muted">No key events in this plan to validate.</p>
+            <div className="rounded-2xl border border-ds-line bg-ds-card p-6">
+              <p className="text-sm text-ds-secondary">No key events in this plan to validate.</p>
             </div>
           ) : (
             <>
@@ -132,7 +132,7 @@ export default function MetricHealthScreen({
                   </div>
                   <div className="min-w-0 flex-1">
                     <h1 className={`text-2xl font-bold ${tone.text}`}>{tone.label}</h1>
-                    <p className="text-faint text-sm mt-0.5">{tone.sub}</p>
+                    <p className="text-ds-muted text-sm mt-0.5">{tone.sub}</p>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-5">

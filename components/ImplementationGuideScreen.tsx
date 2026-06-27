@@ -62,7 +62,7 @@ function Item({ item }: { item: ProposalItem }) {
       <div className="flex items-center gap-2 flex-wrap">
         <code className="text-sm font-semibold text-ds-ink font-mono break-all">{item.eventName}</code>
         {item.isKeyEvent && (
-          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-700 font-semibold flex items-center gap-1"><Star size={9} /> key event</span>
+          <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-semibold flex items-center gap-1"><Star size={9} /> key event</span>
         )}
         <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-ds-card text-ds-secondary">{item.category}</span>
       </div>
@@ -329,7 +329,7 @@ export default function ImplementationGuideScreen({
           </button>
         )}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2"><Wrench size={15} className="text-cyan-600" /> Implementation guide</div>
+          <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2"><Wrench size={15} className="text-cyan-400" /> Implementation guide</div>
           {url && <div className="text-xs text-ds-secondary truncate">{url}</div>}
         </div>
       </header>
@@ -338,10 +338,10 @@ export default function ImplementationGuideScreen({
         <div className="p-4 lg:p-8 max-w-4xl mx-auto space-y-5">
           {/* Review-only banner — Phase B (auto-apply) is separate */}
           <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.06] p-4 flex items-start gap-3">
-            <Info size={16} className="text-blue-700 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-700/90">
+            <Info size={16} className="text-blue-300 shrink-0 mt-0.5" />
+            <p className="text-xs text-blue-300/90">
               <span className="font-semibold">Review-only.</span> This is what to add to GTM and your site to implement the plan. Nothing here is written to GTM —
-              <span className="text-blue-700"> auto-applying is a separate step coming later</span>. For now, copy these into GTM / your site manually.
+              <span className="text-blue-300"> auto-applying is a separate step coming later</span>. For now, copy these into GTM / your site manually.
             </p>
           </div>
 
@@ -349,24 +349,24 @@ export default function ImplementationGuideScreen({
           <div className="rounded-2xl border border-ds-line bg-ds-card p-5 space-y-3">
             <p className="text-sm font-semibold text-ds-ink">How each event is handled</p>
             <div>
-              <p className="text-xs font-medium text-emerald-700 flex items-center gap-1.5"><Check size={13} /> Handled automatically in GTM (no code) — via built-in triggers</p>
+              <p className="text-xs font-medium text-emerald-300 flex items-center gap-1.5"><Check size={13} /> Handled automatically in GTM (no code) — via built-in triggers</p>
               {gtmCapturable.length ? (
                 <div className="mt-1.5 flex flex-col gap-1.5">
                   {gtmCapturable.map((g) => (
                     <span key={g.event.id} className="inline-flex items-center gap-2 flex-wrap">
-                      <code className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 font-mono">{g.event.name}</code>
-                      <span className="text-[10px] text-emerald-700/80">captured via {TRIGGER_LABEL[g.trigger]} — no code</span>
+                      <code className="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono">{g.event.name}</code>
+                      <span className="text-[10px] text-emerald-300/80">captured via {TRIGGER_LABEL[g.trigger]} — no code</span>
                     </span>
                   ))}
                 </div>
               ) : <p className="text-[11px] text-ds-secondary mt-1">None — every event carries data that needs placing.</p>}
             </div>
             <div>
-              <p className="text-xs font-medium text-amber-700 flex items-center gap-1.5"><GitPullRequest size={13} /> Needs a dataLayer push you place in your code</p>
+              <p className="text-xs font-medium text-amber-300 flex items-center gap-1.5"><GitPullRequest size={13} /> Needs a dataLayer push you place in your code</p>
               {needsRichPush.length ? (
                 <>
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
-                    {needsRichPush.map((e) => <code key={e.id} className="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-700 font-mono">{e.name}</code>)}
+                    {needsRichPush.map((e) => <code key={e.id} className="text-[11px] px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 font-mono">{e.name}</code>)}
                   </div>
                   <p className="text-[10px] text-ds-secondary mt-1.5">These carry app data GTM can&apos;t read from the page. They come as a file via PR — place each in the right handler (the component where the action happens, <span className="text-ds-secondary">not</span> index.html) and verify. The snippets are below.</p>
                 </>
@@ -381,7 +381,7 @@ export default function ImplementationGuideScreen({
               <p className="text-xs text-ds-secondary mt-0.5">{summary.keyEvents} key event{summary.keyEvents === 1 ? '' : 's'} · {summary.tagCount} GA4 tag{summary.tagCount === 1 ? '' : 's'} proposed</p>
             </div>
             {approved ? (
-              <span className="text-sm text-emerald-700 flex items-center gap-1.5"><CheckCircle2 size={16} /> Approved — applying below</span>
+              <span className="text-sm text-emerald-300 flex items-center gap-1.5"><CheckCircle2 size={16} /> Approved — applying below</span>
             ) : (
               <div className="flex flex-col items-stretch gap-2 shrink-0">
                 {ghRepos.length > 0 && (
@@ -402,17 +402,17 @@ export default function ImplementationGuideScreen({
           {/* dataLayer assistive PR result (from Approve) — a separate file you place + verify. */}
           {approved && dlState !== 'idle' && (
             <div className="rounded-2xl border border-ds-line bg-ds-card p-4 text-sm space-y-1">
-              <p className="font-semibold text-ds-ink flex items-center gap-1.5"><GitPullRequest size={15} className="text-blue-600" /> dataLayer snippets (assistive PR)</p>
+              <p className="font-semibold text-ds-ink flex items-center gap-1.5"><GitPullRequest size={15} className="text-blue-400" /> dataLayer snippets (assistive PR)</p>
               {dlState === 'opening' && <p className="text-xs text-ds-secondary">Opening a PR with your dataLayer snippets…</p>}
               {dlState === 'done' && dlResult && (
-                <p className="text-xs text-emerald-700">
+                <p className="text-xs text-emerald-300">
                   PR opened with {dlResult.eventCount} snippet{dlResult.eventCount === 1 ? '' : 's'} to place —{' '}
                   <a href={dlResult.prUrl} target="_blank" rel="noreferrer" className="underline text-emerald-100">review, place &amp; merge #{dlResult.prNumber} →</a>.{' '}
                   These are in a file for you to place into your handlers and verify — nothing was auto-wired into your code.
                 </p>
               )}
-              {dlState === 'skipped' && <p className="text-xs text-amber-700">{dlMessage}</p>}
-              {dlState === 'error' && <p className="text-xs text-rose-600">{dlMessage}</p>}
+              {dlState === 'skipped' && <p className="text-xs text-amber-300">{dlMessage}</p>}
+              {dlState === 'error' && <p className="text-xs text-rose-400">{dlMessage}</p>}
             </div>
           )}
 
@@ -420,7 +420,7 @@ export default function ImplementationGuideScreen({
           {approved && (
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Wrench size={15} className="text-cyan-600" />
+                <Wrench size={15} className="text-cyan-400" />
                 <p className="text-sm font-semibold text-ds-ink">Apply to GTM — creates an unpublished workspace</p>
               </div>
               <p className="text-xs text-ds-secondary">
@@ -490,20 +490,20 @@ export default function ImplementationGuideScreen({
                   </button>
                   <p className="text-[10px] text-ds-secondary">GA4 &amp; Meta IDs are optional — add either to include those tags. The container, variables &amp; triggers are still created. Nothing is published.</p>
 
-                  {createError && createState !== 'error' && <p className="text-xs text-amber-700">{createError}</p>}
-                  {createState === 'error' && <p className="text-sm text-rose-600">{createError}</p>}
+                  {createError && createState !== 'error' && <p className="text-xs text-amber-300">{createError}</p>}
+                  {createState === 'error' && <p className="text-sm text-rose-400">{createError}</p>}
                   {createState === 'done' && createResult && (
                     <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3 space-y-1.5">
-                      <p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Container created — nothing published</p>
-                      <p className="text-sm text-ds-ink">New container: <code className="font-mono font-semibold text-emerald-700">{createResult.newContainerId}</code> <span className="text-ds-secondary">in {createResult.accountName}</span></p>
+                      <p className="text-sm text-emerald-300 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Container created — nothing published</p>
+                      <p className="text-sm text-ds-ink">New container: <code className="font-mono font-semibold text-emerald-300">{createResult.newContainerId}</code> <span className="text-ds-secondary">in {createResult.accountName}</span></p>
                       <p className="text-xs text-ds-secondary">
                         {createResult.created.tags.length} tag(s), {createResult.created.triggers.length} trigger(s), {createResult.created.variables.length} variable(s) created.
                       </p>
                       {createResult.failures.length > 0 && (
-                        <p className="text-xs text-amber-700">{createResult.failures.length} item(s) need manual attention: {createResult.failures.map((f) => f.item).join(', ')}.</p>
+                        <p className="text-xs text-amber-300">{createResult.failures.length} item(s) need manual attention: {createResult.failures.map((f) => f.item).join(', ')}.</p>
                       )}
-                      <p className="text-[11px] text-blue-700/90">Next: use <code className="font-mono">{createResult.newContainerId}</code> in the “Connect GitHub” step to add it to your site via a pull request.</p>
-                      <a href={createResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 underline">
+                      <p className="text-[11px] text-blue-300/90">Next: use <code className="font-mono">{createResult.newContainerId}</code> in the “Connect GitHub” step to add it to your site via a pull request.</p>
+                      <a href={createResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 underline">
                         Review &amp; publish in Tag Manager <ExternalLink size={11} />
                       </a>
                     </div>
@@ -539,32 +539,32 @@ export default function ImplementationGuideScreen({
                   </button>
                   <p className="text-[10px] text-ds-secondary">Creates the property + a web data stream and returns the Measurement ID (G-XXXXXXX). Defaults: time zone UTC, currency USD — change anytime in GA4.</p>
 
-                  {ga4Error && ga4State !== 'error' && <p className="text-xs text-amber-700">{ga4Error}</p>}
-                  {ga4State === 'error' && <p className="text-sm text-rose-600">{ga4Error}</p>}
+                  {ga4Error && ga4State !== 'error' && <p className="text-xs text-amber-300">{ga4Error}</p>}
+                  {ga4State === 'error' && <p className="text-sm text-rose-400">{ga4Error}</p>}
                   {ga4State === 'done' && ga4Result && (
                     <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.06] p-3 space-y-1.5">
-                      <p className="text-sm text-amber-700 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> GA4 property created</p>
-                      <p className="text-sm text-ds-ink">Measurement ID: <code className="font-mono font-semibold text-amber-700">{ga4Result.measurementId}</code></p>
+                      <p className="text-sm text-amber-300 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> GA4 property created</p>
+                      <p className="text-sm text-ds-ink">Measurement ID: <code className="font-mono font-semibold text-amber-300">{ga4Result.measurementId}</code></p>
                       <p className="text-xs text-ds-secondary">Property “{ga4Result.displayName}” (id {ga4Result.propertyId}) in {ga4Result.accountName}.</p>
-                      <p className="text-[11px] text-blue-700/90">Next: paste <code className="font-mono">{ga4Result.measurementId}</code> into the “GA4 Measurement ID” box above when you create the GTM container, so the GA4 tags get added too.</p>
+                      <p className="text-[11px] text-blue-300/90">Next: paste <code className="font-mono">{ga4Result.measurementId}</code> into the “GA4 Measurement ID” box above when you create the GTM container, so the GA4 tags get added too.</p>
                     </div>
                   )}
                 </>
               )}
 
-              {applyState === 'error' && <p className="text-sm text-rose-600">{applyError}</p>}
+              {applyState === 'error' && <p className="text-sm text-rose-400">{applyError}</p>}
               {applyState === 'done' && applyResult && (
                 <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.06] p-3 space-y-1.5">
-                  <p className="text-sm text-emerald-700 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Workspace created — nothing published</p>
+                  <p className="text-sm text-emerald-300 font-medium flex items-center gap-1.5"><CheckCircle2 size={15} /> Workspace created — nothing published</p>
                   <p className="text-xs text-ds-secondary break-all">{applyResult.workspaceName}</p>
                   <p className="text-xs text-ds-secondary">
                     {applyResult.created.tags.length} tag(s), {applyResult.created.triggers.length} trigger(s), {applyResult.created.variables.length} variable(s) created
                     {applyResult.skipped.tags.length + applyResult.skipped.triggers.length > 0 ? ' · some already existed (skipped)' : ''}.
                   </p>
                   {applyResult.failures.length > 0 && (
-                    <p className="text-xs text-amber-700">{applyResult.failures.length} item(s) need manual attention: {applyResult.failures.map((f) => f.item).join(', ')}.</p>
+                    <p className="text-xs text-amber-300">{applyResult.failures.length} item(s) need manual attention: {applyResult.failures.map((f) => f.item).join(', ')}.</p>
                   )}
-                  <a href={applyResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 underline">
+                  <a href={applyResult.reviewUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-400 underline">
                     Review &amp; publish in Tag Manager <ExternalLink size={11} />
                   </a>
                 </div>

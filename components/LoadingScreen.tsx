@@ -383,7 +383,7 @@ export default function LoadingScreen({
                   isActive
                     ? 'border-ds-accent/40 bg-ds-accent-soft text-ds-accent'
                     : isDone
-                    ? 'border-emerald-500/30 bg-emerald-50 text-emerald-700'
+                    ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
                     : 'border-ds-line text-ds-muted'
                 }`}
               >

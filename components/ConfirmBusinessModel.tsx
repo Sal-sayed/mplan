@@ -38,7 +38,7 @@ export default function ConfirmBusinessModel({ classification, onConfirm, onConf
       <div className="w-full max-w-lg">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-6">
           <div className="mx-auto w-14 h-14 rounded-full bg-amber-500/10 flex items-center justify-center mb-4">
-            <HelpCircle className="text-amber-600" size={28} />
+            <HelpCircle className="text-amber-400" size={28} />
           </div>
           <h1 className="text-2xl font-bold text-ds-ink mb-2">Which best describes this site?</h1>
           <p className="text-ds-secondary text-sm">
@@ -60,12 +60,12 @@ export default function ConfirmBusinessModel({ classification, onConfirm, onConf
                     : 'bg-ds-card border-ds-line hover:border-ds-line-strong'
                 }`}>
                 <div className={`p-2 rounded-lg shrink-0 ${active ? 'bg-blue-500/20' : 'bg-ds-card'}`}>
-                  <m.Icon className={active ? 'text-blue-700' : 'text-ds-secondary'} size={18} />
+                  <m.Icon className={active ? 'text-blue-300' : 'text-ds-secondary'} size={18} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-ds-ink">{m.label}</span>
-                    {isGuess && <span className="text-[10px] uppercase tracking-wide text-amber-700 bg-amber-500/15 px-1.5 py-0.5 rounded">Best guess</span>}
+                    {isGuess && <span className="text-[10px] uppercase tracking-wide text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded">Best guess</span>}
                   </div>
                   <div className="text-xs text-ds-secondary truncate">{m.blurb}</div>
                 </div>
