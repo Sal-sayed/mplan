@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AnimatedBackground from '@/components/AnimatedBackground';
 import HeroScreen from '@/components/HeroScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import SuccessScreen from '@/components/SuccessScreen';
@@ -316,8 +315,7 @@ export default function Home() {
   }, [stage, email, mode]);
 
   return (
-    <main className="fixed inset-0 overflow-hidden">
-      <AnimatedBackground />
+    <main className="fixed inset-0 overflow-hidden bg-ds-page">
 
       <AnimatePresence mode="wait">
         {stage === 'idle' && (
@@ -376,9 +374,9 @@ export default function Home() {
         {stage === 'error' && (
           <motion.div key="error" className="absolute inset-0 flex items-center justify-center p-6"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <div className="bg-overlay backdrop-blur-2xl border border-line-strong rounded-2xl p-8 max-w-md text-center">
-              <p className="text-red-400 mb-4">{error}</p>
-              <button onClick={reset} className="px-6 py-2.5 bg-overlay-strong rounded-xl text-ink hover:bg-overlay-strong transition">
+            <div className="bg-ds-card border border-ds-line rounded-2xl p-8 max-w-md text-center shadow-sm">
+              <p className="text-ds-danger mb-4">{error}</p>
+              <button onClick={reset} className="px-6 py-2.5 bg-ds-accent rounded-xl text-ds-accent-ink font-medium hover:bg-ds-accent-hover transition">
                 Try again
               </button>
             </div>
