@@ -54,23 +54,23 @@ function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
   if (coverage.rows.length === 0) return null;
   const { summary } = coverage;
   return (
-    <div className="bg-overlay rounded-xl border border-line p-5">
+    <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
       <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-        <h4 className="text-sm font-semibold text-ink">Per-event consent coverage</h4>
+        <h4 className="text-sm font-semibold text-ds-ink">Per-event consent coverage</h4>
         <div className="flex items-center gap-2 text-[11px]">
-          <span className="text-faint">{summary.requiresConsentCount}/{summary.totalEvents} require consent</span>
+          <span className="text-ds-muted">{summary.requiresConsentCount}/{summary.totalEvents} require consent</span>
           {summary.needsAttentionCount > 0 ? (
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium">{summary.needsAttentionCount} need attention</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-medium">{summary.needsAttentionCount} need attention</span>
           ) : (
-            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium">all covered</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-medium">all covered</span>
           )}
         </div>
       </div>
-      <p className="text-xs text-faint mb-3">Every planned event and whether the plan&apos;s consent categories account for it — no live site needed.</p>
-      <div className="rounded-lg overflow-hidden border border-line">
+      <p className="text-xs text-ds-muted mb-3">Every planned event and whether the plan&apos;s consent categories account for it — no live site needed.</p>
+      <div className="rounded-lg overflow-hidden border border-ds-line">
         <table className="w-full text-xs">
           <thead>
-            <tr className="bg-overlay text-faint">
+            <tr className="bg-ds-panel text-ds-muted">
               <th className="text-left px-3 py-2 font-medium">Event</th>
               <th className="text-left px-3 py-2 font-medium hidden sm:table-cell">Category</th>
               <th className="text-center px-3 py-2 font-medium">Requires consent</th>
@@ -80,22 +80,22 @@ function ConsentCoverageSection({ plan }: { plan: MeasurementPlan }) {
           </thead>
           <tbody>
             {coverage.rows.map((r) => (
-              <tr key={r.eventId} className="border-t border-line align-top">
+              <tr key={r.eventId} className="border-t border-ds-line align-top">
                 <td className="px-3 py-2">
                   <div className="flex items-center gap-1.5">
-                    <code className="text-blue-300 font-mono break-all">{r.eventName}</code>
-                    {r.isKeyEvent && <Star className="w-3 h-3 text-amber-400 shrink-0" />}
+                    <code className="text-blue-700 font-mono break-all">{r.eventName}</code>
+                    {r.isKeyEvent && <Star className="w-3 h-3 text-amber-700 shrink-0" />}
                   </div>
-                  <p className="text-[11px] text-faint mt-0.5">{r.note}</p>
+                  <p className="text-[11px] text-ds-muted mt-0.5">{r.note}</p>
                 </td>
-                <td className="px-3 py-2 text-muted hidden sm:table-cell capitalize">{r.category}</td>
-                <td className="px-3 py-2 text-center text-muted">{r.requiresConsent ? 'yes' : 'no'}</td>
-                <td className="px-3 py-2 text-center text-muted">{r.requiresConsent ? (r.consentCategoryCovered ? 'yes' : 'no') : '—'}</td>
+                <td className="px-3 py-2 text-ds-secondary hidden sm:table-cell capitalize">{r.category}</td>
+                <td className="px-3 py-2 text-center text-ds-secondary">{r.requiresConsent ? 'yes' : 'no'}</td>
+                <td className="px-3 py-2 text-center text-ds-secondary">{r.requiresConsent ? (r.consentCategoryCovered ? 'yes' : 'no') : '—'}</td>
                 <td className="px-3 py-2">
                   {r.status === 'needs_attention' ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium whitespace-nowrap"><AlertTriangle className="w-3 h-3" /> needs attention</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-700 font-medium whitespace-nowrap"><AlertTriangle className="w-3 h-3" /> needs attention</span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 font-medium whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> ok</span>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-700 font-medium whitespace-nowrap"><CheckCircle2 className="w-3 h-3" /> ok</span>
                   )}
                 </td>
               </tr>
@@ -122,9 +122,9 @@ const TABS = [
 // whether the plan itself is sound. Live verification is its own step.
 type Verdict = 'clean' | 'review' | 'issues';
 const VERDICT: Record<Verdict, { label: string; sub: string; Icon: typeof CheckCircle2; text: string; ring: string; bg: string; iconBg: string; iconText: string }> = {
-  clean:  { label: 'Plan is consistent', sub: 'All plan-consistency checks pass. Run the full check to verify live tracking.', Icon: CheckCircle2, text: 'text-emerald-300', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-400' },
-  review: { label: 'Review recommended', sub: 'Launchable, but some plan items are worth reviewing first.', Icon: AlertTriangle, text: 'text-amber-300', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', iconBg: 'bg-amber-500/15', iconText: 'text-amber-400' },
-  issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-400' },
+  clean:  { label: 'Plan is consistent', sub: 'All plan-consistency checks pass. Run the full check to verify live tracking.', Icon: CheckCircle2, text: 'text-emerald-700', ring: 'border-emerald-500/30', bg: 'bg-emerald-500/[0.08]', iconBg: 'bg-emerald-500/15', iconText: 'text-emerald-700' },
+  review: { label: 'Review recommended', sub: 'Launchable, but some plan items are worth reviewing first.', Icon: AlertTriangle, text: 'text-amber-700', ring: 'border-amber-500/30', bg: 'bg-amber-500/[0.07]', iconBg: 'bg-amber-500/15', iconText: 'text-amber-700' },
+  issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-700', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-700' },
 };
 
 interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; onRegenerate?: () => void; }
@@ -141,7 +141,7 @@ function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; 
     } catch { /* silent */ } finally { setDl(false); }
   };
   return (
-    <button onClick={download} disabled={dl} className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition disabled:opacity-50">
+    <button onClick={download} disabled={dl} className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition disabled:opacity-50">
       {dl ? <Loader2 size={14} className="animate-spin" /> : <FileSpreadsheet size={14} />} Download Excel
     </button>
   );
@@ -403,22 +403,22 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   const SH = ({ title, k, data, count }: { title: string; k: string; data: unknown; count?: number }) => (
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center gap-3">
-        <h3 className="text-xl font-bold text-ink">{title}</h3>
-        {count !== undefined && <span className="text-xs bg-blue-500/20 text-blue-300 px-2.5 py-0.5 rounded-full font-medium">{count}</span>}
+        <h3 className="text-xl font-bold text-ds-ink">{title}</h3>
+        {count !== undefined && <span className="text-xs bg-blue-500/20 text-blue-700 px-2.5 py-0.5 rounded-full font-medium">{count}</span>}
       </div>
-      <button onClick={() => copySection(k, data)} className="flex items-center gap-1.5 text-xs text-faint hover:text-ink transition-colors px-3 py-1.5 rounded-lg hover:bg-overlay">
-        {copiedSection === k ? <><Check className="w-3.5 h-3.5 text-emerald-500" /><span className="text-emerald-500">Copied!</span></> : <><Copy className="w-3.5 h-3.5" />Copy JSON</>}
+      <button onClick={() => copySection(k, data)} className="flex items-center gap-1.5 text-xs text-ds-muted hover:text-ds-ink transition-colors px-3 py-1.5 rounded-lg hover:bg-ds-panel">
+        {copiedSection === k ? <><Check className="w-3.5 h-3.5 text-emerald-700" /><span className="text-emerald-700">Copied!</span></> : <><Copy className="w-3.5 h-3.5" />Copy JSON</>}
       </button>
     </div>
   );
 
   const CATEGORY_COLOR: Record<string, string> = {
     page: 'bg-slate-500/15 text-slate-300',
-    engagement: 'bg-blue-500/15 text-blue-300',
-    ecommerce: 'bg-emerald-500/15 text-emerald-300',
-    form: 'bg-amber-500/15 text-amber-300',
-    conversion: 'bg-pink-500/15 text-pink-300',
-    custom: 'bg-purple-500/15 text-purple-300',
+    engagement: 'bg-blue-500/15 text-blue-700',
+    ecommerce: 'bg-emerald-500/15 text-emerald-700',
+    form: 'bg-amber-500/15 text-amber-700',
+    conversion: 'bg-pink-500/15 text-pink-700',
+    custom: 'bg-purple-500/15 text-purple-700',
   };
 
   const renderContent = () => {
@@ -428,9 +428,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           {/* Plan-consistency badge — answers "is this plan correct?" right here,
               without needing the separate Launch readiness screen. */}
           {consistencyState === 'loading' && (
-            <div className="rounded-2xl border border-line bg-overlay p-5 flex items-center gap-3">
-              <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
-              <p className="text-sm text-muted">Checking plan consistency…</p>
+            <div className="rounded-2xl border border-ds-line bg-ds-panel p-5 flex items-center gap-3">
+              <Loader2 className="w-5 h-5 text-blue-700 animate-spin" />
+              <p className="text-sm text-ds-secondary">Checking plan consistency…</p>
             </div>
           )}
           {consistencyState === 'done' && consistency && (
@@ -442,26 +442,26 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h3 className={`text-lg font-bold ${v.text}`}>{v.label}</h3>
-                    <span className="text-[11px] text-faint uppercase tracking-wide">plan consistency</span>
+                    <span className="text-[11px] text-ds-muted uppercase tracking-wide">plan consistency</span>
                   </div>
-                  <p className="text-sm text-faint mt-0.5">{v.sub}</p>
+                  <p className="text-sm text-ds-muted mt-0.5">{v.sub}</p>
                   <div className="flex flex-wrap items-center gap-2 mt-3">
-                    {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-300 border-rose-500/20"><b>{planFails}</b> must fix</span>}
-                    {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-300 border-amber-500/20"><b>{planWarns}</b> to review</span>}
-                    <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-300 border-emerald-500/20"><b>{planPass}</b> passing</span>
-                    <span className="text-xs px-2.5 py-1 rounded-full border bg-overlay text-faint border-line"><b>{liveCount}</b> need live verification</span>
+                    {planFails > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-rose-500/10 text-rose-700 border-rose-500/20"><b>{planFails}</b> must fix</span>}
+                    {planWarns > 0 && <span className="text-xs px-2.5 py-1 rounded-full border bg-amber-500/10 text-amber-700 border-amber-500/20"><b>{planWarns}</b> to review</span>}
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-emerald-500/10 text-emerald-700 border-emerald-500/20"><b>{planPass}</b> passing</span>
+                    <span className="text-xs px-2.5 py-1 rounded-full border bg-ds-panel text-ds-muted border-ds-line"><b>{liveCount}</b> need live verification</span>
                   </div>
                 </div>
                 <button onClick={openReadiness}
-                  className="shrink-0 self-start px-3.5 py-2 rounded-xl bg-overlay border border-line-strong text-ink text-sm font-medium flex items-center gap-1.5 hover:bg-overlay-strong transition">
+                  className="shrink-0 self-start px-3.5 py-2 rounded-xl bg-ds-panel border border-ds-line-strong text-ds-ink text-sm font-medium flex items-center gap-1.5 hover:bg-ds-panel transition">
                   Full check <ArrowRight size={14} />
                 </button>
               </div>
             </div>
           )}
 
-          <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 rounded-2xl border border-blue-500/25 p-6">
-            <h3 className="text-lg font-bold text-ink mb-4">Plan Overview</h3>
+          <div className="bg-ds-card rounded-2xl border border-ds-line p-6 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <h3 className="text-lg font-bold text-ds-ink mb-4">Plan Overview</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {[
                 ['URL', meta.url],
@@ -471,37 +471,37 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                 ['Schema', meta.schemaVersion],
                 ['Generated', meta.generatedAt ? new Date(meta.generatedAt).toLocaleDateString() : 'N/A'],
               ].map(([l, v]) => (
-                <div key={l as string}><p className="text-xs text-faint uppercase tracking-wider">{l as string}</p><p className="text-muted mt-1 text-sm font-medium break-words">{(v as string) || 'N/A'}</p></div>
+                <div key={l as string}><p className="text-xs text-ds-muted uppercase tracking-wider">{l as string}</p><p className="text-ds-secondary mt-1 text-sm font-medium break-words">{(v as string) || 'N/A'}</p></div>
               ))}
             </div>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { l: 'KPIs', v: kpis.length, color: 'from-blue-500 to-blue-600', bg: 'bg-blue-500/10 border-blue-500/20' },
-              { l: 'Events', v: events.length, color: 'from-cyan-500 to-cyan-600', bg: 'bg-cyan-500/10 border-cyan-500/20' },
-              { l: 'Key Events', v: keyEventCount, color: 'from-pink-500 to-pink-600', bg: 'bg-pink-500/10 border-pink-500/20' },
-              { l: 'Data Layer Vars', v: dataLayer.length, color: 'from-purple-500 to-purple-600', bg: 'bg-purple-500/10 border-purple-500/20' },
+              { l: 'KPIs', v: kpis.length },
+              { l: 'Events', v: events.length },
+              { l: 'Key Events', v: keyEventCount },
+              { l: 'Data Layer Vars', v: dataLayer.length },
             ].map(s => (
-              <motion.div key={s.l} whileHover={{ y: -3 }} className={`${s.bg} rounded-xl border p-5 text-center transition-all hover:shadow-lg`}>
-                <p className={`text-3xl font-bold bg-gradient-to-r ${s.color} bg-clip-text text-transparent`}>{s.v}</p>
-                <p className="text-xs text-faint mt-1 font-medium">{s.l}</p></motion.div>
+              <motion.div key={s.l} whileHover={{ y: -3 }} className="bg-ds-card rounded-xl border border-ds-line p-5 text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-all hover:shadow-md">
+                <p className="text-3xl font-semibold tracking-tight tabular-nums text-ds-ink">{s.v}</p>
+                <p className="text-xs text-ds-muted mt-1 font-medium">{s.l}</p></motion.div>
             ))}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-overlay rounded-2xl border border-line p-5">
-              <h4 className="text-sm font-semibold text-ink mb-4">Consent</h4>
+            <div className="bg-ds-panel rounded-2xl border border-ds-line p-5">
+              <h4 className="text-sm font-semibold text-ds-ink mb-4">Consent</h4>
               <div className="flex flex-wrap gap-2 mb-3">
-                {(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-2.5 py-1 rounded-full font-medium capitalize">{c}</span>)}
+                {(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-700 px-2.5 py-1 rounded-full font-medium capitalize">{c}</span>)}
               </div>
-              <p className="text-xs text-faint">Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}.</p>
+              <p className="text-xs text-ds-muted">Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}.</p>
             </div>
-            <div className="bg-overlay rounded-2xl border border-line p-5">
-              <h4 className="text-sm font-semibold text-ink mb-4">Tooling</h4>
+            <div className="bg-ds-panel rounded-2xl border border-ds-line p-5">
+              <h4 className="text-sm font-semibold text-ds-ink mb-4">Tooling</h4>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-400">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-faint mt-0.5">GA4 key events</p></div>
-                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-400">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-faint mt-0.5">Suggested GTM tags</p></div>
+                <div className="bg-emerald-500/10 rounded-lg p-3"><p className="text-xl font-bold text-emerald-700">{plan.tooling?.ga4?.keyEvents?.length || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">GA4 key events</p></div>
+                <div className="bg-amber-500/10 rounded-lg p-3"><p className="text-xl font-bold text-amber-700">{plan.tooling?.gtm?.suggestedTagCount || 0}</p><p className="text-[11px] text-ds-muted mt-0.5">Suggested GTM tags</p></div>
               </div>
             </div>
           </div>
@@ -516,31 +516,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           <div className="space-y-2.5">
             {events.map((event: TrackedEvent, i: number) => (
               <motion.div key={event.id || i} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }}
-                className="bg-overlay rounded-xl border border-line overflow-hidden hover:border-blue-500/20 transition-all">
-                <button onClick={() => toggleEvent(i)} className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-overlay transition-colors">
-                  <span className="text-xs text-faint font-mono w-6 shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
-                  {event.isKeyEvent && <Star className="w-3.5 h-3.5 text-amber-400 shrink-0" fill="currentColor" />}
-                  <code className="text-sm text-blue-400 font-mono font-medium flex-1 truncate">{event.name}</code>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${CATEGORY_COLOR[event.category] || 'bg-overlay text-muted'}`}>{event.category}</span>
-                  {event.requiresConsent && <span className="text-[10px] text-faint hidden sm:inline">consent</span>}
-                  <ChevronDown className={`w-3.5 h-3.5 text-faint transition-transform duration-200 shrink-0 ${expandedEvents.has(i) ? 'rotate-180' : ''}`} />
+                className="bg-ds-panel rounded-xl border border-ds-line overflow-hidden hover:border-blue-500/20 transition-all">
+                <button onClick={() => toggleEvent(i)} className="w-full flex items-center gap-4 px-5 py-3.5 text-left hover:bg-ds-panel transition-colors">
+                  <span className="text-xs text-ds-muted font-mono w-6 shrink-0 text-right">{String(i + 1).padStart(2, '0')}</span>
+                  {event.isKeyEvent && <Star className="w-3.5 h-3.5 text-amber-700 shrink-0" fill="currentColor" />}
+                  <code className="text-sm text-blue-700 font-mono font-medium flex-1 truncate">{event.name}</code>
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-semibold uppercase tracking-wide shrink-0 ${CATEGORY_COLOR[event.category] || 'bg-ds-panel text-ds-secondary'}`}>{event.category}</span>
+                  {event.requiresConsent && <span className="text-[10px] text-ds-muted hidden sm:inline">consent</span>}
+                  <ChevronDown className={`w-3.5 h-3.5 text-ds-muted transition-transform duration-200 shrink-0 ${expandedEvents.has(i) ? 'rotate-180' : ''}`} />
                 </button>
                 <AnimatePresence>{expandedEvents.has(i) && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                    <div className="px-5 pb-4 pt-2 border-t border-line">
-                      <p className="text-sm text-muted mb-3">{event.description}</p>
+                    <div className="px-5 pb-4 pt-2 border-t border-ds-line">
+                      <p className="text-sm text-ds-secondary mb-3">{event.description}</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                        <div><p className="text-[10px] text-faint uppercase tracking-widest mb-1">Trigger</p><p className="text-sm text-muted">{event.trigger}</p></div>
-                        <div><p className="text-[10px] text-faint uppercase tracking-widest mb-1">Flags</p><p className="text-sm text-muted">{event.isKeyEvent ? 'Key event' : 'Standard'}{event.requiresConsent ? ' · requires consent' : ''}</p></div>
+                        <div><p className="text-[10px] text-ds-muted uppercase tracking-widest mb-1">Trigger</p><p className="text-sm text-ds-secondary">{event.trigger}</p></div>
+                        <div><p className="text-[10px] text-ds-muted uppercase tracking-widest mb-1">Flags</p><p className="text-sm text-ds-secondary">{event.isKeyEvent ? 'Key event' : 'Standard'}{event.requiresConsent ? ' · requires consent' : ''}</p></div>
                       </div>
                       {event.parameters?.length > 0 && (
                         <div>
-                          <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Parameters</p>
-                          <div className="rounded-lg overflow-hidden border border-line">
+                          <p className="text-[10px] text-ds-muted uppercase tracking-widest mb-2">Parameters</p>
+                          <div className="rounded-lg overflow-hidden border border-ds-line">
                             <table className="w-full text-xs">
-                              <thead><tr className="bg-overlay"><th className="text-left px-3 py-2 text-faint font-medium">Name</th><th className="text-left px-3 py-2 text-faint font-medium">Type</th><th className="text-left px-3 py-2 text-faint font-medium">Req</th><th className="text-left px-3 py-2 text-faint font-medium">Source</th></tr></thead>
+                              <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Type</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Req</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Source</th></tr></thead>
                               <tbody>{event.parameters.map((p, j) => (
-                                <tr key={p.name || j} className="border-t border-line"><td className="px-3 py-1.5 text-cyan-400 font-mono">{p.name}</td><td className="px-3 py-1.5 text-faint">{p.type}</td><td className="px-3 py-1.5 text-faint">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-faint font-mono">{p.source}</td></tr>
+                                <tr key={p.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-cyan-700 font-mono">{p.name}</td><td className="px-3 py-1.5 text-ds-muted">{p.type}</td><td className="px-3 py-1.5 text-ds-muted">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-ds-muted font-mono">{p.source}</td></tr>
                               ))}</tbody>
                             </table>
                           </div>
@@ -558,27 +558,27 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         <div><SH title="Data Layer" k="datalayer" data={dataLayer} count={dataLayer.length} />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{dataLayer.map((d, i) => (
             <motion.div key={d.key || i} whileHover={{ y: -2 }} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}
-              className="bg-overlay rounded-xl border border-line p-5 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
-              <div className="flex items-center justify-between mb-2"><code className="text-ink font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
-              <p className="text-sm text-faint mb-2">{d.description}</p>
-              {d.example && <div className="text-xs text-faint bg-overlay rounded-lg p-2 font-mono border border-line mb-2 break-words">{d.example}</div>}
-              {d.usedByEventIds?.length > 0 && <div className="flex flex-wrap gap-1">{d.usedByEventIds.map((id) => <span key={id} className="text-[10px] font-mono bg-overlay text-faint px-1.5 py-0.5 rounded border border-line">{id}</span>)}</div>}
+              className="bg-ds-panel rounded-xl border border-ds-line p-5 hover:shadow-lg hover:shadow-blue-500/5 transition-all">
+              <div className="flex items-center justify-between mb-2"><code className="text-ds-ink font-semibold text-sm font-mono">{d.key}</code><span className="text-xs bg-blue-500/15 text-blue-700 px-2 py-0.5 rounded-full font-medium">{d.type}</span></div>
+              <p className="text-sm text-ds-muted mb-2">{d.description}</p>
+              {d.example && <div className="text-xs text-ds-muted bg-ds-panel rounded-lg p-2 font-mono border border-ds-line mb-2 break-words">{d.example}</div>}
+              {d.usedByEventIds?.length > 0 && <div className="flex flex-wrap gap-1">{d.usedByEventIds.map((id) => <span key={id} className="text-[10px] font-mono bg-ds-panel text-ds-muted px-1.5 py-0.5 rounded border border-ds-line">{id}</span>)}</div>}
             </motion.div>))}</div></div>);
 
       case 'consent': return (
         <div><SH title="Consent Plan" k="consent" data={plan.consent} />
           <div className="space-y-4">
-            <div className="bg-overlay rounded-xl border border-line p-5">
-              <h4 className="text-sm font-semibold text-ink mb-3">Categories used</h4>
-              <div className="flex flex-wrap gap-2">{(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-300 px-3 py-1.5 rounded-full font-medium capitalize">{c}</span>)}</div>
+            <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
+              <h4 className="text-sm font-semibold text-ds-ink mb-3">Categories used</h4>
+              <div className="flex flex-wrap gap-2">{(plan.consent?.categoriesUsed || []).map((c) => <span key={c} className="text-xs bg-blue-500/15 text-blue-700 px-3 py-1.5 rounded-full font-medium capitalize">{c}</span>)}</div>
             </div>
-            <div className="bg-overlay rounded-xl border border-line p-5">
+            <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
               <div className="flex items-center gap-2 mb-2">
-                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.consent?.consentModeRequired ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${plan.consent?.consentModeRequired ? 'bg-amber-500/15 text-amber-700' : 'bg-emerald-500/15 text-emerald-700'}`}>
                   Consent Mode {plan.consent?.consentModeRequired ? 'required' : 'not required'}
                 </span>
               </div>
-              {plan.consent?.notes && <p className="text-sm text-faint mt-2">{plan.consent.notes}</p>}
+              {plan.consent?.notes && <p className="text-sm text-ds-muted mt-2">{plan.consent.notes}</p>}
             </div>
             <ConsentCoverageSection plan={plan} />
           </div></div>);
@@ -586,28 +586,28 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       case 'tooling': return (
         <div><SH title="Tooling" k="tooling" data={plan.tooling} />
           <div className="space-y-4">
-            <div className="bg-overlay rounded-xl border border-line p-5">
-              <h4 className="text-sm font-semibold text-ink mb-3">GA4</h4>
-              <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Key events</p>
-              <div className="flex flex-wrap gap-2 mb-4">{(plan.tooling?.ga4?.keyEvents || []).map((e) => <code key={e} className="text-xs text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">{e}</code>)}</div>
+            <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
+              <h4 className="text-sm font-semibold text-ds-ink mb-3">GA4</h4>
+              <p className="text-[10px] text-ds-muted uppercase tracking-widest mb-2">Key events</p>
+              <div className="flex flex-wrap gap-2 mb-4">{(plan.tooling?.ga4?.keyEvents || []).map((e) => <code key={e} className="text-xs text-emerald-700 bg-emerald-500/10 px-2 py-0.5 rounded font-mono">{e}</code>)}</div>
               {(plan.tooling?.ga4?.customDimensions?.length || 0) > 0 && (
                 <>
-                  <p className="text-[10px] text-faint uppercase tracking-widest mb-2">Custom dimensions</p>
-                  <div className="rounded-lg overflow-hidden border border-line">
+                  <p className="text-[10px] text-ds-muted uppercase tracking-widest mb-2">Custom dimensions</p>
+                  <div className="rounded-lg overflow-hidden border border-ds-line">
                     <table className="w-full text-xs">
-                      <thead><tr className="bg-overlay"><th className="text-left px-3 py-2 text-faint font-medium">Name</th><th className="text-left px-3 py-2 text-faint font-medium">Scope</th><th className="text-left px-3 py-2 text-faint font-medium">Parameter</th></tr></thead>
+                      <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Scope</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Parameter</th></tr></thead>
                       <tbody>{(plan.tooling?.ga4?.customDimensions || []).map((d, j) => (
-                        <tr key={d.name || j} className="border-t border-line"><td className="px-3 py-1.5 text-muted">{d.name}</td><td className="px-3 py-1.5 text-faint">{d.scope}</td><td className="px-3 py-1.5 text-cyan-400 font-mono">{d.parameter}</td></tr>
+                        <tr key={d.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-secondary">{d.name}</td><td className="px-3 py-1.5 text-ds-muted">{d.scope}</td><td className="px-3 py-1.5 text-cyan-700 font-mono">{d.parameter}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
                 </>
               )}
             </div>
-            <div className="bg-overlay rounded-xl border border-line p-5">
-              <h4 className="text-sm font-semibold text-ink mb-2">GTM</h4>
-              <p className="text-sm text-muted mb-1">Suggested tags: <span className="font-semibold text-ink">{plan.tooling?.gtm?.suggestedTagCount ?? 0}</span></p>
-              {plan.tooling?.gtm?.notes && <p className="text-sm text-faint">{plan.tooling.gtm.notes}</p>}
+            <div className="bg-ds-panel rounded-xl border border-ds-line p-5">
+              <h4 className="text-sm font-semibold text-ds-ink mb-2">GTM</h4>
+              <p className="text-sm text-ds-secondary mb-1">Suggested tags: <span className="font-semibold text-ds-ink">{plan.tooling?.gtm?.suggestedTagCount ?? 0}</span></p>
+              {plan.tooling?.gtm?.notes && <p className="text-sm text-ds-muted">{plan.tooling.gtm.notes}</p>}
             </div>
           </div></div>);
 
@@ -621,17 +621,17 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }
   if (igPhase === 'loading' || igPhase === 'error') {
     return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-app p-6 text-center">
+      <div className="h-full w-full flex flex-col items-center justify-center bg-ds-page p-6 text-center">
         {igPhase === 'loading' ? (
           <>
-            <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mb-4" />
-            <p className="text-ink font-semibold text-lg">Building implementation guide…</p>
-            <p className="text-faint text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
+            <Loader2 className="w-10 h-10 text-cyan-700 animate-spin mb-4" />
+            <p className="text-ds-ink font-semibold text-lg">Building implementation guide…</p>
+            <p className="text-ds-muted text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
           </>
         ) : (
           <>
-            <p className="text-rose-400 font-semibold">{igError}</p>
-            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm hover:bg-overlay-strong transition">Back</button>
+            <p className="text-rose-700 font-semibold">{igError}</p>
+            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">Back</button>
           </>
         )}
       </div>
@@ -648,31 +648,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }
 
   return (
-    <div className="h-full w-full flex flex-col overflow-hidden bg-app">
-      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-line bg-surface z-10">
+    <div className="h-full w-full flex flex-col overflow-hidden bg-ds-page">
+      <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-ds-line bg-ds-card z-10">
         <div className="flex items-center gap-3 min-w-0">
-          <button onClick={onReset} className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0"><ArrowLeft size={18} /></button>
-          <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-ink truncate">Measurement Plan</div><div className="text-xs text-faint truncate">{meta.url}</div></div>
+          <button onClick={onReset} className="p-2 rounded-lg hover:bg-ds-panel text-ds-muted hover:text-ds-secondary transition shrink-0"><ArrowLeft size={18} /></button>
+          <div className="min-w-0 hidden sm:block"><div className="text-sm font-semibold text-ds-ink truncate">Measurement Plan</div><div className="text-xs text-ds-muted truncate">{meta.url}</div></div>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {signedIn ? (
             <>
               <button onClick={saveToHistory} disabled={saveState === 'saving' || saveState === 'saved'}
-                className="px-3 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition disabled:opacity-60">
+                className="px-3 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition disabled:opacity-60">
                 <History size={14} /> <span className="hidden sm:inline">{saveState === 'saved' ? 'Saved ✓' : saveState === 'saving' ? 'Saving…' : 'Save to history'}</span>
               </button>
-              <Link href="/history" className="text-xs text-faint hover:text-muted hidden sm:inline px-1">History</Link>
+              <Link href="/history" className="text-xs text-ds-muted hover:text-ds-secondary hidden sm:inline px-1">History</Link>
             </>
           ) : (
-            <Link href="/signin" className="text-sm text-muted hover:text-ink px-1">Sign in</Link>
+            <Link href="/signin" className="text-sm text-ds-secondary hover:text-ds-ink px-1">Sign in</Link>
           )}
           <button onClick={openReadiness}
-            className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition">
+            className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition">
             <ShieldCheck size={14} /> <span className="hidden sm:inline">Launch readiness</span>
           </button>
           <button onClick={runImplementationGuide}
-            className="px-4 py-2 rounded-xl bg-overlay border border-line text-muted text-sm font-medium flex items-center gap-2 hover:bg-overlay-strong transition">
-            <Wrench size={14} className="text-cyan-400" /> <span className="hidden sm:inline">Implementation guide</span>
+            className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition">
+            <Wrench size={14} className="text-cyan-700" /> <span className="hidden sm:inline">Implementation guide</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
         </div>
@@ -680,13 +680,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
       {plan.meta?.source === 'template' && (
         <div className="shrink-0 px-4 lg:px-6 py-2.5 bg-amber-500/[0.08] border-b border-amber-500/20 flex items-center gap-3">
-          <AlertTriangle size={15} className="text-amber-400 shrink-0" />
-          <p className="text-xs text-amber-200/90 flex-1 min-w-0">
+          <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+          <p className="text-xs text-amber-700/90 flex-1 min-w-0">
             <span className="font-semibold">Template starting point.</span> AI tailoring was unavailable, so this is a standards-based GA4/GTM baseline — solid to build from, but not customized to your site.
           </p>
           {onRegenerate && (
             <button onClick={onRegenerate}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-200 text-xs font-medium hover:bg-amber-500/25 transition flex items-center gap-1.5">
+              className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-700 text-xs font-medium hover:bg-amber-500/25 transition flex items-center gap-1.5">
               <RefreshCw size={12} /> Regenerate with AI
             </button>
           )}
@@ -694,25 +694,25 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       )}
 
       <div className="flex-1 flex overflow-hidden">
-        <aside className="hidden lg:block shrink-0 w-52 border-r border-line bg-app">
+        <aside className="hidden lg:block shrink-0 w-52 border-r border-ds-line bg-ds-page">
           <nav className="h-full scroll-area py-3 px-2">
             {TABS.map(tab => { const Icon = tab.icon; const active = activeTab === tab.key;
               return (<button key={tab.key} onClick={() => setActiveTab(tab.key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition mb-0.5 ${active ? 'bg-gradient-to-r from-blue-500/20 to-cyan-500/10 text-blue-300 border border-blue-500/25 font-semibold' : 'text-faint hover:bg-overlay hover:text-muted'}`}>
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition mb-0.5 ${active ? 'bg-ds-accent-soft text-ds-accent border border-ds-accent/20 font-semibold' : 'text-ds-muted hover:bg-ds-panel hover:text-ds-secondary'}`}>
                 <Icon size={16} className="shrink-0" /><span className="truncate">{tab.label}</span></button>);
             })}
           </nav>
         </aside>
 
-        <div className="lg:hidden shrink-0 absolute top-16 left-0 right-0 z-10 h-12 overflow-x-auto no-scrollbar flex gap-1 px-4 border-b border-line bg-surface items-center">
+        <div className="lg:hidden shrink-0 absolute top-16 left-0 right-0 z-10 h-12 overflow-x-auto no-scrollbar flex gap-1 px-4 border-b border-ds-line bg-ds-card items-center">
           {TABS.map(t => { const Icon = t.icon; return (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25' : 'text-faint'}`}>
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap transition font-medium ${activeTab === t.key ? 'bg-blue-500/15 text-blue-700 border border-blue-500/25' : 'text-ds-muted'}`}>
               <Icon size={12} />{t.label}</button>);
           })}
         </div>
 
-        <div className="flex-1 scroll-area lg:mt-0 mt-12 bg-app">
+        <div className="flex-1 scroll-area lg:mt-0 mt-12 bg-ds-page">
           <div className="p-4 lg:p-8 max-w-5xl">
             <motion.div key={activeTab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.25 }}>
               {renderContent()}
@@ -722,28 +722,28 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       </div>
 
       {(rdPhase === 'form' || rdPhase === 'loading' || rdPhase === 'error') && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-app">
-          <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-line bg-surface">
+        <div className="fixed inset-0 z-50 flex flex-col bg-ds-page">
+          <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center gap-3 border-b border-ds-line bg-ds-card">
             <button onClick={() => { setRdPhase('idle'); setRdError(''); }} aria-label="Back"
-              className="p-2 rounded-lg hover:bg-overlay text-faint hover:text-muted transition shrink-0">
+              className="p-2 rounded-lg hover:bg-ds-panel text-ds-muted hover:text-ds-secondary transition shrink-0">
               <ArrowLeft size={18} />
             </button>
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-ink truncate flex items-center gap-2">
-                <ShieldCheck size={15} className="text-blue-400" /> Launch readiness check
+              <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2">
+                <ShieldCheck size={15} className="text-blue-700" /> Launch readiness check
               </div>
-              <div className="text-xs text-faint truncate">{meta.url}</div>
+              <div className="text-xs text-ds-muted truncate">{meta.url}</div>
             </div>
           </header>
 
           {rdPhase === 'loading' ? (
             <div className="flex-1 flex items-center justify-center p-6">
               <div className="text-center">
-                <Loader2 className="w-10 h-10 text-blue-400 animate-spin mx-auto mb-4" />
-                <p className="text-ink font-semibold text-lg">
+                <Loader2 className="w-10 h-10 text-blue-700 animate-spin mx-auto mb-4" />
+                <p className="text-ds-ink font-semibold text-lg">
                   {rdKind === 'governance' ? 'Checking for drift…' : rdKind === 'metrics' ? 'Checking metric health…' : 'Running launch readiness…'}
                 </p>
-                <p className="text-faint text-sm mt-1.5 max-w-sm mx-auto">
+                <p className="text-ds-muted text-sm mt-1.5 max-w-sm mx-auto">
                   {rdKind === 'governance'
                     ? 'Re-checking your plan setup and comparing it to your last saved run.'
                     : rdKind === 'metrics'
@@ -757,94 +757,94 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
               {/* ── Setup — the only scrolling region (scrolls independently when tall) ── */}
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <div className="p-4 lg:p-8 max-w-3xl mx-auto space-y-4">
-                  <p className="text-faint text-sm max-w-2xl">
+                  <p className="text-ds-muted text-sm max-w-2xl">
                     Two layers of verification. The quick one already ran from your plan; the full one opens your deployed site to see what actually fires.
                   </p>
 
                   {/* Layer 1 — plan consistency (already done, no URL) */}
-                  <div className="rounded-2xl border border-line bg-overlay p-5">
+                  <div className="rounded-2xl border border-ds-line bg-ds-panel p-5">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-semibold">Quick</span>
-                      <span className="text-sm text-ink font-medium">Plan consistency</span>
-                      <span className="ml-auto text-[11px] text-faint">instant · no URL</span>
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-700 font-semibold">Quick</span>
+                      <span className="text-sm text-ds-ink font-medium">Plan consistency</span>
+                      <span className="ml-auto text-[11px] text-ds-muted">instant · no URL</span>
                     </div>
-                    <p className="text-xs text-faint mt-2">
-                      Already analyzed from <code className="text-muted break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
+                    <p className="text-xs text-ds-muted mt-2">
+                      Already analyzed from <code className="text-ds-secondary break-all">{meta.url}</code> — no need to re-enter it. Running a check refreshes this.
                     </p>
                   </div>
 
                   {/* Layer 2 — live verification (optional URL) */}
                   <div className="rounded-2xl border border-blue-500/20 bg-blue-500/[0.05] p-5">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-semibold">Full</span>
-                      <span className="text-sm text-ink font-medium">Live verification</span>
-                      <span className="ml-auto text-[11px] text-faint">~1 min</span>
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-700 font-semibold">Full</span>
+                      <span className="text-sm text-ds-ink font-medium">Live verification</span>
+                      <span className="ml-auto text-[11px] text-ds-muted">~1 min</span>
                     </div>
-                    <label className="block text-xs text-faint mb-1">
-                      Staging / live URL <span className="text-faint">(optional)</span>
+                    <label className="block text-xs text-ds-muted mb-1">
+                      Staging / live URL <span className="text-ds-muted">(optional)</span>
                     </label>
                     <input value={rdUrl} onChange={(e) => setRdUrl(e.target.value)} placeholder="https://staging.example.com"
-                      className="w-full bg-overlay border border-line rounded-xl px-3 py-2.5 text-sm text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40 mb-2" />
-                    <p className="text-[11px] text-faint">
+                      className="w-full bg-ds-panel border border-ds-line rounded-xl px-3 py-2.5 text-sm text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40 mb-2" />
+                    <p className="text-[11px] text-ds-muted">
                       Point at a URL where GA4/GTM is deployed to capture what fires. Leave blank to re-run plan consistency only.
                     </p>
 
                     {/* Google connection — turns the 5 GA4/GTM "not verified" checks into real pass/fail. */}
-                    <div className="mt-4 pt-4 border-t border-line">
+                    <div className="mt-4 pt-4 border-t border-ds-line">
                       {!gStatus ? (
-                        <p className="text-[11px] text-faint">Checking Google connection…</p>
+                        <p className="text-[11px] text-ds-muted">Checking Google connection…</p>
                       ) : !gStatus.configured ? (
-                        <p className="text-[11px] text-faint">GA4/GTM account checks aren&apos;t configured on the server.</p>
+                        <p className="text-[11px] text-ds-muted">GA4/GTM account checks aren&apos;t configured on the server.</p>
                       ) : !gStatus.isAdmin ? (
-                        <p className="text-[11px] text-faint">
+                        <p className="text-[11px] text-ds-muted">
                           Verifying GA4 &amp; GTM accounts needs the operator signed in.{' '}
-                          <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-400 underline">Sign in as admin</a>, then reopen this.
+                          <a href="/leads" target="_blank" rel="noreferrer" className="text-blue-700 underline">Sign in as admin</a>, then reopen this.
                         </p>
                       ) : !gStatus.connected ? (
                         <div>
-                          <p className="text-[11px] text-faint mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
+                          <p className="text-[11px] text-ds-muted mb-2">Connect Google (read-only) to verify your GA4 property &amp; GTM container.</p>
                           <button type="button" onClick={connectGoogle}
-                            className="px-3 py-1.5 rounded-lg bg-overlay border border-line-strong text-ink text-xs font-medium hover:bg-overlay-strong transition flex items-center gap-1.5">
+                            className="px-3 py-1.5 rounded-lg bg-ds-panel border border-ds-line-strong text-ds-ink text-xs font-medium hover:bg-ds-panel transition flex items-center gap-1.5">
                             <ShieldCheck size={12} /> Connect Google
                           </button>
                         </div>
                       ) : (
                         <div className="space-y-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-[11px] text-emerald-300 flex items-center gap-1"><Check size={12} /> Google connected</span>
+                            <span className="text-[11px] text-emerald-700 flex items-center gap-1"><Check size={12} /> Google connected</span>
                             <button type="button" onClick={disconnectGoogle} disabled={gLoading}
-                              className="ml-auto text-[11px] text-faint hover:text-muted underline disabled:opacity-50">Disconnect</button>
+                              className="ml-auto text-[11px] text-ds-muted hover:text-ds-secondary underline disabled:opacity-50">Disconnect</button>
                           </div>
                           <div className="grid sm:grid-cols-2 gap-2">
                             <input value={rdGa4} onChange={(e) => setRdGa4(e.target.value)} placeholder="GA4 property ID"
-                              className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                              className="w-full bg-ds-panel border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40" />
                             <input value={rdGtm} onChange={(e) => setRdGtm(e.target.value)} placeholder="GTM-XXXXXXX"
-                              className="w-full bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink placeholder:text-faint focus:outline-none focus:border-blue-500/40" />
+                              className="w-full bg-ds-panel border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink placeholder:text-ds-muted focus:outline-none focus:border-blue-500/40" />
                           </div>
-                          <p className="text-[10px] text-faint">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
+                          <p className="text-[10px] text-ds-muted">Optional — fill either to verify it; leave empty to skip the Google checks.</p>
 
                           {/* One-time historical backfill — pulls a chosen GA4 date
                               range into metric history so the health check has a
                               baseline. Separate from the daily collector. */}
-                          <div className="mt-1 pt-3 border-t border-line">
-                            <p className="text-[11px] text-faint mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
+                          <div className="mt-1 pt-3 border-t border-ds-line">
+                            <p className="text-[11px] text-ds-muted mb-1.5">Backfill historical metrics for the GA4 property above (one-time):</p>
                             <div className="grid sm:grid-cols-2 gap-2">
                               <label className="block">
-                                <span className="text-[10px] text-faint">Start date</span>
+                                <span className="text-[10px] text-ds-muted">Start date</span>
                                 <input type="date" value={bfStart} onChange={(e) => setBfStart(e.target.value)}
-                                  className="w-full mt-0.5 bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40" />
+                                  className="w-full mt-0.5 bg-ds-panel border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink focus:outline-none focus:border-cyan-500/40" />
                               </label>
                               <label className="block">
-                                <span className="text-[10px] text-faint">End date</span>
+                                <span className="text-[10px] text-ds-muted">End date</span>
                                 <input type="date" value={bfEnd} onChange={(e) => setBfEnd(e.target.value)}
-                                  className="w-full mt-0.5 bg-overlay border border-line rounded-lg px-2.5 py-2 text-xs text-ink focus:outline-none focus:border-cyan-500/40" />
+                                  className="w-full mt-0.5 bg-ds-panel border border-ds-line rounded-lg px-2.5 py-2 text-xs text-ds-ink focus:outline-none focus:border-cyan-500/40" />
                               </label>
                             </div>
                             <button type="button" onClick={runBackfill}
-                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-200 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-700 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
                               <BarChart3 size={12} /> Backfill &amp; check this range
                             </button>
-                            <p className="text-[10px] text-faint mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
+                            <p className="text-[10px] text-ds-muted mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
                           </div>
                         </div>
                       )}
@@ -858,31 +858,31 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
               {/* ── Actions — OUTSIDE the scroll, so they're ALWAYS visible: a right
                   rail on wide screens, a fixed bottom bar on narrow ones. ── */}
-              <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-line bg-surface p-4 lg:p-5 overflow-y-auto">
+              <div className="shrink-0 lg:w-80 border-t lg:border-t-0 lg:border-l border-ds-line bg-ds-card p-4 lg:p-5 overflow-y-auto">
                 <div className="max-w-3xl mx-auto space-y-2.5">
-                  <h3 className="text-sm font-semibold text-ink mb-1 hidden lg:block">Run a check</h3>
-                  {rdPhase === 'error' && <p className="text-sm text-rose-400">{rdError}</p>}
+                  <h3 className="text-sm font-semibold text-ds-ink mb-1 hidden lg:block">Run a check</h3>
+                  {rdPhase === 'error' && <p className="text-sm text-rose-700">{rdError}</p>}
                   <button onClick={runReadiness}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold text-sm hover:shadow-lg hover:shadow-blue-500/20 transition">
+                    className="w-full py-2.5 rounded-xl bg-ds-accent text-ds-accent-ink font-semibold text-sm hover:bg-ds-accent-hover shadow-sm transition">
                     Run check
                   </button>
                   {/* Additive governance action — config-only, no URL. Compares this
                       plan's setup to the last saved run and lights up the DriftSection. */}
                   <button onClick={runGovernance}
-                    className="w-full py-2.5 rounded-xl bg-overlay border border-line-strong text-muted text-sm font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-2">
-                    <History size={14} className="text-faint" /> Check for drift since last run
+                    className="w-full py-2.5 rounded-xl bg-ds-panel border border-ds-line-strong text-ds-secondary text-sm font-medium hover:bg-ds-panel transition flex items-center justify-center gap-2">
+                    <History size={14} className="text-ds-muted" /> Check for drift since last run
                   </button>
                   {/* Additive metric-health action — judges each key event's recent
                       firing against its trailing baseline (collected metric history). */}
                   <button onClick={runMetricHealth}
-                    className="w-full py-2.5 rounded-xl bg-overlay border border-line-strong text-muted text-sm font-medium hover:bg-overlay-strong transition flex items-center justify-center gap-2">
-                    <BarChart3 size={14} className="text-cyan-400" /> Check metric health
+                    className="w-full py-2.5 rounded-xl bg-ds-panel border border-ds-line-strong text-ds-secondary text-sm font-medium hover:bg-ds-panel transition flex items-center justify-center gap-2">
+                    <BarChart3 size={14} className="text-cyan-700" /> Check metric health
                   </button>
                   <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
-                    className="w-full py-2 rounded-xl bg-overlay border border-line text-muted text-sm hover:bg-overlay-strong transition">
+                    className="w-full py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">
                     Cancel
                   </button>
-                  <p className="text-[11px] text-faint pt-1">
+                  <p className="text-[11px] text-ds-muted pt-1">
                     Drift compares your setup to the last saved run; metric health checks your key events are still firing.
                   </p>
                 </div>
