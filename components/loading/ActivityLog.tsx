@@ -23,9 +23,9 @@ const STATUS_ICON: Record<ActivityEntry['type'], string> = {
 };
 
 const STATUS_COLOR: Record<ActivityEntry['type'], string> = {
-  running: 'text-blue-400',
-  done: 'text-green-400',
-  info: 'text-white/40',
+  running: 'text-ds-accent',
+  done: 'text-emerald-600',
+  info: 'text-ds-muted',
 };
 
 export default function ActivityLog({ entries, maxVisible = 24 }: Props) {
@@ -41,19 +41,19 @@ export default function ActivityLog({ entries, maxVisible = 24 }: Props) {
   const onDeepPage = !!last?.detail?.startsWith('/');
 
   return (
-    <div className="bg-white/[0.04] border border-white/[0.08] rounded-xl flex flex-col h-full overflow-hidden">
-      <div className="px-4 py-3 border-b border-white/[0.08] flex items-center justify-between">
+    <div className="bg-ds-card border border-ds-line rounded-xl shadow-sm flex flex-col h-full overflow-hidden">
+      <div className="px-4 py-3 border-b border-ds-line flex items-center justify-between">
         <div className="flex items-center gap-2">
           <motion.div
             animate={{ opacity: [0.3, 1, 0.3] }}
             transition={{ repeat: Infinity, duration: 1.5 }}
             className="w-2 h-2 rounded-full bg-red-500"
           />
-          <span className="text-[10px] uppercase tracking-[0.15em] text-white/60 font-medium">
+          <span className="text-[10px] uppercase tracking-[0.15em] text-ds-secondary font-medium">
             Live Activity
           </span>
         </div>
-        <span className="text-[10px] text-white/50 font-mono">
+        <span className="text-[10px] text-ds-muted font-mono">
           {entries.length} events
         </span>
       </div>
@@ -73,11 +73,11 @@ export default function ActivityLog({ entries, maxVisible = 24 }: Props) {
                 {STATUS_ICON[entry.type]}
               </span>
               <div className="flex-1 min-w-0">
-                <div className={`${entry.type === 'done' ? 'text-white' : 'text-white/70'} leading-snug break-words`}>
+                <div className={`${entry.type === 'done' ? 'text-ds-ink' : 'text-ds-secondary'} leading-snug break-words`}>
                   {entry.message}
                 </div>
                 {entry.detail && (
-                  <div className="text-[10px] text-white/50 mt-0.5 truncate">
+                  <div className="text-[10px] text-ds-muted mt-0.5 truncate">
                     {entry.detail}
                   </div>
                 )}
@@ -87,7 +87,7 @@ export default function ActivityLog({ entries, maxVisible = 24 }: Props) {
         </AnimatePresence>
       </div>
 
-      <div className="px-4 py-2 border-t border-white/[0.08] text-[10px] text-white/50">
+      <div className="px-4 py-2 border-t border-ds-line text-[10px] text-ds-muted">
         Scanner running on {onDeepPage ? 'deep page' : 'homepage'}
       </div>
     </div>

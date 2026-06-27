@@ -45,7 +45,7 @@ export default function FeatureShowcase({ mode, cardDurationMs = 7000 }: Props) 
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -12, scale: 0.98 }}
           transition={{ duration: 0.35, ease: 'easeOut' }}
-          className="relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-md p-6 shadow-2xl"
+          className="relative overflow-hidden rounded-2xl border border-ds-line bg-ds-card p-6 shadow-sm"
         >
           <div className={`pointer-events-none absolute -top-16 -right-16 h-40 w-40 rounded-full blur-3xl opacity-60 ${colors.glow}`} />
 
@@ -72,7 +72,7 @@ export default function FeatureShowcase({ mode, cardDurationMs = 7000 }: Props) 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.3 }}
-            className="text-lg font-semibold text-white leading-snug mb-2 pr-16"
+            className="text-lg font-semibold text-ds-ink leading-snug mb-2 pr-16"
           >
             {feature.title}
           </motion.h3>
@@ -81,7 +81,7 @@ export default function FeatureShowcase({ mode, cardDurationMs = 7000 }: Props) 
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.18, duration: 0.3 }}
-            className="text-sm text-white/70 leading-relaxed"
+            className="text-sm text-ds-secondary leading-relaxed"
           >
             {feature.description}
           </motion.p>
@@ -98,16 +98,16 @@ export default function FeatureShowcase({ mode, cardDurationMs = 7000 }: Props) 
             aria-label={`Show feature ${i + 1}`}
             className={`h-1.5 rounded-full transition-all pointer-events-auto ${
               i === index
-                ? 'w-6 bg-white'
+                ? 'w-6 bg-ds-accent'
                 : i < index
-                ? 'w-1.5 bg-white/40'
-                : 'w-1.5 bg-white/15'
+                ? 'w-1.5 bg-ds-accent/40'
+                : 'w-1.5 bg-ds-line-strong'
             }`}
           />
         ))}
       </div>
 
-      <div className="text-center mt-3 text-[11px] text-white/50">
+      <div className="text-center mt-3 text-[11px] text-ds-muted">
         {index + 1} of {features.length}
       </div>
     </div>
