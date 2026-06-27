@@ -119,8 +119,12 @@ html, body {
   padding: 0;
   position: fixed;
   inset: 0;
-  background: var(--app);
-  color: var(--ink);
+  /* The product is now uniformly dark (ds-* palette). Paint the body backdrop
+     with the dark page color so overscroll/rubber-band behind the scroll
+     containers never reveals a white flash, regardless of the legacy theme. */
+  background: var(--ds-page);
+  color: var(--ds-ink);
+  overscroll-behavior: none;
   font-family: var(--font-sans, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
