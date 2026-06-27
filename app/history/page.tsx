@@ -4,11 +4,17 @@
 // launch gate directly — no regeneration: it fetches the stored plan and runs
 // /api/launch-readiness on it, reusing LaunchReadinessScreen. Per-user: the API
 // returns only the caller's plans.
+//
+// UI: this LIST view is the first screen converted to the new light design system
+// (components/ds). Logic, handlers, data flow, and the API calls are UNCHANGED — only
+// the presentation. Opening a plan still shows the existing LaunchReadinessScreen
+// (converted in a later step).
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Clock, ArrowRight, Loader2 } from 'lucide-react';
+import { Clock, ArrowRight, ArrowLeft, Loader2 } from 'lucide-react';
 import LaunchReadinessScreen from '@/components/LaunchReadinessScreen';
+import { Card, Button } from '@/components/ds';
 import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
 
 interface PlanSummary {
@@ -58,47 +64,64 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="min-h-screen bg-app text-muted">
-      <header className="h-16 px-6 flex items-center gap-3 border-b border-line bg-surface">
-        <Clock size={18} className="text-cyan-400" />
-        <span className="text-sm font-semibold text-ink">Your saved plans</span>
-        <Link href="/" className="ml-auto text-xs text-faint hover:text-muted">← Back to app</Link>
+    <div className="flex h-screen w-full flex-col bg-ds-page text-ds-ink">
+      {/* Top bar (new design system) */}
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-ds-line bg-ds-card px-4 sm:px-6">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-ds-accent text-sm font-bold text-ds-accent-ink">S</span>
+        <span className="text-sm font-semibold text-ds-ink">Your saved plans</span>
+        <Link href="/" className="ml-auto inline-flex items-center gap-1 text-xs text-ds-secondary transition hover:text-ds-ink">
+          <ArrowLeft size={13} /> Back to app
+        </Link>
       </header>
 
-      <div className="max-w-3xl mx-auto p-6">
-        {authed === undefined ? (
-          <p className="text-sm text-faint">Loading…</p>
-        ) : authed === false ? (
-          <div className="rounded-2xl border border-line bg-overlay p-8 text-center">
-            <p className="text-sm text-muted mb-4">Sign in to see your saved plans.</p>
-            <a href="/api/auth/google/start" className="inline-block px-4 py-2.5 rounded-xl bg-contrast text-contrast-ink font-semibold text-sm hover:opacity-90 transition">Sign in with Google</a>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-3xl p-4 sm:p-6">
+          <div className="mb-5">
+            <h1 className="text-xl font-semibold tracking-tight text-ds-ink">Saved plans</h1>
+            <p className="mt-1 text-sm text-ds-secondary">Open a saved plan to re-run its launch readiness check — no regeneration.</p>
           </div>
-        ) : plans.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-overlay p-8 text-center">
-            <p className="text-sm text-faint">No saved plans yet. Generate a plan and click <span className="text-muted font-medium">Save to history</span>.</p>
-          </div>
-        ) : (
-          <ul className="space-y-2.5">
-            {plans.map((p) => (
-              <li key={p.id} className="rounded-xl border border-line bg-overlay p-4 flex items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-ink truncate">{p.site_url || 'Untitled plan'}</p>
-                  <p className="text-xs text-faint mt-0.5">
-                    {p.business_model || '—'} · {new Date(p.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <button
-                  onClick={() => open(p.id)}
-                  disabled={opening === p.id}
-                  className="shrink-0 px-3 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20 text-blue-200 text-xs font-medium hover:bg-blue-500/20 transition flex items-center gap-1.5 disabled:opacity-50"
-                >
-                  {opening === p.id ? <Loader2 size={12} className="animate-spin" /> : <ArrowRight size={12} />} Open
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        {error && <p className="text-sm text-rose-400 mt-4">{error}</p>}
+
+          {authed === undefined ? (
+            <p className="text-sm text-ds-muted">Loading…</p>
+          ) : authed === false ? (
+            <Card className="text-center">
+              <p className="mb-4 text-sm text-ds-secondary">Sign in to see your saved plans.</p>
+              <a
+                href="/api/auth/google/start"
+                className="inline-flex items-center justify-center rounded-lg bg-ds-accent px-4 py-2 text-sm font-medium text-ds-accent-ink transition hover:bg-ds-accent-hover"
+              >
+                Sign in with Google
+              </a>
+            </Card>
+          ) : plans.length === 0 ? (
+            <Card className="text-center">
+              <p className="text-sm text-ds-secondary">
+                No saved plans yet. Generate a plan and click <span className="font-medium text-ds-ink">Save to history</span>.
+              </p>
+            </Card>
+          ) : (
+            <ul className="space-y-2.5">
+              {plans.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 rounded-ds border border-ds-line bg-ds-card p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-ds-accent-soft text-ds-accent">
+                    <Clock size={16} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ds-ink">{p.site_url || 'Untitled plan'}</p>
+                    <p className="mt-0.5 text-xs text-ds-secondary">
+                      {p.business_model || '—'} · {new Date(p.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <Button variant="primary" onClick={() => open(p.id)} disabled={opening === p.id} className="shrink-0">
+                    {opening === p.id ? <Loader2 size={14} className="animate-spin" /> : <ArrowRight size={14} />} Open
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {error ? <p className="mt-4 text-sm text-ds-danger">{error}</p> : null}
+        </div>
       </div>
     </div>
   );
