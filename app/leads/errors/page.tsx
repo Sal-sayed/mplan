@@ -53,35 +53,35 @@ export default function ErrorsPage() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-app text-ink">
+    <main className="min-h-screen bg-ds-page text-ds-ink">
       <div className="max-w-6xl mx-auto px-6 py-10">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
-            <Link href="/leads" className="inline-flex items-center gap-2 text-sm text-muted hover:text-ink">
+            <Link href="/leads" className="inline-flex items-center gap-2 text-sm text-ds-secondary hover:text-ds-ink">
               <ArrowLeft size={16} /> Leads
             </Link>
             <h1 className="text-2xl font-bold flex items-center gap-2">
-              <AlertTriangle size={20} className="text-red-400" />
+              <AlertTriangle size={20} className="text-rose-600" />
               Critical Errors ({total})
             </h1>
           </div>
         </div>
 
         {loading && (
-          <div className="flex items-center gap-2 text-faint text-sm">
+          <div className="flex items-center gap-2 text-ds-secondary text-sm">
             <Loader2 size={16} className="animate-spin" />
             Loading…
           </div>
         )}
 
         {!loading && loadError && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-rose-700">
             {loadError}
           </div>
         )}
 
         {!loading && !loadError && errors.length === 0 && (
-          <div className="rounded-lg border border-line bg-overlay p-8 text-center text-faint text-sm">
+          <div className="rounded-lg border border-ds-line bg-ds-card p-8 text-center text-ds-secondary text-sm">
             No unresolved errors. 🎉
           </div>
         )}
@@ -91,10 +91,10 @@ export default function ErrorsPage() {
             {errors.map(err => (
               <div key={err.id} className="rounded-lg border border-red-500/30 bg-red-500/5 p-4">
                 <div className="flex items-center justify-between mb-2 text-xs">
-                  <span className="font-mono font-bold text-red-300">{err.event_type}</span>
-                  <span className="text-faint">{formatDateTime(err.created_at)}</span>
+                  <span className="font-mono font-bold text-rose-700">{err.event_type}</span>
+                  <span className="text-ds-secondary">{formatDateTime(err.created_at)}</span>
                 </div>
-                <pre className="text-xs text-muted overflow-x-auto whitespace-pre-wrap break-all">
+                <pre className="text-xs text-ds-secondary overflow-x-auto whitespace-pre-wrap break-all">
                   {JSON.stringify(err.payload, null, 2)}
                 </pre>
               </div>

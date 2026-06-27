@@ -45,11 +45,11 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
     : (plan?.meta?.url);
 
   return (
-    <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden bg-app relative">
+    <div className="h-full w-full flex items-center justify-center p-6 overflow-hidden bg-ds-page relative">
 
       {/* Back button */}
       <button onClick={onReset}
-        className="absolute top-6 left-6 flex items-center gap-2 text-faint hover:text-ink transition text-sm z-20">
+        className="absolute top-6 left-6 flex items-center gap-2 text-ds-secondary hover:text-ds-ink transition text-sm z-20">
         <ArrowLeft size={14} /> Back
       </button>
 
@@ -61,7 +61,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           transition={{ duration: 0.5, ease: 'backOut' }}
           className="mx-auto w-16 h-16 rounded-full bg-emerald-500/10 flex items-center justify-center mb-6"
         >
-          <CheckCircle2 className="text-emerald-400" size={36} />
+          <CheckCircle2 className="text-emerald-600" size={36} />
         </motion.div>
 
         {/* Heading */}
@@ -69,20 +69,20 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           className="text-center mb-6">
           {isAudit ? (
             <>
-              <h1 className="text-3xl font-bold text-ink mb-2">Your audit is on its way</h1>
-              <p className="text-faint text-sm">
-                Sent to <span className="text-ink font-medium">{email}</span>
+              <h1 className="text-3xl font-bold text-ds-ink mb-2">Your audit is on its way</h1>
+              <p className="text-ds-secondary text-sm">
+                Sent to <span className="text-ds-ink font-medium">{email}</span>
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-3xl font-bold text-ink mb-2">Your plan is on its way</h1>
-              <p className="text-faint text-sm">
-                Sent to <span className="text-ink font-medium">{email}</span>
+              <h1 className="text-3xl font-bold text-ds-ink mb-2">Your plan is on its way</h1>
+              <p className="text-ds-secondary text-sm">
+                Sent to <span className="text-ds-ink font-medium">{email}</span>
               </p>
             </>
           )}
-          <p className="text-faint text-xs mt-1">
+          <p className="text-ds-secondary text-xs mt-1">
             Check your inbox in the next minute (and spam, just in case)
           </p>
         </motion.div>
@@ -90,49 +90,49 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
         {/* Email warning if failed */}
         {!emailDelivered && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
-            className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 text-xs text-yellow-300 text-center">
+            className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-3 mb-4 text-xs text-amber-700 text-center">
             There was an issue sending the email. You can still view and download the plan below.
           </motion.div>
         )}
 
         {/* Plan summary card */}
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-          className="bg-overlay border border-line rounded-xl p-5 mb-5">
+          className="bg-ds-card border border-ds-line rounded-xl p-5 mb-5">
           <div className="flex items-center gap-3 mb-4">
             <div className={`p-2 rounded-lg ${isAudit ? 'bg-orange-500/15' : 'bg-blue-500/15'}`}>
-              {isAudit ? <Search className="text-orange-400" size={16} /> : <FileSpreadsheet className="text-blue-400" size={16} />}
+              {isAudit ? <Search className="text-orange-600" size={16} /> : <FileSpreadsheet className="text-blue-600" size={16} />}
             </div>
             <div className="min-w-0">
-              <div className="text-sm font-medium text-ink">{isAudit ? 'Tracking Audit' : 'Measurement Plan'}</div>
-              <div className="text-xs text-faint truncate">{websiteTitle}</div>
+              <div className="text-sm font-medium text-ds-ink">{isAudit ? 'Tracking Audit' : 'Measurement Plan'}</div>
+              <div className="text-xs text-ds-secondary truncate">{websiteTitle}</div>
             </div>
           </div>
 
           {isAudit ? (
-            <div className="grid grid-cols-4 gap-2 pt-4 border-t border-line">
+            <div className="grid grid-cols-4 gap-2 pt-4 border-t border-ds-line">
               {[
                 { label: 'To add', value: audit?.eventsToAdd?.length || 0 },
-                { label: 'To modify', value: audit?.eventsToModify?.length || 0, color: 'text-yellow-400' },
-                { label: 'Quick wins', value: audit?.quickWins?.length || 0, color: 'text-emerald-400' },
-                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-400' : score?.total >= 50 ? 'text-yellow-400' : score?.total ? 'text-red-400' : 'text-faint' },
+                { label: 'To modify', value: audit?.eventsToModify?.length || 0, color: 'text-amber-600' },
+                { label: 'Quick wins', value: audit?.quickWins?.length || 0, color: 'text-emerald-600' },
+                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-600' : score?.total >= 50 ? 'text-amber-600' : score?.total ? 'text-rose-600' : 'text-ds-secondary' },
               ].map(s => (
                 <div key={s.label} className="text-center">
-                  <div className={`text-xl font-bold ${(s as any).color || 'text-ink'}`}>{s.value}</div>
-                  <div className="text-[10px] text-faint mt-0.5">{s.label}</div>
+                  <div className={`text-xl font-bold ${(s as any).color || 'text-ds-ink'}`}>{s.value}</div>
+                  <div className="text-[10px] text-ds-secondary mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-4 gap-2 pt-4 border-t border-line">
+            <div className="grid grid-cols-4 gap-2 pt-4 border-t border-ds-line">
               {[
                 { label: 'KPIs', value: plan?.kpis?.length || 0 },
                 { label: 'Events', value: plan?.events?.length || 0 },
                 { label: 'Key events', value: (plan?.events || []).filter((e: any) => e?.isKeyEvent).length },
-                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-400' : score?.total >= 50 ? 'text-yellow-400' : score?.total ? 'text-red-400' : 'text-faint' },
+                { label: 'Score', value: score?.total || '\u2014', color: score?.total >= 70 ? 'text-emerald-600' : score?.total >= 50 ? 'text-amber-600' : score?.total ? 'text-rose-600' : 'text-ds-secondary' },
               ].map(s => (
                 <div key={s.label} className="text-center">
-                  <div className={`text-xl font-bold ${(s as any).color || 'text-ink'}`}>{s.value}</div>
-                  <div className="text-[10px] text-faint mt-0.5">{s.label}</div>
+                  <div className={`text-xl font-bold ${(s as any).color || 'text-ds-ink'}`}>{s.value}</div>
+                  <div className="text-[10px] text-ds-secondary mt-0.5">{s.label}</div>
                 </div>
               ))}
             </div>
@@ -144,13 +144,13 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           className="space-y-2.5">
           {mode === 'new' && plan && (
             <button onClick={() => setShowPlan(true)}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-onaccent font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20 transition-all">
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-blue-500 to-cyan-400 text-ds-accent-ink font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-blue-500/20 transition-all">
               View the plan on-screen <ArrowRight size={15} />
             </button>
           )}
           {mode === 'audit' && audit && (
             <button onClick={() => setShowPlan(true)}
-              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 text-onaccent font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/20 transition-all">
+              className="w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-400 text-ds-accent-ink font-semibold flex items-center justify-center gap-2 hover:shadow-lg hover:shadow-orange-500/20 transition-all">
               View audit findings <ArrowRight size={15} />
             </button>
           )}
@@ -161,7 +161,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
               href={process.env.NEXT_PUBLIC_FOLLOWUP_CTA_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3.5 rounded-xl bg-overlay border border-emerald-400/30 text-emerald-300 font-medium text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
+              className="w-full py-3.5 rounded-xl bg-ds-card border border-emerald-400/30 text-emerald-700 font-medium text-sm flex items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-400/60 transition-all"
             >
               <Calendar size={14} />
               {process.env.NEXT_PUBLIC_FOLLOWUP_CTA_LABEL || 'Book a 20-min review of your plan'}
@@ -170,7 +170,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
           )}
 
           <button onClick={onReset}
-            className="w-full py-3 rounded-xl bg-overlay border border-line text-faint text-sm hover:text-ink hover:border-line-strong transition flex items-center justify-center gap-2">
+            className="w-full py-3 rounded-xl bg-ds-card border border-ds-line text-ds-secondary text-sm hover:text-ds-ink hover:border-ds-line-strong transition flex items-center justify-center gap-2">
             <RotateCcw size={13} /> Analyze another website
           </button>
         </motion.div>
@@ -181,7 +181,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
             className="mt-4 text-center">
             <div className="inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-4 py-2">
               <span className="text-lg">{'\ud83d\udc1b'}</span>
-              <span className="text-sm text-yellow-300 font-medium">
+              <span className="text-sm text-amber-700 font-medium">
                 You squashed bugs for {gameScore} points while we worked!
               </span>
             </div>
@@ -191,7 +191,7 @@ export default function SuccessScreen({ mode, plan, audit, score, scrapeData, em
         {/* Footer */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }}
           className="mt-6 text-center">
-          <div className="inline-flex items-center gap-2 text-xs text-faint">
+          <div className="inline-flex items-center gap-2 text-xs text-ds-secondary">
             <Mail size={11} />
             <span>{isAudit ? 'Excel workbook \u00B7 8 sheets \u00B7 audit + roadmap' : 'Excel workbook \u00B7 8 sheets \u00B7 ready to implement'}</span>
           </div>
