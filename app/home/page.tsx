@@ -1,16 +1,17 @@
-// Marketing landing page (public, additive). Lives at /home — the existing app
-// stays at / and is NOT touched. Self-contained: a server component using the
-// global always-light `ds-*` design tokens. No client JS — section navigation is
-// plain anchor links; the page scrolls inside its own container because the app
+// Marketing landing page (public, additive) at /home. The existing app stays at /
+// and is NOT touched. Self-contained server component (SEO metadata, no client JS —
+// section nav is plain anchor links). Scrolls in its own container because the app
 // shell sets `body { overflow: hidden }`.
 //
-// CTAs link to the real app entry (/) where a visitor starts using the product.
-// Placeholder copy/prices are marked; swap them for real numbers anytime.
+// Visual direction: dark premium enterprise-AI — deep violet gradient canvas,
+// glassmorphism cards, gradient headline text, a glowing CTA pill, and a stylised
+// pipeline diagram. CTAs link to the real app entry (/). Prices are placeholders;
+// the stat band uses true product facts (no fabricated social proof).
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
-  Sparkles, ClipboardList, Settings2, Rocket, Activity,
+  Sparkles, ClipboardList, Settings2, Rocket, Activity, Globe, ChevronRight,
   BarChart3, Layers, Lock, GitPullRequest, ShieldCheck, Check, ArrowRight,
 } from 'lucide-react';
 
@@ -20,9 +21,11 @@ export const metadata: Metadata = {
     'Connect your site and mplan builds your measurement plan, creates GA4 and GTM, adds tracking, and keeps it healthy. No analytics expertise needed.',
 };
 
-// The existing app entry — where the product flow begins. Don't invent an auth
-// flow; this is where sign-in / the generator already lives.
+// The existing app entry — where the product flow begins. Don't invent an auth flow.
 const GET_STARTED = '/';
+
+// Gradient used on the distinctive headline words (violet → fuchsia).
+const HEADLINE_GRADIENT = { backgroundImage: 'linear-gradient(92deg,#a78bfa 0%,#d946ef 55%,#f0abfc 100%)' } as const;
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -31,20 +34,23 @@ function Wordmark() {
     <span className="inline-flex items-center gap-2">
       <span
         aria-hidden
-        className="flex h-7 w-7 items-center justify-center rounded-lg bg-ds-accent text-sm font-medium text-ds-accent-ink"
+        className="flex h-7 w-7 items-center justify-center rounded-lg text-sm font-medium text-white"
+        style={{ backgroundImage: 'linear-gradient(135deg,#7c3aed,#d946ef)' }}
       >
         m
       </span>
-      <span className="text-[15px] font-medium tracking-tight text-ds-ink">mplan</span>
+      <span className="text-[15px] font-medium tracking-tight text-white">mplan</span>
     </span>
   );
 }
 
+// Dark glassy pill with a violet glow — the primary action (Talisma-style).
 function PrimaryCta({ children, href = GET_STARTED, className = '' }: { children: React.ReactNode; href?: string; className?: string }) {
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg bg-ds-accent px-5 py-2.5 text-sm font-medium text-ds-accent-ink transition-colors hover:bg-ds-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-accent ${className}`}
+      className={`group inline-flex items-center justify-center gap-2 rounded-xl border border-violet-400/40 bg-[#160d2e] px-5 py-3 text-sm font-medium text-white transition-all hover:border-violet-300/70 hover:bg-[#1c1138] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 ${className}`}
+      style={{ boxShadow: '0 0 36px -8px rgba(168,85,247,0.65)' }}
     >
       {children}
     </Link>
@@ -55,26 +61,26 @@ function GhostCta({ children, href, className = '' }: { children: React.ReactNod
   return (
     <Link
       href={href}
-      className={`inline-flex items-center justify-center gap-2 rounded-lg border border-ds-line-strong bg-ds-card px-5 py-2.5 text-sm font-medium text-ds-ink transition-colors hover:border-ds-accent hover:text-ds-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-accent ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/[0.03] px-5 py-3 text-sm font-medium text-slate-200 transition-colors hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 ${className}`}
     >
       {children}
     </Link>
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Nav ───────────────────────────────────────────────────────────────────────
 
 function Nav() {
   return (
-    <header className="sticky top-0 z-30 border-b border-ds-line bg-ds-page/85 backdrop-blur">
+    <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0a0613]/80 backdrop-blur-md">
       <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between px-5 sm:px-8" aria-label="Primary">
-        <Link href="/home" className="rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-accent" aria-label="mplan home">
+        <Link href="/home" className="rounded focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400" aria-label="mplan home">
           <Wordmark />
         </Link>
         <div className="hidden items-center gap-8 md:flex">
-          <a href="#how-it-works" className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">How it works</a>
-          <a href="#features" className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">Features</a>
-          <a href="#pricing" className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">Pricing</a>
+          <a href="#how-it-works" className="text-sm font-normal text-slate-300 transition-colors hover:text-white">How it works</a>
+          <a href="#features" className="text-sm font-normal text-slate-300 transition-colors hover:text-white">Features</a>
+          <a href="#pricing" className="text-sm font-normal text-slate-300 transition-colors hover:text-white">Pricing</a>
         </div>
         <PrimaryCta className="px-4 py-2">Get started</PrimaryCta>
       </nav>
@@ -82,39 +88,102 @@ function Nav() {
   );
 }
 
+// ── Hero ──────────────────────────────────────────────────────────────────────
+
+const PIPELINE = [
+  { icon: Globe, label: 'Your website' },
+  { icon: Sparkles, label: 'AI measurement plan' },
+  { icon: BarChart3, label: 'GA4 + GTM created' },
+  { icon: Layers, label: 'Tracking added' },
+  { icon: Activity, label: 'Health checks' },
+] as const;
+
+function PipelineDiagram() {
+  return (
+    <div className="relative mx-auto mt-16 max-w-4xl">
+      <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur-sm sm:p-8" style={{ boxShadow: '0 0 80px -30px rgba(124,58,237,0.6)' }}>
+        <p className="mb-5 text-center text-[11px] font-medium uppercase tracking-[0.2em] text-violet-300/80">The mplan pipeline</p>
+        <ol className="flex flex-col items-stretch gap-3 md:flex-row md:items-center md:gap-2">
+          {PIPELINE.map(({ icon: Icon, label }, i) => (
+            <li key={label} className="contents">
+              <div className="flex flex-1 flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-4 text-center">
+                <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-violet-400/20 bg-violet-500/10 text-violet-300">
+                  <Icon size={18} aria-hidden />
+                </span>
+                <span className="text-xs font-normal leading-tight text-slate-200">{label}</span>
+              </div>
+              {i < PIPELINE.length - 1 && (
+                <ChevronRight size={16} aria-hidden className="mx-auto shrink-0 rotate-90 text-violet-400/50 md:rotate-0" />
+              )}
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
 function Hero() {
   return (
-    <section className="mx-auto max-w-6xl px-5 pb-20 pt-16 sm:px-8 sm:pt-24">
-      <div className="mx-auto max-w-2xl text-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-ds-line bg-ds-card px-3 py-1 text-xs font-medium text-ds-accent">
+    <section className="mx-auto max-w-6xl px-5 pb-8 pt-16 sm:px-8 sm:pt-24">
+      <div className="mx-auto max-w-3xl text-center">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1 text-xs font-medium text-violet-200 backdrop-blur-sm">
           <Sparkles size={13} aria-hidden /> AI-powered analytics setup
         </span>
 
-        <h1 className="mt-6 text-4xl font-medium leading-[1.1] tracking-tight text-ds-ink sm:text-5xl">
-          Website analytics, set up in minutes
+        <h1 className="mt-7 text-5xl font-normal leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+          <span className="bg-clip-text text-transparent" style={HEADLINE_GRADIENT}>Website analytics,</span>
+          <br />
+          set up in minutes
         </h1>
 
-        <p className="mx-auto mt-5 max-w-xl text-base font-normal leading-relaxed text-ds-secondary sm:text-lg">
+        <p className="mx-auto mt-6 max-w-xl text-base font-normal leading-relaxed text-slate-300 sm:text-lg">
           Connect your site and we build the measurement plan, create GA4 and GTM, add the
           tracking, and keep it healthy. No analytics expertise needed.
         </p>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <PrimaryCta className="w-full sm:w-auto">
-            Get started free <ArrowRight size={15} aria-hidden />
+            Get started free <ArrowRight size={15} aria-hidden className="transition-transform group-hover:translate-x-0.5" />
           </PrimaryCta>
           <GhostCta href="#how-it-works" className="w-full sm:w-auto">See how it works</GhostCta>
         </div>
 
-        <p className="mt-5 text-xs font-normal text-ds-muted">
+        <p className="mt-5 text-xs font-normal text-slate-400">
           No credit card needed · Your code is never changed without your review.
         </p>
+      </div>
+
+      <PipelineDiagram />
+    </section>
+  );
+}
+
+// ── Stats band (true product facts, not fabricated social proof) ──────────────
+
+const STATS = [
+  { value: '4', label: 'Stages from plan to monitoring' },
+  { value: 'GA4 + GTM', label: 'Created automatically' },
+  { value: 'Daily', label: 'Health checks & alerts' },
+  { value: '100%', label: 'Code changes you review first' },
+] as const;
+
+function Stats() {
+  return (
+    <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
+      <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+        {STATS.map((s) => (
+          <div key={s.label} className="text-center">
+            <p className="bg-clip-text text-3xl font-normal tracking-tight text-transparent sm:text-4xl" style={HEADLINE_GRADIENT}>{s.value}</p>
+            <p className="mt-2 text-sm font-normal text-slate-400">{s.label}</p>
+          </div>
+        ))}
       </div>
     </section>
   );
 }
 
-// ── How it works ────────────────────────────────────────────────────────────
+// ── How it works ──────────────────────────────────────────────────────────────
 
 const STAGES = [
   { icon: ClipboardList, n: 1, stage: 'Plan', desc: 'AI builds your measurement plan from your site.' },
@@ -125,22 +194,22 @@ const STAGES = [
 
 function HowItWorks() {
   return (
-    <section id="how-it-works" className="scroll-mt-20 border-t border-ds-line bg-ds-card">
+    <section id="how-it-works" className="scroll-mt-20 border-t border-white/10">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-medium tracking-tight text-ds-ink sm:text-3xl">How it works</h2>
-          <p className="mt-3 text-base font-normal text-ds-secondary">Four steps from a URL to analytics you can trust.</p>
+          <h2 className="text-3xl font-normal tracking-tight text-white sm:text-4xl">How it works</h2>
+          <p className="mt-3 text-base font-normal text-slate-400">Four steps from a URL to analytics you can trust.</p>
         </div>
 
         <ol className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {STAGES.map(({ icon: Icon, n, stage, desc }) => (
-            <li key={stage} className="rounded-ds border border-ds-line bg-ds-page p-6">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ds-accent-soft text-ds-accent">
+            <li key={stage} className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm transition-colors hover:border-violet-400/30">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-violet-400/20 bg-violet-500/10 text-violet-300">
                 <Icon size={20} aria-hidden />
               </span>
-              <p className="mt-4 text-xs font-medium uppercase tracking-wide text-ds-muted">{n} · Stage</p>
-              <p className="mt-1 text-base font-medium text-ds-ink">{stage}</p>
-              <p className="mt-1.5 text-sm font-normal leading-relaxed text-ds-secondary">{desc}</p>
+              <p className="mt-4 text-xs font-medium uppercase tracking-wide text-violet-300/70">{n} · Stage</p>
+              <p className="mt-1 text-base font-medium text-white">{stage}</p>
+              <p className="mt-1.5 text-sm font-normal leading-relaxed text-slate-400">{desc}</p>
             </li>
           ))}
         </ol>
@@ -149,7 +218,7 @@ function HowItWorks() {
   );
 }
 
-// ── Features ─────────────────────────────────────────────────────────────────
+// ── Features ──────────────────────────────────────────────────────────────────
 
 const FEATURES = [
   { icon: Sparkles, title: 'AI measurement plan', desc: 'Describes your site’s tracking automatically — objectives, KPIs, and events.' },
@@ -162,21 +231,21 @@ const FEATURES = [
 
 function Features() {
   return (
-    <section id="features" className="scroll-mt-20">
+    <section id="features" className="scroll-mt-20 border-t border-white/10">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-medium tracking-tight text-ds-ink sm:text-3xl">Everything you need, none of the busywork</h2>
-          <p className="mt-3 text-base font-normal text-ds-secondary">Built for teams without an analytics specialist.</p>
+          <h2 className="text-3xl font-normal tracking-tight text-white sm:text-4xl">Everything you need, none of the busywork</h2>
+          <p className="mt-3 text-base font-normal text-slate-400">Built for teams without an analytics specialist.</p>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {FEATURES.map(({ icon: Icon, title, desc }) => (
-            <div key={title} className="rounded-ds border border-ds-line bg-ds-card p-6">
-              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-ds-accent-soft text-ds-accent">
+            <div key={title} className="rounded-2xl border border-white/10 bg-white/[0.04] p-6 backdrop-blur-sm transition-colors hover:border-violet-400/30">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-violet-400/20 bg-violet-500/10 text-violet-300">
                 <Icon size={20} aria-hidden />
               </span>
-              <h3 className="mt-4 text-base font-medium text-ds-ink">{title}</h3>
-              <p className="mt-1.5 text-sm font-normal leading-relaxed text-ds-secondary">{desc}</p>
+              <h3 className="mt-4 text-base font-medium text-white">{title}</h3>
+              <p className="mt-1.5 text-sm font-normal leading-relaxed text-slate-400">{desc}</p>
             </div>
           ))}
         </div>
@@ -185,27 +254,31 @@ function Features() {
   );
 }
 
-// ── Trust / security strip ───────────────────────────────────────────────────
+// ── Trust statement band (vivid gradient, echoing the reference) ──────────────
 
 const TRUST = [
   { icon: Lock, title: 'Data isolation', desc: 'Every customer’s data is kept separate — never shared or co-mingled.' },
   { icon: GitPullRequest, title: 'Review before any change', desc: 'Code changes arrive as pull requests you approve. Nothing ships silently.' },
-  { icon: ShieldCheck, title: 'Read-only by default', desc: 'We only request the access we need, and write nothing without your say-so.' },
+  { icon: ShieldCheck, title: 'Read-only by default', desc: 'We request only the access we need, and write nothing without your say-so.' },
 ] as const;
 
-function TrustStrip() {
+function TrustBand() {
   return (
-    <section className="border-y border-ds-line bg-ds-accent-soft">
-      <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
+    <section className="relative overflow-hidden border-y border-white/10" style={{ backgroundImage: 'linear-gradient(160deg,#1a1140 0%,#3b2a8c 55%,#5b4fd6 100%)' }}>
+      <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
+        <h2 className="mx-auto max-w-3xl text-center text-3xl font-normal leading-tight tracking-tight text-white sm:text-5xl">
+          Built for teams without an analytics specialist<span className="text-fuchsia-300">.</span>
+        </h2>
+
+        <div className="mt-14 grid grid-cols-1 gap-8 sm:grid-cols-3">
           {TRUST.map(({ icon: Icon, title, desc }) => (
             <div key={title} className="flex gap-3">
-              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-ds-card text-ds-accent">
+              <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
                 <Icon size={17} aria-hidden />
               </span>
               <div>
-                <p className="text-sm font-medium text-ds-ink">{title}</p>
-                <p className="mt-1 text-sm font-normal leading-relaxed text-ds-secondary">{desc}</p>
+                <p className="text-sm font-medium text-white">{title}</p>
+                <p className="mt-1 text-sm font-normal leading-relaxed text-violet-100/80">{desc}</p>
               </div>
             </div>
           ))}
@@ -215,7 +288,7 @@ function TrustStrip() {
   );
 }
 
-// ── Pricing (placeholder) ────────────────────────────────────────────────────
+// ── Pricing (placeholder) ─────────────────────────────────────────────────────
 
 const TIERS = [
   {
@@ -240,39 +313,41 @@ const TIERS = [
 
 function Pricing() {
   return (
-    <section id="pricing" className="scroll-mt-20 border-t border-ds-line bg-ds-card">
+    <section id="pricing" className="scroll-mt-20 border-t border-white/10">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-2xl font-medium tracking-tight text-ds-ink sm:text-3xl">Simple, honest pricing</h2>
-          <p className="mt-3 text-base font-normal text-ds-secondary">
-            Example pricing — final plans to be confirmed.
-          </p>
+          <h2 className="text-3xl font-normal tracking-tight text-white sm:text-4xl">Simple, honest pricing</h2>
+          <p className="mt-3 text-base font-normal text-slate-400">Example pricing — final plans to be confirmed.</p>
         </div>
 
         <div className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {TIERS.map((t) => (
             <div
               key={t.name}
-              className={`relative flex flex-col rounded-ds bg-ds-page p-6 ${
-                t.popular ? 'border-2 border-ds-accent' : 'border border-ds-line'
+              className={`relative flex flex-col rounded-2xl bg-white/[0.04] p-6 backdrop-blur-sm ${
+                t.popular ? 'border-2 border-violet-400/70' : 'border border-white/10'
               }`}
+              style={t.popular ? { boxShadow: '0 0 50px -18px rgba(168,85,247,0.7)' } : undefined}
             >
               {t.popular && (
-                <span className="absolute -top-3 left-6 rounded-full bg-ds-accent px-2.5 py-0.5 text-[11px] font-medium text-ds-accent-ink">
+                <span
+                  className="absolute -top-3 left-6 rounded-full px-2.5 py-0.5 text-[11px] font-medium text-white"
+                  style={{ backgroundImage: 'linear-gradient(135deg,#7c3aed,#d946ef)' }}
+                >
                   Most popular
                 </span>
               )}
-              <p className="text-sm font-medium text-ds-ink">{t.name}</p>
-              <p className="mt-1 text-sm font-normal text-ds-secondary">{t.blurb}</p>
+              <p className="text-sm font-medium text-white">{t.name}</p>
+              <p className="mt-1 text-sm font-normal text-slate-400">{t.blurb}</p>
               <p className="mt-5">
-                <span className="text-3xl font-medium tracking-tight text-ds-ink">{t.price}</span>
-                {t.cadence && <span className="text-sm font-normal text-ds-muted">{t.cadence}</span>}
+                <span className="text-3xl font-medium tracking-tight text-white">{t.price}</span>
+                {t.cadence && <span className="text-sm font-normal text-slate-400">{t.cadence}</span>}
               </p>
 
               <ul className="mt-5 flex-1 space-y-2.5">
                 {t.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm font-normal text-ds-secondary">
-                    <Check size={16} className="mt-0.5 shrink-0 text-ds-accent" aria-hidden />
+                  <li key={f} className="flex items-start gap-2 text-sm font-normal text-slate-300">
+                    <Check size={16} className="mt-0.5 shrink-0 text-violet-300" aria-hidden />
                     {f}
                   </li>
                 ))}
@@ -286,34 +361,37 @@ function Pricing() {
             </div>
           ))}
         </div>
-        <p className="mt-6 text-center text-xs font-normal text-ds-muted">Placeholder prices — set your real numbers before launch.</p>
+        <p className="mt-6 text-center text-xs font-normal text-slate-500">Placeholder prices — set your real numbers before launch.</p>
       </div>
     </section>
   );
 }
 
-// ── Final CTA ────────────────────────────────────────────────────────────────
+// ── Final CTA ─────────────────────────────────────────────────────────────────
 
 function FinalCta() {
   return (
     <section className="mx-auto max-w-6xl px-5 py-24 sm:px-8">
-      <div className="rounded-2xl border border-ds-line bg-ds-card px-6 py-16 text-center">
-        <h2 className="mx-auto max-w-xl text-2xl font-medium tracking-tight text-ds-ink sm:text-3xl">
-          Set up analytics you can actually trust
+      <div
+        className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] px-6 py-16 text-center backdrop-blur-sm"
+        style={{ boxShadow: '0 0 90px -30px rgba(124,58,237,0.7)' }}
+      >
+        <h2 className="mx-auto max-w-xl text-3xl font-normal tracking-tight text-white sm:text-4xl">
+          Set up analytics you can actually <span className="bg-clip-text text-transparent" style={HEADLINE_GRADIENT}>trust</span>
         </h2>
-        <p className="mx-auto mt-3 max-w-md text-base font-normal text-ds-secondary">
+        <p className="mx-auto mt-4 max-w-md text-base font-normal text-slate-300">
           Hand us a URL — we’ll hand back a complete, working measurement setup.
         </p>
         <div className="mt-8 flex justify-center">
           <PrimaryCta>Get started free <ArrowRight size={15} aria-hidden /></PrimaryCta>
         </div>
-        <p className="mt-4 text-xs font-normal text-ds-muted">No credit card needed.</p>
+        <p className="mt-4 text-xs font-normal text-slate-400">No credit card needed.</p>
       </div>
     </section>
   );
 }
 
-// ── Footer ───────────────────────────────────────────────────────────────────
+// ── Footer ────────────────────────────────────────────────────────────────────
 
 const FOOTER_COLS = [
   { title: 'Product', links: [{ label: 'How it works', href: '#how-it-works' }, { label: 'Features', href: '#features' }, { label: 'Pricing', href: '#pricing' }] },
@@ -323,22 +401,22 @@ const FOOTER_COLS = [
 
 function Footer() {
   return (
-    <footer className="border-t border-ds-line bg-ds-page">
+    <footer className="border-t border-white/10">
       <div className="mx-auto max-w-6xl px-5 py-14 sm:px-8">
         <div className="grid grid-cols-2 gap-8 sm:grid-cols-4">
           <div className="col-span-2 sm:col-span-1">
             <Wordmark />
-            <p className="mt-3 max-w-[16rem] text-sm font-normal leading-relaxed text-ds-secondary">
+            <p className="mt-3 max-w-[16rem] text-sm font-normal leading-relaxed text-slate-400">
               Website analytics, set up and kept healthy — without the manual work.
             </p>
           </div>
           {FOOTER_COLS.map((col) => (
             <div key={col.title}>
-              <p className="text-xs font-medium uppercase tracking-wide text-ds-muted">{col.title}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{col.title}</p>
               <ul className="mt-3 space-y-2">
                 {col.links.map((l) => (
                   <li key={l.label}>
-                    <Link href={l.href} className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">
+                    <Link href={l.href} className="text-sm font-normal text-slate-400 transition-colors hover:text-white">
                       {l.label}
                     </Link>
                   </li>
@@ -347,11 +425,27 @@ function Footer() {
             </div>
           ))}
         </div>
-        <div className="mt-12 border-t border-ds-line pt-6">
-          <p className="text-xs font-normal text-ds-muted">© 2026 mplan. All rights reserved.</p>
+        <div className="mt-12 border-t border-white/10 pt-6">
+          <p className="text-xs font-normal text-slate-500">© 2026 mplan. All rights reserved.</p>
         </div>
       </div>
     </footer>
+  );
+}
+
+// ── Floating CTA (desktop) — echoes the reference's floating action pill ───────
+
+function FloatingCta() {
+  return (
+    <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 hidden justify-center lg:flex">
+      <Link
+        href={GET_STARTED}
+        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border border-violet-400/50 px-5 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.03]"
+        style={{ backgroundImage: 'linear-gradient(135deg,#7c3aed,#d946ef)', boxShadow: '0 0 40px -8px rgba(217,70,239,0.7)' }}
+      >
+        <Sparkles size={15} aria-hidden /> Get started free
+      </Link>
+    </div>
   );
 }
 
@@ -359,15 +453,27 @@ function Footer() {
 
 export default function MarketingHome() {
   return (
-    <main className="h-full overflow-y-auto scroll-smooth bg-ds-page text-ds-ink">
-      <Nav />
-      <Hero />
-      <HowItWorks />
-      <Features />
-      <TrustStrip />
-      <Pricing />
-      <FinalCta />
-      <Footer />
+    <main className="relative h-full overflow-y-auto scroll-smooth bg-[#0a0613] text-white">
+      {/* Ambient violet glows behind the content */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 left-1/2 h-[36rem] w-[36rem] -translate-x-1/2 rounded-full bg-violet-600/25 blur-[140px]" />
+        <div className="absolute top-[20%] -right-40 h-[30rem] w-[30rem] rounded-full bg-fuchsia-600/15 blur-[140px]" />
+        <div className="absolute top-[8%] -left-40 h-[28rem] w-[28rem] rounded-full bg-indigo-600/15 blur-[140px]" />
+      </div>
+
+      <div className="relative">
+        <Nav />
+        <Hero />
+        <Stats />
+        <HowItWorks />
+        <Features />
+        <TrustBand />
+        <Pricing />
+        <FinalCta />
+        <Footer />
+      </div>
+
+      <FloatingCta />
     </main>
   );
 }
