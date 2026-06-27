@@ -125,8 +125,28 @@ html, body {
   background: var(--ds-page);
   color: var(--ds-ink);
   overscroll-behavior: none;
+  /* Render native scrollbars (and form controls) in dark — kills the white
+     Windows/Chrome scrollbar that clashed with the dark UI while scrolling. */
+  color-scheme: dark;
   font-family: var(--font-sans, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Default thin, dark, violet-tinted scrollbar for every scroll container that
+   isn't explicitly styled (the marketing page + any plain overflow-y-auto). */
+*:not(.scroll-area):not(.no-scrollbar) {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.45) transparent;
+}
+*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar { width: 10px; height: 10px; }
+*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-track { background: var(--ds-page); }
+*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.45);
+  border: 2px solid var(--ds-page);
+  border-radius: 9999px;
+}
+*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
 }
 
 /* Page backdrop (AnimatedBackground). Dark = the canvas cityscape + dark
