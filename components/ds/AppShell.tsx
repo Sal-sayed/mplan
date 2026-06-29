@@ -13,16 +13,15 @@ const STAGE_ICON: Record<string, ComponentType<{ size?: number; className?: stri
   monitor: Activity,
 };
 
-function NavItem({ stage }: { stage: NavStage }) {
+function NavItem({ stage, onSelect }: { stage: NavStage; onSelect?: () => void }) {
   const Icon = STAGE_ICON[stage.key];
   const done = stage.status === 'done';
   const current = stage.status === 'current';
-  return (
-    <div
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm ${
-        current ? 'bg-ds-accent-soft font-medium text-ds-accent' : 'text-ds-secondary'
-      }`}
-    >
+  const cls = `flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm ${
+    current ? 'bg-ds-accent-soft font-medium text-ds-accent' : 'text-ds-secondary'
+  } ${onSelect ? 'transition hover:bg-ds-panel' : ''}`;
+  const inner = (
+    <>
       <span
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-xs font-medium ${
           current
@@ -36,7 +35,14 @@ function NavItem({ stage }: { stage: NavStage }) {
       </span>
       <span className="flex-1 truncate">{stage.label}</span>
       {Icon ? <Icon size={15} className={current ? 'text-ds-accent' : 'text-ds-muted'} /> : null}
-    </div>
+    </>
+  );
+  // Interactive only when a select handler is supplied (the journey wiring); the
+  // /design-preview keeps the plain, non-interactive presentation.
+  return onSelect ? (
+    <button type="button" onClick={onSelect} className={cls}>{inner}</button>
+  ) : (
+    <div className={cls}>{inner}</div>
   );
 }
 
@@ -44,10 +50,16 @@ interface AppShellProps {
   currentStage: Stage;
   statuses?: Partial<Record<number, StageStatus>>;
   siteName?: string;
+  // Optional: makes the journey nav a trigger surface — clicking a stage calls
+  // this with the stage number. Omit it for a purely presentational shell.
+  onSelectStage?: (stage: Stage) => void;
+  // Optional override for the content area padding (e.g. "p-0" when the children
+  // are already full-bleed screens). Defaults to the standard page padding.
+  contentClassName?: string;
   children: ReactNode;
 }
 
-export function AppShell({ currentStage, statuses, siteName, children }: AppShellProps) {
+export function AppShell({ currentStage, statuses, siteName, onSelectStage, contentClassName = 'p-4 sm:p-6', children }: AppShellProps) {
   const nav = computeJourneyNav(currentStage, statuses);
   const pct = progressPercent(currentStage);
 
@@ -77,7 +89,7 @@ export function AppShell({ currentStage, statuses, siteName, children }: AppShel
           <p className="px-3 pb-1 pt-1 text-[11px] font-medium uppercase tracking-wide text-ds-muted">Your journey</p>
           <nav className="space-y-0.5">
             {nav.map((s) => (
-              <NavItem key={s.key} stage={s} />
+              <NavItem key={s.key} stage={s} onSelect={onSelectStage ? () => onSelectStage(s.n) : undefined} />
             ))}
           </nav>
           <div className="my-3 border-t border-ds-line" />
@@ -97,12 +109,14 @@ export function AppShell({ currentStage, statuses, siteName, children }: AppShel
           <div className="shrink-0 border-b border-ds-line bg-ds-card px-4 py-3 sm:px-6">
             {/* compact stage strip — mobile only */}
             <div className="mb-2 flex gap-1.5 md:hidden">
-              {nav.map((s) => (
-                <span
-                  key={s.key}
-                  className={`h-1.5 flex-1 rounded-full ${s.current ? 'bg-ds-accent' : s.status === 'done' ? 'bg-ds-success' : 'bg-ds-line-strong'}`}
-                />
-              ))}
+              {nav.map((s) => {
+                const barCls = `h-1.5 flex-1 rounded-full ${s.current ? 'bg-ds-accent' : s.status === 'done' ? 'bg-ds-success' : 'bg-ds-line-strong'}`;
+                return onSelectStage ? (
+                  <button key={s.key} type="button" aria-label={s.label} onClick={() => onSelectStage(s.n)} className={barCls} />
+                ) : (
+                  <span key={s.key} className={barCls} />
+                );
+              })}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-ds-secondary">{stepLabel(currentStage)}</span>
@@ -114,7 +128,7 @@ export function AppShell({ currentStage, statuses, siteName, children }: AppShel
           </div>
 
           {/* Content */}
-          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">{children}</div>
+          <div className={`min-h-0 flex-1 overflow-y-auto ${contentClassName}`}>{children}</div>
         </main>
       </div>
     </div>

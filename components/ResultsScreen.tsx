@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -13,6 +13,9 @@ import LaunchReadinessScreen from './LaunchReadinessScreen';
 import MetricHealthScreen from './MetricHealthScreen';
 import ImplementationGuideScreen from './ImplementationGuideScreen';
 import GitHubInject from './GitHubInject';
+import { AppShell } from '@/components/ds';
+import { deriveJourney, journeyNavAction, type JourneyView } from '@/lib/measurement/journey-stage';
+import type { Stage } from '@/components/ds/tokens';
 import { buildConsentCoverage } from '@/lib/measurement/consent-coverage';
 import type { ImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
@@ -184,6 +187,14 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   const [gStatus, setGStatus] = useState<{ configured: boolean; connected: boolean; isAdmin: boolean; scopes?: string[]; expiresAt?: string } | null>(null);
   const [gLoading, setGLoading] = useState(false);
 
+  // Ephemeral "stage reached" latches that drive the journey nav's done/upcoming
+  // marks. NO persistence, NO schema — they reset on reload (a later slice persists
+  // real stage history). Each is set true when its EXISTING handler succeeds; they
+  // never touch any API or data flow.
+  const [reachedSetup, setReachedSetup] = useState(false);
+  const [reachedGoLive, setReachedGoLive] = useState(false);
+  const [reachedMonitor, setReachedMonitor] = useState(false);
+
   // Inline plan-consistency badge: run the credential-free gate once on mount so
   // the verdict shows on the plan screen itself (no URL, no browser, fast).
   const [consistency, setConsistency] = useState<LaunchReadinessReport | null>(null);
@@ -276,7 +287,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       if (!res.ok || !json.success) throw new Error(json.error || 'Launch readiness check failed');
       setRdReport(json.report as LaunchReadinessReport);
       setRdDrift((json.drift as GovernanceDrift | undefined) ?? null);
-      setRdPhase('done');
+      setRdPhase('done'); setReachedGoLive(true);
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Launch readiness check failed');
       setRdPhase('error');
@@ -303,7 +314,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       // No drift on a governance run = no prior baseline yet (first run for this
       // plan). Surface a quiet note instead of an empty drift area.
       setRdBaseline(!drift);
-      setRdPhase('done');
+      setRdPhase('done'); setReachedGoLive(true);
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Governance check failed');
       setRdPhase('error');
@@ -329,7 +340,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     setRdKind('metrics'); setRdPhase('loading'); setRdError('');
     try {
       await loadMetricHealth();
-      setRdPhase('done');
+      setRdPhase('done'); setReachedMonitor(true);
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Metric validation failed');
       setRdPhase('error');
@@ -347,7 +358,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Could not build the implementation guide.');
       setIgProposal(json.proposal as ImplementationProposal);
-      setIgPhase('done');
+      setIgPhase('done'); setReachedSetup(true);
     } catch (e) {
       setIgError(e instanceof Error ? e.message : 'Could not build the implementation guide.');
       setIgPhase('error');
@@ -368,7 +379,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const json = await readJsonResponse(res);
       if (!res.ok || !json.success) throw new Error(json.error || 'Backfill failed');
       await loadMetricHealth(); // history is now populated → real verdicts
-      setRdPhase('done');
+      setRdPhase('done'); setReachedMonitor(true);
     } catch (e) {
       setRdError(e instanceof Error ? e.message : 'Backfill failed');
       setRdPhase('error');
@@ -615,39 +626,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     }
   };
 
-  // Phase A implementation guide — its own full-screen view (display only).
-  if (igPhase === 'done' && igProposal) {
-    return <ImplementationGuideScreen proposal={igProposal} plan={plan} url={meta.url} onReset={() => { setIgPhase('idle'); setIgProposal(null); }} />;
-  }
-  if (igPhase === 'loading' || igPhase === 'error') {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-ds-page p-6 text-center">
-        {igPhase === 'loading' ? (
-          <>
-            <Loader2 className="w-10 h-10 text-cyan-300 animate-spin mb-4" />
-            <p className="text-ds-ink font-semibold text-lg">Building implementation guide…</p>
-            <p className="text-ds-muted text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
-          </>
-        ) : (
-          <>
-            <p className="text-rose-300 font-semibold">{igError}</p>
-            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">Back</button>
-          </>
-        )}
-      </div>
-    );
-  }
-
-  // Full-screen takeover once a check has run. Metric health has its own screen
-  // (no readiness report), so it's checked first.
-  if (rdPhase === 'done' && rdKind === 'metrics') {
-    return <MetricHealthScreen results={mhResults} propertyChecked={mhChecked} onReset={() => { setRdPhase('idle'); setMhResults([]); setMhChecked(false); }} />;
-  }
-  if (rdPhase === 'done' && rdReport) {
-    return <LaunchReadinessScreen report={rdReport} drift={rdDrift ?? undefined} baselineNote={rdBaseline} onReset={() => { setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false); }} />;
-  }
-
-  return (
+  // ── Journey wiring (presentational only) ──────────────────────────────────
+  // The post-plan hub renders INSIDE AppShell so the 4-stage journey nav stays
+  // visible. The Set up / Go live / Monitor screens used to be early-return
+  // takeovers that replaced everything (hiding the nav); they now render as the
+  // shell's content too, picked by the SAME state flags. Only the render LOCATION
+  // changed — no screen's logic, props, or API calls were touched.
+  const hub = (
     <div className="h-full w-full flex flex-col overflow-hidden bg-ds-page">
       <header className="shrink-0 h-16 px-4 lg:px-6 flex items-center justify-between border-b border-ds-line bg-ds-card z-10">
         <div className="flex items-center gap-3 min-w-0">
@@ -892,5 +877,78 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
         </div>
       )}
     </div>
+  );
+
+  // Pick which screen fills the shell — the SAME flags that drove the old
+  // early-return takeovers; now they choose the AppShell content instead.
+  let content: ReactNode = hub;
+  if (igPhase === 'done' && igProposal) {
+    content = <ImplementationGuideScreen proposal={igProposal} plan={plan} url={meta.url} onReset={() => { setIgPhase('idle'); setIgProposal(null); }} />;
+  } else if (igPhase === 'loading' || igPhase === 'error') {
+    content = (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-ds-page p-6 text-center">
+        {igPhase === 'loading' ? (
+          <>
+            <Loader2 className="w-10 h-10 text-cyan-300 animate-spin mb-4" />
+            <p className="text-ds-ink font-semibold text-lg">Building implementation guide…</p>
+            <p className="text-ds-muted text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
+          </>
+        ) : (
+          <>
+            <p className="text-rose-300 font-semibold">{igError}</p>
+            <button onClick={() => { setIgPhase('idle'); setIgError(''); }} className="mt-4 px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">Back</button>
+          </>
+        )}
+      </div>
+    );
+  } else if (rdPhase === 'done' && rdKind === 'metrics') {
+    content = <MetricHealthScreen results={mhResults} propertyChecked={mhChecked} onReset={() => { setRdPhase('idle'); setMhResults([]); setMhChecked(false); }} />;
+  } else if (rdPhase === 'done' && rdReport) {
+    content = <LaunchReadinessScreen report={rdReport} drift={rdDrift ?? undefined} baselineNote={rdBaseline} onReset={() => { setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false); }} />;
+  }
+
+  // Which stage is being viewed (same flags) → drives the nav highlight; the
+  // reached-latches mark earlier stages done. Pure derivation, no persistence.
+  const view: JourneyView =
+    igPhase === 'done' || igPhase === 'loading' || igPhase === 'error'
+      ? 'setup'
+      : rdPhase === 'done' && rdKind === 'metrics'
+        ? 'monitor'
+        : rdPhase === 'done' && rdReport
+          ? 'golive'
+          : 'plan';
+  const { currentStage, statuses } = deriveJourney({
+    hasPlan: true,
+    setupReached: reachedSetup,
+    goLive: reachedGoLive || rdReport?.decision === 'go',
+    monitorReached: reachedMonitor,
+    view,
+  });
+
+  // Journey-nav clicks are a SECOND trigger surface for the EXISTING handlers
+  // (the in-screen buttons still call the same ones). No handler is duplicated.
+  const handleSelectStage = (stage: Stage) => {
+    switch (journeyNavAction(stage)) {
+      case 'setup': runImplementationGuide(); break;
+      case 'golive': openReadiness(); break;
+      case 'monitor': runMetricHealth(); break;
+      default: // 'plan' — return to the Stage-1 tabs hub (mirrors each screen's Back)
+        setIgPhase('idle'); setIgProposal(null);
+        setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false);
+        setMhResults([]); setMhChecked(false);
+        break;
+    }
+  };
+
+  return (
+    <AppShell
+      currentStage={currentStage}
+      statuses={statuses}
+      siteName={meta.url}
+      onSelectStage={handleSelectStage}
+      contentClassName="p-0"
+    >
+      {content}
+    </AppShell>
   );
 }
