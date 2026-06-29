@@ -131,7 +131,7 @@ const VERDICT: Record<Verdict, { label: string; sub: string; Icon: typeof CheckC
   issues: { label: 'Issues found', sub: 'The plan has blocking consistency problems to fix before launch.', Icon: AlertCircle, text: 'text-rose-300', ring: 'border-rose-500/40', bg: 'bg-rose-500/[0.10]', iconBg: 'bg-rose-500/20', iconText: 'text-rose-300' },
 };
 
-interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; onRegenerate?: () => void; }
+interface ResultsScreenProps { plan: MeasurementPlan; score: any; scrapeData: any; onReset: () => void; onRegenerate?: () => void; onUpdatePlan?: () => void; }
 
 function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; scrapeData: any }) {
   const [dl, setDl] = useState(false);
@@ -151,7 +151,7 @@ function ExcelDownloadBtn({ plan, score, scrapeData }: { plan: any; score: any; 
   );
 }
 
-export default function ResultsScreen({ plan, score, scrapeData, onReset, onRegenerate }: ResultsScreenProps) {
+export default function ResultsScreen({ plan, score, scrapeData, onReset, onRegenerate, onUpdatePlan }: ResultsScreenProps) {
   const [activeTab, setActiveTab] = useState('overview');
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Set<number>>(new Set());
@@ -655,6 +655,12 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
             </>
           ) : (
             <Link href="/signin" className="text-sm text-ds-secondary hover:text-ds-ink px-1">Sign in</Link>
+          )}
+          {onUpdatePlan && (
+            <button onClick={onUpdatePlan}
+              className="px-4 py-2 rounded-xl bg-ds-accent text-ds-accent-ink text-sm font-semibold flex items-center gap-2 hover:bg-ds-accent-hover shadow-sm transition">
+              <RefreshCw size={14} /> <span className="hidden sm:inline">Generate updated plan</span>
+            </button>
           )}
           <button onClick={openReadiness}
             className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition">

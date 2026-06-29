@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HeroScreen from '@/components/HeroScreen';
 import LoadingScreen from '@/components/LoadingScreen';
 import SuccessScreen from '@/components/SuccessScreen';
+import ResultsScreen from '@/components/ResultsScreen';
 import ConfirmBusinessModel from '@/components/ConfirmBusinessModel';
 import { useStreamingClaude } from '@/lib/stream-client';
 
@@ -62,6 +63,9 @@ export default function Home() {
   // Returning signed-in user with a saved plan → offer a one-click "updated plan"
   // using the saved site URL + their Google email (no need to re-enter either).
   const [returning, setReturning] = useState<{ siteUrl: string; email: string } | null>(null);
+  // Their latest saved plan, auto-opened so a signed-in returner lands straight
+  // INSIDE their plan (skipping the new/existing chooser). Back clears it → chooser.
+  const [openedPlan, setOpenedPlan] = useState<any>(null);
   const stream = useStreamingClaude();
 
   const handleSubmitNew = async ({ url: inputUrl, email: inputEmail }: { url: string; email: string }) => {
@@ -95,7 +99,16 @@ export default function Home() {
         if (!res.ok) return;
         const { plans } = await res.json();
         const latest = Array.isArray(plans) && plans.length ? plans[0] : null;
-        if (!cancelled && latest?.site_url) setReturning({ siteUrl: latest.site_url, email: accountEmail });
+        if (cancelled || !latest?.site_url) return;
+        setReturning({ siteUrl: latest.site_url, email: accountEmail });
+        // Auto-open their latest plan so they land directly inside it (no chooser).
+        try {
+          const pr = await fetch(`/api/plans?id=${encodeURIComponent(latest.id)}`);
+          if (pr.ok) {
+            const { plan } = await pr.json();
+            if (!cancelled && plan) setOpenedPlan(plan);
+          }
+        } catch { /* couldn't load it → the chooser (with the updated-plan card) shows */ }
       } catch { /* not signed in / no plans → normal form */ }
     })();
     return () => { cancelled = true; };
@@ -306,7 +319,7 @@ export default function Home() {
   };
 
   const reset = () => {
-    setStage('idle'); setData(null); setUrl(''); setEmail(''); setProgress(0); setError(''); setEmailDelivered(true); setConfirmCtx(null);
+    setStage('idle'); setData(null); setUrl(''); setEmail(''); setProgress(0); setError(''); setEmailDelivered(true); setConfirmCtx(null); setOpenedPlan(null);
   };
 
   // Browser tab title
@@ -348,7 +361,20 @@ export default function Home() {
     <main className="fixed inset-0 overflow-hidden bg-ds-page">
 
       <AnimatePresence mode="wait">
-        {stage === 'idle' && (
+        {stage === 'idle' && openedPlan && (
+          // Signed-in returner: straight into their latest plan. Back → chooser.
+          <motion.div key="opened" className="absolute inset-0"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <ResultsScreen
+              plan={openedPlan}
+              score={null}
+              scrapeData={null}
+              onReset={() => setOpenedPlan(null)}
+              onUpdatePlan={returning ? () => handleGenerateUpdated(returning.siteUrl, returning.email) : undefined}
+            />
+          </motion.div>
+        )}
+        {stage === 'idle' && !openedPlan && (
           <motion.div key="hero" className="absolute inset-0"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <HeroScreen
