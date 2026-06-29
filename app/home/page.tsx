@@ -4,8 +4,10 @@
 // own container because the app shell sets `body { overflow: hidden }`.
 //
 // On-brand with the app: built on the shared ds-* dark design tokens and the core
-// components (Card, Badge). CTAs link to the real sign-in entry (/signin); footer
-// links to the real /privacy + /terms. Prices are placeholders, clearly marked.
+// components (Card, Badge). The "Get started" CTAs go straight into Google sign-in
+// (/api/auth/google/start — sets the CSRF state cookie and redirects to Google's
+// consent screen), so one click begins authorization. Footer links to /privacy +
+// /terms. Prices are placeholders, clearly marked.
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
@@ -21,8 +23,10 @@ export const metadata: Metadata = {
     'Connect your site and mplan builds your measurement plan, creates GA4 and GTM, adds tracking, and keeps it healthy. No analytics expertise needed.',
 };
 
-// The real sign-in entry — where the product flow begins. No invented auth flow.
-const SIGN_IN = '/signin';
+// The real Google sign-in entry — a GET that redirects to Google's consent screen
+// (sets a CSRF state cookie). CTAs use a plain <a> (full navigation, no prefetch) so
+// the redirect + cookie work; a Next <Link> would client-route/prefetch and break it.
+const GOOGLE_AUTH = '/api/auth/google/start';
 
 // Signature violet→fuchsia accent used on the distinctive headline words. The one
 // decorative gradient; everything structural reads from the ds-* tokens.
@@ -51,17 +55,20 @@ function Wordmark() {
   );
 }
 
-function PrimaryCta({ children, href = SIGN_IN, className = '' }: { children: React.ReactNode; href?: string; className?: string }) {
+// Plain <a> (not Next <Link>): the primary target is the Google OAuth start route,
+// which must be a full-page GET (redirect + state cookie). In-page anchors and the
+// mailto/legal links work fine as <a> too.
+function PrimaryCta({ children, href = GOOGLE_AUTH, className = '' }: { children: React.ReactNode; href?: string; className?: string }) {
   return (
-    <Link href={href} className={`group ${CTA_PRIMARY} ${className}`} style={{ boxShadow: '0 0 36px -10px rgba(139,92,246,0.6)' }}>
+    <a href={href} className={`group ${CTA_PRIMARY} ${className}`} style={{ boxShadow: '0 0 36px -10px rgba(139,92,246,0.6)' }}>
       {children}
-    </Link>
+    </a>
   );
 }
 
 function GhostCta({ children, href, className = '' }: { children: React.ReactNode; href: string; className?: string }) {
   return (
-    <Link href={href} className={`${CTA_SECONDARY} ${className}`}>{children}</Link>
+    <a href={href} className={`${CTA_SECONDARY} ${className}`}>{children}</a>
   );
 }
 
@@ -294,13 +301,13 @@ const TIERS = [
     name: 'Starter', price: '$0', cadence: '/mo', popular: false,
     blurb: 'For trying it on one site.',
     features: ['1 website', 'AI measurement plan', 'GA4 + GTM setup', 'Excel plan delivered to your inbox'],
-    cta: 'Get started', href: SIGN_IN,
+    cta: 'Get started', href: GOOGLE_AUTH,
   },
   {
     name: 'Pro', price: '$49', cadence: '/mo', popular: true,
     blurb: 'For teams running analytics for real.',
     features: ['Up to 10 websites', 'Daily health checks + alerts', 'Saved plan history', 'Review-PR code injection', 'Auto-create GA4 & GTM'],
-    cta: 'Get started', href: SIGN_IN,
+    cta: 'Get started', href: GOOGLE_AUTH,
   },
   {
     name: 'Enterprise', price: 'Custom', cadence: '', popular: false,
@@ -431,13 +438,13 @@ function Footer() {
 function FloatingCta() {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-40 hidden justify-center lg:flex">
-      <Link
-        href={SIGN_IN}
+      <a
+        href={GOOGLE_AUTH}
         className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-ds-accent px-5 py-2.5 text-sm font-medium text-ds-accent-ink transition-transform hover:scale-[1.03] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-accent"
         style={{ boxShadow: '0 0 40px -8px rgba(139,92,246,0.7)' }}
       >
         <Sparkles size={15} aria-hidden /> Get started free
-      </Link>
+      </a>
     </div>
   );
 }
