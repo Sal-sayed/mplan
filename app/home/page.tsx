@@ -86,7 +86,16 @@ function Nav() {
           <a href="#features" className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">Features</a>
           <a href="#pricing" className="text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink">Pricing</a>
         </div>
-        <PrimaryCta className="!px-4 !py-2">Get started</PrimaryCta>
+        <div className="flex items-center gap-2 sm:gap-4">
+          {/* Secondary action for returning users — same Google entry, plain <a>. */}
+          <a
+            href={GOOGLE_AUTH}
+            className="hidden text-sm font-normal text-ds-secondary transition-colors hover:text-ds-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ds-accent sm:inline"
+          >
+            Sign in
+          </a>
+          <PrimaryCta className="!px-4 !py-2">Get started</PrimaryCta>
+        </div>
       </nav>
     </header>
   );
