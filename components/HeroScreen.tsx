@@ -7,11 +7,20 @@ import { Globe, Mail, Sparkles, FileSearch, ArrowRight, ArrowLeft, Upload, X, Fi
 interface Props {
   onSubmitNew: (data: { url: string; email: string }) => void;
   onSubmitExisting: (data: { url: string; email: string; planFile: File | null }) => void;
+  // Optional: a signed-in returning user with a saved plan. When present, the
+  // chooser offers a one-click "updated plan" (saved site + account email, no
+  // re-entry). Absent → the normal new/existing chooser only.
+  returning?: { siteUrl: string; email: string; onGenerateUpdated: () => void };
 }
 
 type View = 'choose' | 'new' | 'existing';
 
-export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
+// Friendly host for the saved URL (falls back to the raw value).
+function hostOf(u: string): string {
+  try { return new URL(u.startsWith('http') ? u : `https://${u}`).hostname; } catch { return u; }
+}
+
+export default function HeroScreen({ onSubmitNew, onSubmitExisting, returning }: Props) {
   const [view, setView] = useState<View>('choose');
   const [url, setUrl] = useState('');
   const [email, setEmail] = useState('');
@@ -71,6 +80,26 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting }: Props) {
           className="text-base text-ds-secondary text-center max-w-2xl mb-10 relative z-10">
           Hand us your website and email — we&apos;ll hand back a complete measurement plan, ready to implement.
         </motion.p>
+
+        {/* Returning user — one-click updated plan (no URL/email re-entry). */}
+        {returning && (
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.55, type: 'spring', stiffness: 120 }}
+            className="w-full max-w-2xl mb-6 relative z-10">
+            <div className="flex flex-wrap items-center gap-4 rounded-2xl border border-ds-accent/30 bg-ds-accent-soft p-5">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-ds-ink">Welcome back</p>
+                <p className="mt-0.5 text-xs text-ds-secondary">
+                  You already have a plan for <span className="font-medium text-ds-ink break-all">{hostOf(returning.siteUrl)}</span>. We&apos;ll email the updated plan to <span className="font-medium text-ds-ink break-all">{returning.email}</span> — no need to re-enter anything.
+                </p>
+              </div>
+              <button onClick={returning.onGenerateUpdated}
+                className="shrink-0 inline-flex items-center gap-2 rounded-xl bg-ds-accent px-4 py-2.5 text-sm font-semibold text-ds-accent-ink shadow-sm transition hover:bg-ds-accent-hover">
+                <Sparkles size={14} /> Generate updated plan <ArrowRight size={14} />
+              </button>
+            </div>
+            <p className="mt-3 text-center text-xs text-ds-muted">or start a new plan below</p>
+          </motion.div>
+        )}
 
         {/* Two choice cards */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.6, type: 'spring', stiffness: 120 }}

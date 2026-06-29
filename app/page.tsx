@@ -59,6 +59,9 @@ export default function Home() {
   const [error, setError] = useState('');
   // Stashed context for the low-confidence confirmation step (409 flow).
   const [confirmCtx, setConfirmCtx] = useState<{ genBody: any; downstream: any; classification: any } | null>(null);
+  // Returning signed-in user with a saved plan → offer a one-click "updated plan"
+  // using the saved site URL + their Google email (no need to re-enter either).
+  const [returning, setReturning] = useState<{ siteUrl: string; email: string } | null>(null);
   const stream = useStreamingClaude();
 
   const handleSubmitNew = async ({ url: inputUrl, email: inputEmail }: { url: string; email: string }) => {
@@ -70,6 +73,33 @@ export default function Home() {
     setMode('audit');
     await runPipeline(inputUrl, inputEmail, planFile, 'audit');
   };
+
+  // Returning user: regenerate from the saved site + their account email, reusing
+  // the exact same 'new' pipeline as a normal submit — no form re-entry.
+  const handleGenerateUpdated = async (siteUrl: string, accountEmail: string) => {
+    setMode('new');
+    await runPipeline(siteUrl, accountEmail, null, 'new');
+  };
+
+  // On load, if the visitor is signed in AND has a saved plan, surface the
+  // one-click "updated plan" shortcut (most recent saved site). Silent on any
+  // failure / not-signed-in / no plans — the normal form just shows.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const me = await fetch('/api/auth/me').then((r) => r.json()).catch(() => null);
+        const accountEmail: string | undefined = me?.user?.email;
+        if (!accountEmail) return;
+        const res = await fetch('/api/plans');
+        if (!res.ok) return;
+        const { plans } = await res.json();
+        const latest = Array.isArray(plans) && plans.length ? plans[0] : null;
+        if (!cancelled && latest?.site_url) setReturning({ siteUrl: latest.site_url, email: accountEmail });
+      } catch { /* not signed in / no plans → normal form */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   const runPipeline = async (inputUrl: string, inputEmail: string, planFile: File | null, pipelineMode: Mode) => {
     setUrl(inputUrl);
@@ -321,7 +351,15 @@ export default function Home() {
         {stage === 'idle' && (
           <motion.div key="hero" className="absolute inset-0"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <HeroScreen onSubmitNew={handleSubmitNew} onSubmitExisting={handleSubmitExisting} />
+            <HeroScreen
+              onSubmitNew={handleSubmitNew}
+              onSubmitExisting={handleSubmitExisting}
+              returning={
+                returning
+                  ? { siteUrl: returning.siteUrl, email: returning.email, onGenerateUpdated: () => handleGenerateUpdated(returning.siteUrl, returning.email) }
+                  : undefined
+              }
+            />
           </motion.div>
         )}
 
