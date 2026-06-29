@@ -4,8 +4,15 @@
 # needed — and POST the MONITOR_SECRET-gated endpoints on the deployed app.
 #
 # SETUP (one-time): repo → Settings → Secrets and variables → Actions → add:
-#   MONITOR_SECRET   same value as the Render web service's MONITOR_SECRET
-#   APP_BASE_URL     the deployed app, e.g. https://mplan-1.onrender.com
+#   MONITOR_SECRET             same value as the Render web service's MONITOR_SECRET
+#   APP_BASE_URL               the deployed app, e.g. https://mplan-1.onrender.com
+#   SUPABASE_URL               your Supabase project URL (for the Python stat tier)
+#   SUPABASE_SERVICE_ROLE_KEY  Supabase service-role key (for the Python stat tier)
+#
+# The Python statistical tier (scripts/python/analyze_metrics.py) is PRELIMINARY and
+# best-effort: it runs after metric collection, reads ga4_metric_daily, writes simple
+# changepoint+trend rows to metric_analysis (every row validated=false / 'low'). It
+# is `continue-on-error` so it can NEVER fail the metrics/governance run.
 #
 # Trigger: daily at 08:00 UTC, or manually via the Actions tab (Run workflow).
 
@@ -22,6 +29,8 @@ jobs:
     env:
       APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
       MONITOR_SECRET: ${{ secrets.MONITOR_SECRET }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Check out the repo (for the cron scripts)
         uses: actions/checkout@v4
@@ -39,3 +48,19 @@ jobs:
         # is a finding, not an infra failure, so metric collection is never skipped.
         if: always()
         run: node scripts/run-metrics-cron.mjs
+
+      - name: Set up Python 3.12
+        # Only needed for the preliminary statistical tier below.
+        if: always()
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Statistical tier (preliminary — changepoint + trend)
+        # Runs AFTER collection, over the same series now in ga4_metric_daily. Pure
+        # stdlib (no pip install). Best-effort: warn-and-continue per series, and
+        # continue-on-error so it can never red-X the metrics/governance run. Every
+        # row it writes is validated=false / confidence 'low' — NOT yet validated.
+        if: always()
+        continue-on-error: true
+        run: python scripts/python/analyze_metrics.py

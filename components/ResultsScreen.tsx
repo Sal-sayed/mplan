@@ -19,6 +19,7 @@ import type { Stage } from '@/components/ds/tokens';
 import { buildConsentCoverage } from '@/lib/measurement/consent-coverage';
 import type { ImplementationProposal } from '@/lib/measurement/implementation-proposal';
 import type { MetricHealthEntry } from '@/lib/measurement/data-validation';
+import type { MetricAnalysis } from '@/lib/measurement/metric-analysis-store';
 import type { MeasurementPlan, TrackedEvent } from '@/lib/measurement/types';
 import type { LaunchReadinessReport } from '@/lib/measurement/launch-readiness';
 import type { GovernanceDrift } from '@/lib/measurement/governance-diff';
@@ -169,6 +170,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Metric-health results (threshold Data Validation), shown on its own screen.
   const [mhResults, setMhResults] = useState<MetricHealthEntry[]>([]);
   const [mhChecked, setMhChecked] = useState(false);
+  // Preliminary statistical-tier analyses (additive) surfaced beside the threshold
+  // verdicts — validated:false / confidence 'low'. Empty until the Python tier has run.
+  const [mhAnalyses, setMhAnalyses] = useState<MetricAnalysis[]>([]);
   // One-time historical backfill range (separate from the daily collector).
   const [bfStart, setBfStart] = useState('');
   const [bfEnd, setBfEnd] = useState('');
@@ -334,6 +338,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
     if (!res.ok || !json.success) throw new Error(json.error || 'Metric validation failed');
     setMhResults((json.results as MetricHealthEntry[] | undefined) ?? []);
     setMhChecked(json.propertyChecked === true);
+    setMhAnalyses((json.analyses as MetricAnalysis[] | undefined) ?? []);
   };
 
   const runMetricHealth = async () => {
@@ -902,7 +907,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       </div>
     );
   } else if (rdPhase === 'done' && rdKind === 'metrics') {
-    content = <MetricHealthScreen results={mhResults} propertyChecked={mhChecked} onReset={() => { setRdPhase('idle'); setMhResults([]); setMhChecked(false); }} />;
+    content = <MetricHealthScreen results={mhResults} propertyChecked={mhChecked} analyses={mhAnalyses} onReset={() => { setRdPhase('idle'); setMhResults([]); setMhChecked(false); setMhAnalyses([]); }} />;
   } else if (rdPhase === 'done' && rdReport) {
     content = <LaunchReadinessScreen report={rdReport} drift={rdDrift ?? undefined} baselineNote={rdBaseline} onReset={() => { setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false); }} />;
   }
@@ -935,7 +940,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       default: // 'plan' — return to the Stage-1 tabs hub (mirrors each screen's Back)
         setIgPhase('idle'); setIgProposal(null);
         setRdPhase('idle'); setRdReport(null); setRdDrift(null); setRdBaseline(false);
-        setMhResults([]); setMhChecked(false);
+        setMhResults([]); setMhChecked(false); setMhAnalyses([]);
         break;
     }
   };

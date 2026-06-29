@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { validateMetrics, type MetricHealthEntry } from '@/lib/measurement/data-validation';
+import { getLatestAnalyses, type MetricAnalysis } from '@/lib/measurement/metric-analysis-store';
 import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
 import type { MeasurementPlan } from '@/lib/measurement/types';
 
@@ -79,5 +80,16 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ success: true, propertyChecked: true, results }, { headers: rateLimitHeaders(rl) });
+  // Additive: surface the Python statistical tier's PRELIMINARY analyses (changepoint
+  // + trend) alongside the threshold verdicts. Read-only, owner-scoped, and graceful
+  // — returns [] if the table doesn't exist yet or anything fails, so the threshold
+  // check is never affected. Every row is validated:false / confidence 'low'.
+  let analyses: MetricAnalysis[] = [];
+  try {
+    analyses = await getLatestAnalyses({ userId: ownerId, propertyId });
+  } catch {
+    analyses = [];
+  }
+
+  return NextResponse.json({ success: true, propertyChecked: true, results, analyses }, { headers: rateLimitHeaders(rl) });
 }

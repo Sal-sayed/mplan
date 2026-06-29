@@ -7,8 +7,10 @@
 // /api/metrics/validate returns — no fabricated data.
 
 import { motion } from 'framer-motion';
-import { CheckCircle2, AlertTriangle, AlertCircle, ArrowLeft, History, BarChart3 } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, AlertCircle, ArrowLeft, History, BarChart3, FlaskConical, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import type { MetricHealthEntry, MetricVerdict } from '@/lib/measurement/data-validation';
+import type { MetricAnalysis } from '@/lib/measurement/metric-analysis-store';
+import { toPreliminaryView } from '@/lib/measurement/metric-analysis-format';
 
 interface VerdictStyle {
   text: string;
@@ -40,7 +42,35 @@ function rank(e: MetricHealthEntry): number {
   return 3;
 }
 
-function EntryRow({ entry }: { entry: MetricHealthEntry }) {
+const TREND_ICON = { up: TrendingUp, down: TrendingDown, flat: Minus } as const;
+
+// Preliminary statistical tier — DELIBERATELY subordinate: muted, dashed, and
+// always labelled "preliminary — not yet validated on real data". It sits BELOW
+// the threshold verdict and must never look more authoritative than it.
+function PreliminaryTier({ analysis }: { analysis: MetricAnalysis }) {
+  const view = toPreliminaryView(analysis);
+  const Trend = TREND_ICON[analysis.trend];
+  return (
+    <div className="mt-3 rounded-lg border border-dashed border-ds-line-strong bg-ds-panel/60 p-3">
+      <div className="flex items-center gap-1.5">
+        <FlaskConical size={12} className="text-ds-muted shrink-0" />
+        <span className="text-[10px] uppercase tracking-wide font-semibold text-ds-muted">{view.label}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ds-secondary">
+        <span className="inline-flex items-center gap-1"><Trend size={12} className="text-ds-muted" /> {view.trend}</span>
+        <span>{view.changepoint}</span>
+        <span className="text-ds-muted">{view.weeks}</span>
+      </div>
+      <ul className="mt-2 space-y-0.5">
+        {view.caveats.map((c) => (
+          <li key={c} className="text-[11px] text-ds-muted">· {c}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function EntryRow({ entry, analysis }: { entry: MetricHealthEntry; analysis?: MetricAnalysis }) {
   const v = VERDICT[entry.verdict];
   const Icon = v.Icon;
   return (
@@ -56,6 +86,9 @@ function EntryRow({ entry }: { entry: MetricHealthEntry }) {
             )}
           </div>
           <p className="text-sm text-ds-muted mt-1">{entry.finding?.detail ?? entry.summary}</p>
+          {/* The fast threshold verdict above is the authority; this is an extra,
+              clearly-preliminary lens that only appears when a row exists. */}
+          {analysis ? <PreliminaryTier analysis={analysis} /> : null}
         </div>
       </div>
     </div>
@@ -66,11 +99,19 @@ export default function MetricHealthScreen({
   results,
   propertyChecked,
   onReset,
+  analyses = [],
 }: {
   results: MetricHealthEntry[];
   propertyChecked: boolean;
   onReset?: () => void;
+  // Preliminary statistical-tier rows (additive). The key-event series use
+  // metricName 'eventCount' with dimensionValue = the event name, so we match by
+  // event name. Optional — when absent, nothing extra renders.
+  analyses?: MetricAnalysis[];
 }) {
+  const analysisByEvent = new Map(
+    analyses.filter((a) => a.metricName === 'eventCount').map((a) => [a.dimensionValue, a])
+  );
   const sorted = [...results].sort((a, b) => rank(a) - rank(b));
   const regressions = results.filter((r) => r.verdict === 'regression');
   const inconclusive = results.filter((r) => r.verdict === 'inconclusive');
@@ -144,7 +185,7 @@ export default function MetricHealthScreen({
 
               {/* Action-first: regressions, then inconclusive, then healthy. */}
               <div className="space-y-2.5">
-                {sorted.map((e) => <EntryRow key={e.eventName} entry={e} />)}
+                {sorted.map((e) => <EntryRow key={e.eventName} entry={e} analysis={analysisByEvent.get(e.eventName)} />)}
               </div>
             </>
           )}
