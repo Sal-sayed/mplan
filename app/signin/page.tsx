@@ -24,7 +24,9 @@ export default function SignInPage() {
 
   const signOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
-    setUser(null);
+    // After signing out, land on the marketing home (full navigation so the
+    // cleared session is reflected and nothing app-side keeps stale state).
+    window.location.href = '/home';
   };
 
   return (
