@@ -15,8 +15,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier, rateLimitHeaders } from '@/lib/rate-limit';
 import { validateMeasurementPlan } from '@/lib/measurement/generate-plan';
 import { runLaunchReadinessGate, type ReadinessCheckOptions } from '@/lib/measurement/launch-readiness';
+import { coerceRawHits, observedSignalsFromHits } from '@/lib/measurement/spy-import';
 import { isOperatorRequest, resolveOwnerId } from '@/lib/auth';
-import type { MeasurementPlan } from '@/lib/measurement/types';
+import type { MeasurementPlan, ObservedSignals } from '@/lib/measurement/types';
 
 export const maxDuration = 120; // live capture launches a headless browser
 
@@ -97,6 +98,22 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Tracking Spy import: when a real captured session is pasted in (RawHit[] from
+  // the extension), use it as the observed signals — NO headless browser. We trigger
+  // the gate's capture+reconcile path with the plan's own URL and inject a capture
+  // function that returns the signals built from the hits. The plan is then validated
+  // against what ACTUALLY fired, and events that fired but aren't planned surface as
+  // "fired but not in the plan" (candidates to add).
+  let captureFromHits: ((url: string) => Promise<ObservedSignals>) | undefined;
+  if (Array.isArray(body.capturedHits) && body.capturedHits.length > 0) {
+    const hits = coerceRawHits(body.capturedHits);
+    if (hits.length > 0) {
+      deployedSiteUrl = deployedSiteUrl || meta.url; // a URL is needed to enter the reconcile path
+      const captureUrl = String(deployedSiteUrl ?? meta.url ?? '');
+      captureFromHits = async () => observedSignalsFromHits(captureUrl, hits);
+    }
+  }
+
   const connectors = {
     ...(deployedSiteUrl ? { deployedSiteUrl } : {}),
     ...(ga4Connector ? { ga4: ga4Connector } : {}),
@@ -104,6 +121,7 @@ export async function POST(req: NextRequest) {
   };
 
   const opts: ReadinessCheckOptions = { ownerId: await resolveOwnerId(req) }; // Stage 4: this owner's Google token
+  if (captureFromHits) opts.captureObservedSignals = captureFromHits; // use the pasted capture, not Playwright
   if (typeof body.requireApproval === 'boolean') opts.requireApproval = body.requireApproval;
   if (typeof body.strictOnSkipped === 'boolean') opts.strictOnSkipped = body.strictOnSkipped;
 

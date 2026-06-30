@@ -188,6 +188,9 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   // Google connection (GA4/GTM checks) — admin-only, single-operator.
   const [rdGa4, setRdGa4] = useState('');
   const [rdGtm, setRdGtm] = useState('');
+  // Tracking Spy import — a pasted real-session capture (the extension's RawHit[]
+  // export) to validate the plan against what ACTUALLY fired.
+  const [spyJson, setSpyJson] = useState('');
   const [gStatus, setGStatus] = useState<{ configured: boolean; connected: boolean; isAdmin: boolean; scopes?: string[]; expiresAt?: string } | null>(null);
   const [gLoading, setGLoading] = useState(false);
 
@@ -233,7 +236,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   }, []);
 
   // Fetch status when the modal opens (an event handler, not an effect).
-  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setBfStart(''); setBfEnd(''); setRdPhase('form'); fetchGoogleStatus(); };
+  const openReadiness = () => { setRdUrl(''); setRdError(''); setRdBaseline(false); setMhResults([]); setMhChecked(false); setBfStart(''); setBfEnd(''); setSpyJson(''); setRdPhase('form'); fetchGoogleStatus(); };
 
   // Know whether the visitor is signed in, to show Save-to-history (optional sign-in).
   useEffect(() => {
@@ -284,6 +287,13 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       const body: Record<string, unknown> = { plan, ...connectorBody() };
       const u = rdUrl.trim();
       if (u) body.deployedSiteUrl = u;
+      // Tracking Spy capture (optional): validate against the real pasted session.
+      if (spyJson.trim()) {
+        let parsed: unknown;
+        try { parsed = JSON.parse(spyJson); }
+        catch { setRdError('The Tracking Spy capture isn’t valid JSON. Paste the export exactly as Tracking Spy produced it.'); setRdPhase('error'); return; }
+        body.capturedHits = parsed;
+      }
       const res = await fetch('/api/launch-readiness', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
       });
@@ -848,6 +858,27 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
 
                     {/* One-stop: create GTM/GA4/Meta, then open a PR adding GTM to the site. */}
                     <GitHubInject plan={plan} defaultContainerId={rdGtm} />
+                  </div>
+
+                  {/* Tracking Spy import — validate the plan against a REAL captured
+                      session (the extension's export), instead of/alongside the
+                      headless check. Surfaces what actually fired + events not in plan. */}
+                  <div className="rounded-2xl border border-ds-line bg-ds-panel p-5">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-ds-accent-soft text-ds-accent font-semibold">Tracking Spy</span>
+                      <span className="text-sm text-ds-ink font-medium">Validate with a captured session</span>
+                      <span className="ml-auto text-[11px] text-ds-muted">most accurate</span>
+                    </div>
+                    <p className="text-xs text-ds-muted mb-2">
+                      Paste a Tracking Spy export (the captured analytics requests) to check the plan against what <span className="text-ds-secondary">really fired</span> — and surface events that fired but aren&apos;t in the plan yet. No headless browser; uses your real session.
+                    </p>
+                    <textarea
+                      value={spyJson}
+                      onChange={(e) => setSpyJson(e.target.value)}
+                      placeholder={'[ { "vendor": "GA4", "url": "https://www.google-analytics.com/g/collect?...&en=purchase" }, ... ]'}
+                      className="w-full h-28 bg-ds-card border border-ds-line rounded-lg px-3 py-2 text-xs text-ds-ink font-mono placeholder:text-ds-muted focus:outline-none focus:border-ds-accent resize-y"
+                    />
+                    <p className="text-[10px] text-ds-muted mt-1">Then click <span className="text-ds-secondary font-medium">Run check</span>. Tip: leave the URL blank above to validate purely from the capture.</p>
                   </div>
                 </div>
               </div>
