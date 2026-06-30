@@ -63,8 +63,12 @@ export default function Home() {
   // Returning signed-in user with a saved plan → offer a one-click "updated plan"
   // using the saved site URL + their Google email (no need to re-enter either).
   const [returning, setReturning] = useState<{ siteUrl: string; email: string } | null>(null);
-  // Their latest saved plan, auto-opened so a signed-in returner lands straight
-  // INSIDE their plan (skipping the new/existing chooser). Back clears it → chooser.
+  // Their latest saved plan, prefetched so "Open recent plan" opens the dashboard
+  // INSTANTLY. We do NOT auto-open — the signed-in chooser keeps both choices:
+  // generate from a URL, OR open the recent plan's dashboard.
+  const [recentPlan, setRecentPlan] = useState<any>(null);
+  // The plan currently shown as a dashboard (set when "Open recent plan" is clicked).
+  // Back clears it → chooser.
   const [openedPlan, setOpenedPlan] = useState<any>(null);
   const stream = useStreamingClaude();
 
@@ -101,14 +105,15 @@ export default function Home() {
         const latest = Array.isArray(plans) && plans.length ? plans[0] : null;
         if (cancelled || !latest?.site_url) return;
         setReturning({ siteUrl: latest.site_url, email: accountEmail });
-        // Auto-open their latest plan so they land directly inside it (no chooser).
+        // Prefetch (don't open) the latest plan so the "Open recent plan" link is
+        // instant. The chooser still shows — opening is the user's choice.
         try {
           const pr = await fetch(`/api/plans?id=${encodeURIComponent(latest.id)}`);
           if (pr.ok) {
             const { plan } = await pr.json();
-            if (!cancelled && plan) setOpenedPlan(plan);
+            if (!cancelled && plan) setRecentPlan(plan);
           }
-        } catch { /* couldn't load it → the chooser (with the updated-plan card) shows */ }
+        } catch { /* no prefetch → the "Open recent plan" link just won't show */ }
       } catch { /* not signed in / no plans → normal form */ }
     })();
     return () => { cancelled = true; };
@@ -362,7 +367,8 @@ export default function Home() {
 
       <AnimatePresence mode="wait">
         {stage === 'idle' && openedPlan && (
-          // Signed-in returner: straight into their latest plan. Back → chooser.
+          // The recent plan's dashboard — shown only after the user clicks "Open
+          // recent plan". Back → chooser.
           <motion.div key="opened" className="absolute inset-0"
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
             <ResultsScreen
@@ -382,7 +388,13 @@ export default function Home() {
               onSubmitExisting={handleSubmitExisting}
               returning={
                 returning
-                  ? { siteUrl: returning.siteUrl, email: returning.email, onGenerateUpdated: () => handleGenerateUpdated(returning.siteUrl, returning.email) }
+                  ? {
+                      siteUrl: returning.siteUrl,
+                      email: returning.email,
+                      onGenerateUpdated: () => handleGenerateUpdated(returning.siteUrl, returning.email),
+                      // Only offer the dashboard link once the plan is prefetched.
+                      onOpenRecent: recentPlan ? () => setOpenedPlan(recentPlan) : undefined,
+                    }
                   : undefined
               }
             />
