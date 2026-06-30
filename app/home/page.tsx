@@ -42,12 +42,11 @@ const CTA_SECONDARY =
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Wordmark() {
-  // Brand logo (transparent SVG → blends with the dark app background). To use your
-  // exact artwork instead, drop a transparent PNG at public/logo.png and point the
-  // src below at "/logo.png".
+  // Brand logo — the real artwork with its white background removed (transparent
+  // PNG), so it sits cleanly on the dark app background.
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo.svg" alt="Sirah" className="h-8 w-auto select-none" />
+    <img src="/logo.png" alt="Sirah" className="h-9 w-auto select-none" />
   );
 }
 
