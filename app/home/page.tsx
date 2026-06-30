@@ -42,16 +42,12 @@ const CTA_SECONDARY =
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Wordmark() {
+  // Brand logo (transparent SVG → blends with the dark app background). To use your
+  // exact artwork instead, drop a transparent PNG at public/logo.png and point the
+  // src below at "/logo.png".
   return (
-    <span className="inline-flex items-center gap-2">
-      <span
-        aria-hidden
-        className="flex h-7 w-7 items-center justify-center rounded-lg bg-ds-accent text-sm font-medium text-ds-accent-ink"
-      >
-        m
-      </span>
-      <span className="text-[15px] font-medium tracking-tight text-ds-ink">mplan</span>
-    </span>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src="/logo.svg" alt="Sirah" className="h-8 w-auto select-none" />
   );
 }
 

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 130 100" fill="none" role="img" aria-label="Sirah">
+  <defs>
+    <linearGradient id="sirahLogo" x1="14" y1="90" x2="116" y2="16" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7C3AED"/>
+      <stop offset="0.5" stop-color="#6366F1"/>
+      <stop offset="1" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+  <g stroke="url(#sirahLogo)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M100 30 H48 C24 30 24 56 48 56 H90 C114 56 114 82 90 82 H44"/>
+    <path d="M92 16 L114 30 L92 44"/>
+  </g>
+</svg>
