@@ -62,12 +62,16 @@ export async function GET(req: NextRequest) {
     if (!record || record.user_id !== user.user_id) {
       return NextResponse.json({ success: false, error: 'Not found.' }, { status: 404 });
     }
-    return NextResponse.json({ success: true, plan: record.plan });
+    return NextResponse.json({ success: true, plan: record.plan }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   const plans = await listPlansByUser(user.user_id);
-  return NextResponse.json({
-    success: true,
-    plans: plans.map((p) => ({ id: p.id, site_url: p.site_url, business_model: p.business_model, created_at: p.created_at })),
-  });
+  // Per-user data — never cache (HTTP caches key on URL, not the session cookie).
+  return NextResponse.json(
+    {
+      success: true,
+      plans: plans.map((p) => ({ id: p.id, site_url: p.site_url, business_model: p.business_model, created_at: p.created_at })),
+    },
+    { headers: { 'Cache-Control': 'no-store' } }
+  );
 }

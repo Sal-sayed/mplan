@@ -96,10 +96,10 @@ export default function Home() {
     let cancelled = false;
     (async () => {
       try {
-        const me = await fetch('/api/auth/me').then((r) => r.json()).catch(() => null);
+        const me = await fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
         const accountEmail: string | undefined = me?.user?.email;
         if (!accountEmail) return;
-        const res = await fetch('/api/plans');
+        const res = await fetch('/api/plans', { cache: 'no-store' });
         if (!res.ok) return;
         const { plans } = await res.json();
         const latest = Array.isArray(plans) && plans.length ? plans[0] : null;
@@ -108,7 +108,7 @@ export default function Home() {
         // Prefetch (don't open) the latest plan so the "Open recent plan" link is
         // instant. The chooser still shows — opening is the user's choice.
         try {
-          const pr = await fetch(`/api/plans?id=${encodeURIComponent(latest.id)}`);
+          const pr = await fetch(`/api/plans?id=${encodeURIComponent(latest.id)}`, { cache: 'no-store' });
           if (pr.ok) {
             const { plan } = await pr.json();
             if (!cancelled && plan) setRecentPlan(plan);
