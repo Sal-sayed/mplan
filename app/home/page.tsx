@@ -46,7 +46,7 @@ function Wordmark() {
   // PNG), so it sits cleanly on the dark app background.
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src="/logo.png" alt="Sirah" className="h-9 w-auto select-none" />
+    <img src="/logo.png?v=2" alt="Sirah" className="h-9 w-auto select-none" />
   );
 }
 
