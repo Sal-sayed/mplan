@@ -7,6 +7,11 @@ import { Globe, Mail, Sparkles, FileSearch, ArrowRight, ArrowLeft, Upload, X, Fi
 interface Props {
   onSubmitNew: (data: { url: string; email: string }) => void;
   onSubmitExisting: (data: { url: string; email: string; planFile: File | null }) => void;
+  // Optional: the signed-in account (any signed-in user). Shows "Signed in as …"
+  // with a Switch-account control, so it's always clear which account is active
+  // and switching is one click — the app session is separate from the browser's
+  // Google login.
+  account?: { email: string; onSwitchAccount: () => void };
   // Optional: a signed-in returning user with a saved plan. When present, the
   // chooser adds a "Welcome back" card with two choices — open the recent plan's
   // dashboard, or generate an updated plan (saved site + account email, no
@@ -22,7 +27,7 @@ function hostOf(u: string): string {
   try { return new URL(u.startsWith('http') ? u : `https://${u}`).hostname; } catch { return u; }
 }
 
-export default function HeroScreen({ onSubmitNew, onSubmitExisting, returning }: Props) {
+export default function HeroScreen({ onSubmitNew, onSubmitExisting, account, returning }: Props) {
   const [view, setView] = useState<View>('choose');
   const [url, setUrl] = useState('');
   const [email, setEmail] = useState('');
@@ -66,6 +71,18 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting, returning }:
     return (
       <div className="h-full w-full flex flex-col items-center justify-center p-6 overflow-hidden relative bg-ds-page">
 
+        {/* Active account + switch — always visible when signed in, so it's clear
+            which account the app is using and switching is one click. */}
+        {account && (
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 text-xs">
+            <span className="hidden sm:inline text-ds-muted">Signed in as <span className="font-medium text-ds-secondary">{account.email}</span></span>
+            <button onClick={account.onSwitchAccount}
+              className="rounded-lg border border-ds-line-strong bg-ds-card px-2.5 py-1.5 font-medium text-ds-ink transition hover:bg-ds-panel">
+              Switch account
+            </button>
+          </div>
+        )}
+
         <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, type: 'spring', stiffness: 80, damping: 15 }}
           className="text-center mb-5 relative z-10">
           <span className="inline-flex items-center gap-1.5 rounded-full bg-ds-accent-soft px-3 py-1 text-xs font-medium text-ds-accent mb-5">
@@ -92,6 +109,11 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting, returning }:
               <p className="text-sm font-semibold text-ds-ink">Welcome back</p>
               <p className="mt-0.5 text-xs text-ds-secondary">
                 You already have a plan for <span className="font-medium text-ds-ink break-all">{hostOf(returning.siteUrl)}</span>. Open it to view &amp; set up, or generate an updated one — emailed to <span className="font-medium text-ds-ink break-all">{returning.email}</span>. No need to re-enter anything.
+                {account && (
+                  <> Not <span className="font-medium text-ds-ink break-all">{returning.email}</span>?{' '}
+                    <button onClick={account.onSwitchAccount} className="font-medium text-ds-accent underline underline-offset-2 hover:text-ds-accent-hover">Switch account</button>.
+                  </>
+                )}
               </p>
               <div className="mt-4 flex flex-wrap gap-2.5">
                 {returning.onOpenRecent && (

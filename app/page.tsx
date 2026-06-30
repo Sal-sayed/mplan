@@ -60,6 +60,9 @@ export default function Home() {
   const [error, setError] = useState('');
   // Stashed context for the low-confidence confirmation step (409 flow).
   const [confirmCtx, setConfirmCtx] = useState<{ genBody: any; downstream: any; classification: any } | null>(null);
+  // The signed-in account email (from the session) — shown on the entry so the
+  // user can SEE which account is active and switch it. Independent of `returning`.
+  const [account, setAccount] = useState<string | null>(null);
   // Returning signed-in user with a saved plan → offer a one-click "updated plan"
   // using the saved site URL + their Google email (no need to re-enter either).
   const [returning, setReturning] = useState<{ siteUrl: string; email: string } | null>(null);
@@ -89,6 +92,15 @@ export default function Home() {
     await runPipeline(siteUrl, accountEmail, null, 'new');
   };
 
+  // Switch account: clear THIS app's session, then re-authenticate with Google's
+  // account picker. The app session is separate from the browser's Google login —
+  // switching Google in the browser does NOT change it — so this is the only way to
+  // change which account the app is signed in as.
+  const handleSwitchAccount = async () => {
+    try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* proceed regardless */ }
+    window.location.href = '/api/auth/google/start';
+  };
+
   // On load, if the visitor is signed in AND has a saved plan, surface the
   // one-click "updated plan" shortcut (most recent saved site). Silent on any
   // failure / not-signed-in / no plans — the normal form just shows.
@@ -98,7 +110,8 @@ export default function Home() {
       try {
         const me = await fetch('/api/auth/me', { cache: 'no-store' }).then((r) => r.json()).catch(() => null);
         const accountEmail: string | undefined = me?.user?.email;
-        if (!accountEmail) return;
+        if (!accountEmail) { if (!cancelled) setAccount(null); return; }
+        if (!cancelled) setAccount(accountEmail); // show the active account + a switch control
         const res = await fetch('/api/plans', { cache: 'no-store' });
         if (!res.ok) return;
         const { plans } = await res.json();
@@ -386,6 +399,7 @@ export default function Home() {
             <HeroScreen
               onSubmitNew={handleSubmitNew}
               onSubmitExisting={handleSubmitExisting}
+              account={account ? { email: account, onSwitchAccount: handleSwitchAccount } : undefined}
               returning={
                 returning
                   ? {
