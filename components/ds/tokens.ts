@@ -41,12 +41,13 @@ export function stepLabel(current: Stage): string {
 
 // ── variant → class maps (token-driven) ──
 
-export type BadgeVariant = 'success' | 'warning' | 'neutral';
+export type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral';
 
 const BADGE_BASE = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset';
 const BADGE_VARIANT: Record<BadgeVariant, string> = {
   success: 'bg-ds-success-soft text-ds-success ring-ds-success/20',
   warning: 'bg-ds-warning-soft text-ds-warning ring-ds-warning/25',
+  danger: 'bg-ds-danger-soft text-ds-danger ring-ds-danger/20',
   neutral: 'bg-ds-panel text-ds-secondary ring-ds-line-strong',
 };
 export function badgeClasses(variant: BadgeVariant): string {
