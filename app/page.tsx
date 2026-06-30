@@ -92,13 +92,12 @@ export default function Home() {
     await runPipeline(siteUrl, accountEmail, null, 'new');
   };
 
-  // Switch account: clear THIS app's session, then re-authenticate with Google's
-  // account picker. The app session is separate from the browser's Google login —
-  // switching Google in the browser does NOT change it — so this is the only way to
-  // change which account the app is signed in as.
-  const handleSwitchAccount = async () => {
+  // Sign out: clear THIS app's session, then land on the marketing home. The app
+  // session is separate from the browser's Google login, so this is the only way to
+  // sign the app out of the current account.
+  const handleSignOut = async () => {
     try { await fetch('/api/auth/logout', { method: 'POST' }); } catch { /* proceed regardless */ }
-    window.location.href = '/api/auth/google/start';
+    window.location.href = '/home';
   };
 
   // On load, if the visitor is signed in AND has a saved plan, surface the
@@ -399,7 +398,7 @@ export default function Home() {
             <HeroScreen
               onSubmitNew={handleSubmitNew}
               onSubmitExisting={handleSubmitExisting}
-              account={account ? { email: account, onSwitchAccount: handleSwitchAccount } : undefined}
+              account={account ? { email: account, onSignOut: handleSignOut } : undefined}
               returning={
                 returning
                   ? {

@@ -8,10 +8,10 @@ interface Props {
   onSubmitNew: (data: { url: string; email: string }) => void;
   onSubmitExisting: (data: { url: string; email: string; planFile: File | null }) => void;
   // Optional: the signed-in account (any signed-in user). Shows "Signed in as …"
-  // with a Switch-account control, so it's always clear which account is active
-  // and switching is one click — the app session is separate from the browser's
+  // with a Sign-out control, so it's always clear which account is active and
+  // signing out is one click — the app session is separate from the browser's
   // Google login.
-  account?: { email: string; onSwitchAccount: () => void };
+  account?: { email: string; onSignOut: () => void };
   // Optional: a signed-in returning user with a saved plan. When present, the
   // chooser adds a "Welcome back" card with two choices — open the recent plan's
   // dashboard, or generate an updated plan (saved site + account email, no
@@ -76,9 +76,9 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting, account, ret
         {account && (
           <div className="absolute top-4 right-4 z-20 flex items-center gap-2 text-xs">
             <span className="hidden sm:inline text-ds-muted">Signed in as <span className="font-medium text-ds-secondary">{account.email}</span></span>
-            <button onClick={account.onSwitchAccount}
+            <button onClick={account.onSignOut}
               className="rounded-lg border border-ds-line-strong bg-ds-card px-2.5 py-1.5 font-medium text-ds-ink transition hover:bg-ds-panel">
-              Switch account
+              Sign out
             </button>
           </div>
         )}
@@ -111,7 +111,7 @@ export default function HeroScreen({ onSubmitNew, onSubmitExisting, account, ret
                 You already have a plan for <span className="font-medium text-ds-ink break-all">{hostOf(returning.siteUrl)}</span>. Open it to view &amp; set up, or generate an updated one — emailed to <span className="font-medium text-ds-ink break-all">{returning.email}</span>. No need to re-enter anything.
                 {account && (
                   <> Not <span className="font-medium text-ds-ink break-all">{returning.email}</span>?{' '}
-                    <button onClick={account.onSwitchAccount} className="font-medium text-ds-accent underline underline-offset-2 hover:text-ds-accent-hover">Switch account</button>.
+                    <button onClick={account.onSignOut} className="font-medium text-ds-accent underline underline-offset-2 hover:text-ds-accent-hover">Sign out</button>.
                   </>
                 )}
               </p>
