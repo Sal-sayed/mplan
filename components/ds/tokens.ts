@@ -44,11 +44,12 @@ export function stepLabel(current: Stage): string {
 export type BadgeVariant = 'success' | 'warning' | 'danger' | 'neutral';
 
 const BADGE_BASE = 'inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ring-1 ring-inset';
+// Verdict pills on LIGHT cards: soft tinted bg + the readable -text shade.
 const BADGE_VARIANT: Record<BadgeVariant, string> = {
-  success: 'bg-ds-success-soft text-ds-success ring-ds-success/20',
-  warning: 'bg-ds-warning-soft text-ds-warning ring-ds-warning/25',
-  danger: 'bg-ds-danger-soft text-ds-danger ring-ds-danger/20',
-  neutral: 'bg-ds-panel text-ds-secondary ring-ds-line-strong',
+  success: 'bg-ds-success-soft text-ds-success-text ring-ds-success/15',
+  warning: 'bg-ds-warning-soft text-ds-warning-text ring-ds-warning/20',
+  danger: 'bg-ds-danger-soft text-ds-danger-text ring-ds-danger/15',
+  neutral: 'bg-ds-neutral-soft text-ds-secondary ring-ds-line-strong',
 };
 export function badgeClasses(variant: BadgeVariant): string {
   return `${BADGE_BASE} ${BADGE_VARIANT[variant]}`;
@@ -57,9 +58,9 @@ export function badgeClasses(variant: BadgeVariant): string {
 export type Verdict = 'success' | 'warning' | 'danger';
 
 const VERDICT_VARIANT: Record<Verdict, { container: string; accent: string }> = {
-  success: { container: 'bg-ds-success-soft border-ds-success/30', accent: 'text-ds-success' },
-  warning: { container: 'bg-ds-warning-soft border-ds-warning/30', accent: 'text-ds-warning' },
-  danger: { container: 'bg-ds-danger-soft border-ds-danger/30', accent: 'text-ds-danger' },
+  success: { container: 'bg-ds-success-soft border-ds-success/25', accent: 'text-ds-success-text' },
+  warning: { container: 'bg-ds-warning-soft border-ds-warning/25', accent: 'text-ds-warning-text' },
+  danger: { container: 'bg-ds-danger-soft border-ds-danger/30', accent: 'text-ds-danger-text' },
 };
 export function verdictClasses(variant: Verdict): { container: string; accent: string } {
   return VERDICT_VARIANT[variant];

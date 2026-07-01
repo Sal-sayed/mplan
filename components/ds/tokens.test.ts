@@ -37,18 +37,19 @@ test('progressPercent + stepLabel', () => {
   assert.equal(stepLabel(3), 'Step 3 of 4');
 });
 
-test('badgeClasses: each variant is distinct and token-driven, sharing the pill base', () => {
-  assert.match(badgeClasses('success'), /bg-ds-success-soft.*text-ds-success/);
-  assert.match(badgeClasses('warning'), /bg-ds-warning-soft.*text-ds-warning/);
-  assert.match(badgeClasses('neutral'), /bg-ds-panel.*text-ds-secondary/);
-  for (const v of ['success', 'warning', 'neutral'] as const) assert.match(badgeClasses(v), /rounded-full/);
+test('badgeClasses: light-card verdict pills — soft bg + readable -text, sharing the pill base', () => {
+  assert.match(badgeClasses('success'), /bg-ds-success-soft.*text-ds-success-text/);
+  assert.match(badgeClasses('warning'), /bg-ds-warning-soft.*text-ds-warning-text/);
+  assert.match(badgeClasses('danger'), /bg-ds-danger-soft.*text-ds-danger-text/);
+  assert.match(badgeClasses('neutral'), /bg-ds-neutral-soft.*text-ds-secondary/);
+  for (const v of ['success', 'warning', 'danger', 'neutral'] as const) assert.match(badgeClasses(v), /rounded-full/);
 });
 
-test('verdictClasses: container + accent per variant', () => {
+test('verdictClasses: container + readable accent per variant', () => {
   assert.match(verdictClasses('success').container, /bg-ds-success-soft/);
-  assert.match(verdictClasses('success').accent, /text-ds-success/);
-  assert.match(verdictClasses('warning').accent, /text-ds-warning/);
-  assert.match(verdictClasses('danger').accent, /text-ds-danger/);
+  assert.match(verdictClasses('success').accent, /text-ds-success-text/);
+  assert.match(verdictClasses('warning').accent, /text-ds-warning-text/);
+  assert.match(verdictClasses('danger').accent, /text-ds-danger-text/);
 });
 
 test('buttonClasses: primary is solid accent, secondary is quiet/bordered; both share the base', () => {
