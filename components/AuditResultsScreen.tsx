@@ -113,7 +113,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                 href={href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-base text-ds-ink font-semibold hover:text-cyan-300 transition group"
+                className="inline-flex items-center gap-2 text-base text-ds-ink font-semibold hover:text-ds-accent-text transition group"
                 title={`Open ${href} in a new tab`}
               >
                 <span className="underline-offset-4 group-hover:underline">{display}</span>
@@ -143,7 +143,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
             { label: 'To Add',     value: eventsToAdd.length,    color: 'text-emerald-400', tab: pickTab('add') },
             { label: 'To Fix',     value: eventsToFix.length,    color: 'text-amber-400',  tab: pickTab('fix'),       sectionId: 'section-fix' },
             { label: 'To Remove',  value: eventsToRemove.length, color: 'text-rose-400',     tab: pickTab('fix'),       sectionId: 'section-remove' },
-            { label: 'Quick Wins', value: quickWins.length,      color: 'text-cyan-400',    tab: pickTab('quickwins') },
+            { label: 'Quick Wins', value: quickWins.length,      color: 'text-ds-accent-text',    tab: pickTab('quickwins') },
             { label: 'Dimensions', value: dimensions.length,     color: 'text-indigo-400',  tab: pickTab('add'),       sectionId: 'section-dimensions' },
           ];
           return stats.map(s => {
@@ -231,7 +231,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                 const label = labels[bm.primaryType] || bm.primaryType;
                 return (
                   <div className="bg-ds-card border border-cyan-500/[0.2] rounded-xl p-6">
-                    <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-semibold mb-3">Detected Business Model</h3>
+                    <h3 className="text-xs text-ds-accent-text uppercase tracking-widest font-semibold mb-3">Detected Business Model</h3>
                     <div className="text-sm font-medium text-ds-ink">{label}</div>
                     <p className="text-[13px] text-ds-secondary leading-relaxed mt-2">{bm.reasoning}</p>
 
@@ -258,7 +258,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                       <div className="mt-3 text-xs text-ds-secondary">
                         <span className="text-ds-secondary font-semibold">Retailers detected:</span>{' '}
                         {bm.retailers.map((r: string) => (
-                          <span key={r} className="inline-block bg-cyan-500/10 text-cyan-300 px-2 py-0.5 rounded-md mr-1.5 mt-1 capitalize">{r}</span>
+                          <span key={r} className="inline-block bg-cyan-500/10 text-ds-accent-text px-2 py-0.5 rounded-md mr-1.5 mt-1 capitalize">{r}</span>
                         ))}
                       </div>
                     )}
@@ -274,7 +274,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
 
               {/* Detected Tracking Setup + Consent */}
               <div className="bg-ds-card border border-ds-line rounded-xl p-6">
-                <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-semibold mb-4">Detected Tracking Setup</h3>
+                <h3 className="text-xs text-ds-accent-text uppercase tracking-widest font-semibold mb-4">Detected Tracking Setup</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {ids.ga4?.length > 0 && (
                     <div>
@@ -354,7 +354,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                   <div className="bg-cyan-500/[0.05] border border-cyan-500/[0.15] rounded-xl p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-semibold flex items-center gap-2">
+                        <h3 className="text-xs text-ds-accent-text uppercase tracking-widest font-semibold flex items-center gap-2">
                           <span>{'\u{1F916}'}</span> Automated Interaction Summary
                         </h3>
                         <p className="text-xs text-ds-secondary mt-1">
@@ -366,20 +366,20 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                       <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-cyan-300 tabular-nums">{t.eventMarkersTriggered || 0}</div>
-                        <div className="text-[11px] text-cyan-300/70 mt-1">Event markers triggered</div>
+                        <div className="text-2xl font-bold text-ds-accent-text tabular-nums">{t.eventMarkersTriggered || 0}</div>
+                        <div className="text-[11px] text-ds-accent-text/70 mt-1">Event markers triggered</div>
                       </div>
                       <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-cyan-300 tabular-nums">{t.elementsClicked || 0}</div>
-                        <div className="text-[11px] text-cyan-300/70 mt-1">Buttons clicked</div>
+                        <div className="text-2xl font-bold text-ds-accent-text tabular-nums">{t.elementsClicked || 0}</div>
+                        <div className="text-[11px] text-ds-accent-text/70 mt-1">Buttons clicked</div>
                       </div>
                       <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-cyan-300 tabular-nums">{t.productsClicked || 0}</div>
-                        <div className="text-[11px] text-cyan-300/70 mt-1">Product cards clicked</div>
+                        <div className="text-2xl font-bold text-ds-accent-text tabular-nums">{t.productsClicked || 0}</div>
+                        <div className="text-[11px] text-ds-accent-text/70 mt-1">Product cards clicked</div>
                       </div>
                       <div className="bg-cyan-500/10 border border-cyan-500/20 rounded-lg p-3 text-center">
-                        <div className="text-2xl font-bold text-cyan-300 tabular-nums">{t.ctasClicked || 0}</div>
-                        <div className="text-[11px] text-cyan-300/70 mt-1">CTAs clicked</div>
+                        <div className="text-2xl font-bold text-ds-accent-text tabular-nums">{t.ctasClicked || 0}</div>
+                        <div className="text-[11px] text-ds-accent-text/70 mt-1">CTAs clicked</div>
                       </div>
                     </div>
 
@@ -394,7 +394,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
               {audit.eventAudit?.pagesScanned?.length > 0 && (
                 <div className="bg-ds-card border border-ds-line rounded-xl p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-semibold">{'\u{1F4CD}'} Pages Scanned</h3>
+                    <h3 className="text-xs text-ds-accent-text uppercase tracking-widest font-semibold">{'\u{1F4CD}'} Pages Scanned</h3>
                     <span className="text-xs text-ds-secondary">{audit.eventAudit.pagesScanned.length} pages</span>
                   </div>
                   <div className="space-y-1.5">
@@ -403,7 +403,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                         <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${p.success ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/15 text-cyan-300 rounded uppercase tracking-wider">{p.type}</span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/15 text-ds-accent-text rounded uppercase tracking-wider">{p.type}</span>
                             <code className="text-xs text-ds-secondary font-mono truncate">{p.url}</code>
                           </div>
                           <div className="text-[11px] text-ds-secondary mt-0.5">
@@ -556,7 +556,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
 
               {/* Detected Tracking IDs */}
               <div className="bg-ds-card border border-ds-line rounded-xl p-6">
-                <h3 className="text-xs text-cyan-400 uppercase tracking-widest font-semibold mb-4">Detected Tracking Setup</h3>
+                <h3 className="text-xs text-ds-accent-text uppercase tracking-widest font-semibold mb-4">Detected Tracking Setup</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
                   {trackingIds.ga4?.length > 0 && (
                     <div>
@@ -771,7 +771,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                               <span className="text-[9px] px-1.5 py-0.5 bg-ds-card text-ds-secondary rounded">x{evt.count}</span>
                             )}
                             {Array.isArray(evt.capturedFromPages) && evt.capturedFromPages.map((p: string) => (
-                              <span key={p} className="text-[9px] px-1.5 py-0.5 bg-cyan-500/15 text-cyan-300 rounded capitalize">{p}</span>
+                              <span key={p} className="text-[9px] px-1.5 py-0.5 bg-cyan-500/15 text-ds-accent-text rounded capitalize">{p}</span>
                             ))}
                           </div>
                           <div className="text-[11px] text-ds-secondary mt-0.5">{evt.source}</div>
@@ -1117,7 +1117,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                           <div className="flex items-center gap-2 flex-wrap mb-2">
                             <span className="text-[10px] px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/20 font-semibold uppercase tracking-wider">{e.fixType || 'Fix'}</span>
                             {methodLabel && (
-                              <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/15 text-cyan-300 rounded">{methodLabel}</span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-cyan-500/15 text-ds-accent-text rounded">{methodLabel}</span>
                             )}
                             {e.priority && (
                               <span className={`text-[10px] px-1.5 py-0.5 rounded border uppercase tracking-wider font-semibold ml-auto ${priClass}`}>{e.priority}</span>
@@ -1182,7 +1182,7 @@ export default function AuditResultsScreen({ audit, score, scrapeData, onReset, 
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <Zap size={14} className="text-cyan-400 shrink-0" />
+                          <Zap size={14} className="text-ds-accent-text shrink-0" />
                           <h4 className="text-sm text-ds-ink font-semibold">{w.action}</h4>
                         </div>
                         <p className="text-sm text-ds-secondary leading-relaxed">{w.impact}</p>

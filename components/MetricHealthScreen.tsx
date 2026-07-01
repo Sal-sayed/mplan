@@ -121,20 +121,20 @@ export default function MetricHealthScreen({
   const tone = overallTone({ regressions: regressions.length, healthy: healthy.length, total: results.length });
 
   return (
-    <div className="flex h-full w-full flex-col overflow-hidden bg-ds-page text-ds-shell-ink">
-      {/* Header — on the dark shell (title in light-shell ink, no white bar). */}
-      <header className="z-10 flex shrink-0 items-center gap-3 border-b border-ds-shell-line px-6 py-5 lg:px-8">
+    <div className="flex h-full w-full flex-col overflow-hidden bg-ds-page text-ds-ink">
+      {/* Header — on the light content area (dark title, green icon chip). */}
+      <header className="z-10 flex shrink-0 items-center gap-3 border-b border-ds-line px-6 py-5 lg:px-8">
         {onReset && (
-          <button onClick={onReset} aria-label="Back" className="shrink-0 rounded-lg p-2 text-ds-shell-muted transition hover:bg-white/[0.05] hover:text-ds-shell-ink">
+          <button onClick={onReset} aria-label="Back" className="shrink-0 rounded-lg p-2 text-ds-muted transition hover:bg-ds-subtle hover:text-ds-secondary">
             <ArrowLeft size={18} />
           </button>
         )}
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ds-shell-raised text-ds-accent-bright ring-1 ring-inset ring-ds-accent/25">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ds-accent-soft text-ds-accent">
           <Activity size={17} />
         </span>
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-extrabold tracking-tight text-ds-shell-ink">Metric health</h1>
-          <p className="truncate text-sm text-ds-shell-secondary">Daily checks on whether your key events are still firing.</p>
+          <h1 className="truncate text-lg font-extrabold tracking-tight text-ds-ink">Metric health</h1>
+          <p className="truncate text-sm text-ds-secondary">Daily checks on whether your key events are still firing.</p>
         </div>
       </header>
 

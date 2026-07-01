@@ -166,7 +166,7 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
   return (
     <div>
       <div className="flex items-center gap-2 mb-3">
-        <Radio className="w-4 h-4 text-cyan-400" />
+        <Radio className="w-4 h-4 text-ds-accent-text" />
         <h3 className="text-sm font-semibold text-ds-ink">What actually fired</h3>
         <span className="text-xs text-ds-secondary">captured from the deployed site</span>
       </div>
@@ -204,7 +204,7 @@ function ObservedEvidence({ observed }: { observed: LaunchObservedEvidence }) {
               <tbody>
                 {sorted.map((e, i) => (
                   <tr key={`${e.name}-${e.vendor ?? ''}-${i}`} className="border-t border-ds-line">
-                    <td className="px-3 py-1.5 text-cyan-300 font-mono break-all">{e.name}</td>
+                    <td className="px-3 py-1.5 text-ds-accent-text font-mono break-all">{e.name}</td>
                     <td className="px-3 py-1.5 text-ds-secondary">{e.vendor ?? '—'}</td>
                     <td className="px-3 py-1.5 text-ds-secondary font-mono hidden sm:table-cell break-all">{e.destinationId ?? '—'}</td>
                     <td className="px-3 py-1.5 text-ds-secondary text-right">{e.count ?? 0}</td>

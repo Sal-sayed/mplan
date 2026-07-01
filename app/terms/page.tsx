@@ -21,7 +21,7 @@ export default function TermsPage() {
         <h1 className="mt-6 text-3xl font-normal tracking-tight text-white">Terms of service</h1>
         <p className="mt-2 text-sm font-normal text-slate-500">Placeholder — replace with your real terms before launch.</p>
 
-        <div className="mt-8 space-y-5 text-sm font-normal leading-relaxed text-slate-300">
+        <div className="mt-8 space-y-5 text-sm font-normal leading-relaxed text-ds-secondary">
           <p>
             These are placeholder terms of service for mplan. They exist so the page is available for
             review and verification. Final, legally-reviewed terms will replace this text.

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-2xl border border-ds-line bg-ds-card p-5 shadow-[0_8px_26px_rgba(0,0,0,0.22)] ${className}`}>
+    <div className={`rounded-2xl border border-ds-line bg-ds-card p-5 text-ds-ink shadow-[0_8px_26px_rgba(0,0,0,0.22)] ${className}`}>
       {children}
     </div>
   );

@@ -81,9 +81,9 @@ export function AppShell({ currentStage, statuses, siteName, onSelectStage, user
   const userRole = user?.role ?? 'Signed in';
 
   return (
-    <div className="flex h-screen w-full bg-ds-shell text-ds-shell-ink">
-      {/* ── Left rail (desktop) ── */}
-      <aside className="hidden w-[252px] shrink-0 flex-col border-r border-ds-shell-line bg-ds-shell-panel p-4 lg:flex">
+    <div className="flex h-screen w-full bg-ds-page text-ds-ink">
+      {/* ── Left rail (desktop) — the one dark surface ── */}
+      <aside className="hidden w-[252px] shrink-0 flex-col border-r border-ds-shell-line bg-ds-shell-panel p-4 text-ds-shell-ink lg:flex">
         <LogoMark />
 
         {/* workspace switcher */}

@@ -108,14 +108,14 @@ html.light {
 }
 
 :root {
-  /* Light CARD surfaces (white cards float on the dark shell) + dark card text. */
-  --ds-page: #0a1210;        /* main content bg = the dark shell */
+  /* Light content area (a dark rail; white cards float on a LIGHT canvas) + dark text. */
+  --ds-page: #eef3f0;        /* main content bg — LIGHT (rail is --ds-shell, separate) */
   --ds-card: #ffffff;        /* card surface — LIGHT */
-  --ds-panel: #fafbfa;       /* light inset (table header, subtle rows) */
-  --ds-subtle: #f5f7f6;      /* subtler light inset (preliminary tier) */
-  --ds-ink: #101815;         /* primary text ON CARDS (dark) */
-  --ds-secondary: #64726c;   /* secondary card text */
-  --ds-muted: #93a099;       /* muted card labels */
+  --ds-panel: #f6f9f7;       /* light inset (table header, subtle rows) */
+  --ds-subtle: #eef2f0;      /* subtler light inset (preliminary tier) */
+  --ds-ink: #101815;         /* primary text (dark) */
+  --ds-secondary: #566159;   /* secondary text */
+  --ds-muted: #78867e;       /* muted labels (darkened for legibility on light) */
   --ds-line: #eef2ef;        /* card hairline */
   --ds-line-strong: #e4e9e6; /* stronger card hairline */
 
@@ -155,38 +155,37 @@ html, body {
   padding: 0;
   position: fixed;
   inset: 0;
-  /* The app shell is dark; paint the body backdrop with the shell color so
-     overscroll never reveals a flash. Default text is the light SHELL ink (the
-     dark card text lives inside cards). */
-  background: var(--ds-shell);
-  color: var(--ds-shell-ink);
+  /* The content area is a LIGHT canvas (the dark rail paints its own bg); paint the
+     body backdrop with the light page color and default text to the dark ink. Dark
+     surfaces (rail, dark stat cards) set their own light text explicitly. */
+  background: var(--ds-page);
+  color: var(--ds-ink);
   overscroll-behavior: none;
-  /* Render native scrollbars (and form controls) in dark — kills the white
-     Windows/Chrome scrollbar that clashed with the dark UI while scrolling. */
-  color-scheme: dark;
+  /* Native scrollbars/form controls follow the light content area. */
+  color-scheme: light;
   font-family: var(--font-sans, system-ui, sans-serif);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Default thin scrollbar on the dark shell — subtle light thumb (matches the
-   design target's shell scrollbar). Light areas can opt into .lightscroll. */
-*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll) {
+/* Default thin scrollbar on the LIGHT content area — subtle dark thumb. Dark
+   surfaces (the rail) can opt into .darkscroll for a light thumb. */
+*:not(.scroll-area):not(.no-scrollbar):not(.darkscroll) {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
 }
-*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar { width: 10px; height: 10px; }
-*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-track { background: transparent; }
-*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+*:not(.scroll-area):not(.no-scrollbar):not(.darkscroll)::-webkit-scrollbar { width: 10px; height: 10px; }
+*:not(.scroll-area):not(.no-scrollbar):not(.darkscroll)::-webkit-scrollbar-track { background: transparent; }
+*:not(.scroll-area):not(.no-scrollbar):not(.darkscroll)::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
   border-radius: 9999px;
 }
-*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+*:not(.scroll-area):not(.no-scrollbar):not(.darkscroll)::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.30);
 }
 
-/* Scrollbar for LIGHT card areas — subtle dark thumb. */
-.lightscroll::-webkit-scrollbar { width: 10px; height: 10px; }
-.lightscroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.14); border-radius: 9999px; }
+/* Scrollbar for DARK surfaces (the rail) — subtle light thumb. */
+.darkscroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.darkscroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.16); border-radius: 9999px; }
 
 /* Page backdrop (AnimatedBackground). Dark = the canvas cityscape + dark
    gradient. Light = a clean light gradient with the dark canvas FX hidden. */

@@ -16,7 +16,7 @@ const DOWN = [14, 12, 13, 10, 11, 8, 9, 6, 7, 5];
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-bold uppercase tracking-[0.09em] text-ds-shell-faint">{title}</h2>
+      <h2 className="text-[11px] font-bold uppercase tracking-[0.09em] text-ds-muted">{title}</h2>
       {children}
     </section>
   );
@@ -32,8 +32,8 @@ export default function DesignPreviewPage() {
     >
       <div className="mx-auto max-w-5xl space-y-10 pb-16">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-ds-shell-ink">Design system</h1>
-          <p className="mt-1 text-sm text-ds-shell-secondary">
+          <h1 className="text-2xl font-extrabold tracking-tight text-ds-ink">Design system</h1>
+          <p className="mt-1 text-sm text-ds-secondary">
             The rethemed kit — dark shell, light cards, green accent. Sample data only.
           </p>
         </div>

@@ -329,7 +329,7 @@ export default function ImplementationGuideScreen({
           </button>
         )}
         <div className="min-w-0">
-          <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2"><Wrench size={15} className="text-cyan-400" /> Implementation guide</div>
+          <div className="text-sm font-semibold text-ds-ink truncate flex items-center gap-2"><Wrench size={15} className="text-ds-accent-text" /> Implementation guide</div>
           {url && <div className="text-xs text-ds-secondary truncate">{url}</div>}
         </div>
       </header>
@@ -420,7 +420,7 @@ export default function ImplementationGuideScreen({
           {approved && (
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.05] p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <Wrench size={15} className="text-cyan-400" />
+                <Wrench size={15} className="text-ds-accent-text" />
                 <p className="text-sm font-semibold text-ds-ink">Apply to GTM — creates an unpublished workspace</p>
               </div>
               <p className="text-xs text-ds-secondary">

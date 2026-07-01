@@ -21,7 +21,7 @@ export default function PrivacyPage() {
         <h1 className="mt-6 text-3xl font-normal tracking-tight text-white">Privacy policy</h1>
         <p className="mt-2 text-sm font-normal text-slate-500">Placeholder — replace with your real policy before launch.</p>
 
-        <div className="mt-8 space-y-5 text-sm font-normal leading-relaxed text-slate-300">
+        <div className="mt-8 space-y-5 text-sm font-normal leading-relaxed text-ds-secondary">
           <p>
             This is a placeholder privacy policy for mplan. It describes, at a high level, how the
             product handles your information so the page exists for review and verification. Final,

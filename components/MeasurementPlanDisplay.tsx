@@ -261,7 +261,7 @@ export default function MeasurementPlanDisplay({ plan, score, scrapeData }: Meas
                   className="bg-overlay backdrop-blur-xl rounded-xl border border-line overflow-hidden hover:border-purple-500/20 transition-all">
                   <button onClick={() => toggleEvent(i)} className="w-full flex items-center justify-between p-4 text-left">
                     <div className="flex items-center gap-3 flex-wrap">
-                      <code className="text-sm text-cyan-400 font-mono bg-cyan-500/10 px-2 py-1 rounded-md">{event.eventName}</code>
+                      <code className="text-sm text-ds-accent-text font-mono bg-cyan-500/10 px-2 py-1 rounded-md">{event.eventName}</code>
                       <span className="text-xs text-faint">{event.category}</span>
                       {event.linkedFeature && <span className="text-xs bg-purple-500/10 text-purple-300 px-2 py-0.5 rounded-full">{event.linkedFeature}</span>}
                     </div>
@@ -281,7 +281,7 @@ export default function MeasurementPlanDisplay({ plan, score, scrapeData }: Meas
                           {event.elementSelector && (
                             <div>
                               <p className="text-xs text-faint uppercase tracking-wider">Selector</p>
-                              <code className="text-xs text-cyan-300 bg-black/20 px-2 py-1 rounded-md mt-1 inline-block">{event.elementSelector}</code>
+                              <code className="text-xs text-ds-accent-text bg-black/20 px-2 py-1 rounded-md mt-1 inline-block">{event.elementSelector}</code>
                             </div>
                           )}
                           {event.parameters?.length > 0 && (
@@ -297,7 +297,7 @@ export default function MeasurementPlanDisplay({ plan, score, scrapeData }: Meas
                                   <tbody>
                                     {event.parameters.map((param: any, j: number) => (
                                       <tr key={j} className="border-b border-line">
-                                        <td className="p-2 text-cyan-300 font-mono">{param.name}</td>
+                                        <td className="p-2 text-ds-accent-text font-mono">{param.name}</td>
                                         <td className="p-2 text-faint">{param.type}</td>
                                         <td className="p-2 text-faint">{param.example}</td>
                                       </tr>
@@ -365,7 +365,7 @@ export default function MeasurementPlanDisplay({ plan, score, scrapeData }: Meas
                       {goal.expectedRate && <p className="text-xs text-faint mt-1">Rate: {goal.expectedRate}</p>}
                     </div>
                   </div>
-                  <div className="mt-3"><code className="text-xs text-cyan-400 font-mono bg-cyan-500/10 px-2 py-0.5 rounded-md">{goal.event}</code></div>
+                  <div className="mt-3"><code className="text-xs text-ds-accent-text font-mono bg-cyan-500/10 px-2 py-0.5 rounded-md">{goal.event}</code></div>
                 </motion.div>
               ))}
             </div>
@@ -413,7 +413,7 @@ export default function MeasurementPlanDisplay({ plan, score, scrapeData }: Meas
                     <div className="bg-black/20 rounded-xl p-4 space-y-2">
                       {items.map((item: string, i: number) => (
                         <div key={i} className="flex items-center gap-2">
-                          <Code className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <Code className="w-3.5 h-3.5 text-ds-accent-text shrink-0" />
                           <code className="text-sm text-muted font-mono">{typeof item === 'string' ? item : JSON.stringify(item)}</code>
                         </div>
                       ))}

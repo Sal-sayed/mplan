@@ -439,7 +439,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
   );
 
   const CATEGORY_COLOR: Record<string, string> = {
-    page: 'bg-slate-500/15 text-slate-300',
+    page: 'bg-slate-500/15 text-ds-secondary',
     engagement: 'bg-blue-500/15 text-blue-300',
     ecommerce: 'bg-emerald-500/15 text-emerald-300',
     form: 'bg-amber-500/15 text-amber-300',
@@ -566,7 +566,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                             <table className="w-full text-xs">
                               <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Type</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Req</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Source</th></tr></thead>
                               <tbody>{event.parameters.map((p, j) => (
-                                <tr key={p.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-cyan-300 font-mono">{p.name}</td><td className="px-3 py-1.5 text-ds-muted">{p.type}</td><td className="px-3 py-1.5 text-ds-muted">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-ds-muted font-mono">{p.source}</td></tr>
+                                <tr key={p.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-accent-text font-mono">{p.name}</td><td className="px-3 py-1.5 text-ds-muted">{p.type}</td><td className="px-3 py-1.5 text-ds-muted">{p.required ? 'yes' : 'no'}</td><td className="px-3 py-1.5 text-ds-muted font-mono">{p.source}</td></tr>
                               ))}</tbody>
                             </table>
                           </div>
@@ -623,7 +623,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                     <table className="w-full text-xs">
                       <thead><tr className="bg-ds-panel"><th className="text-left px-3 py-2 text-ds-muted font-medium">Name</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Scope</th><th className="text-left px-3 py-2 text-ds-muted font-medium">Parameter</th></tr></thead>
                       <tbody>{(plan.tooling?.ga4?.customDimensions || []).map((d, j) => (
-                        <tr key={d.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-secondary">{d.name}</td><td className="px-3 py-1.5 text-ds-muted">{d.scope}</td><td className="px-3 py-1.5 text-cyan-300 font-mono">{d.parameter}</td></tr>
+                        <tr key={d.name || j} className="border-t border-ds-line"><td className="px-3 py-1.5 text-ds-secondary">{d.name}</td><td className="px-3 py-1.5 text-ds-muted">{d.scope}</td><td className="px-3 py-1.5 text-ds-accent-text font-mono">{d.parameter}</td></tr>
                       ))}</tbody>
                     </table>
                   </div>
@@ -678,7 +678,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
           </button>
           <button onClick={runImplementationGuide}
             className="px-4 py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm font-medium flex items-center gap-2 hover:bg-ds-panel transition">
-            <Wrench size={14} className="text-cyan-300" /> <span className="hidden sm:inline">Implementation guide</span>
+            <Wrench size={14} className="text-ds-accent-text" /> <span className="hidden sm:inline">Implementation guide</span>
           </button>
           <ExcelDownloadBtn plan={plan} score={score} scrapeData={scrapeData} />
         </div>
@@ -847,7 +847,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                               </label>
                             </div>
                             <button type="button" onClick={runBackfill}
-                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
+                              className="mt-2 w-full py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-ds-accent-text text-xs font-medium hover:bg-cyan-500/20 transition flex items-center justify-center gap-1.5">
                               <BarChart3 size={12} /> Backfill &amp; check this range
                             </button>
                             <p className="text-[10px] text-ds-muted mt-1">Pulls daily GA4 event counts for the range into history, then runs the metric health check. Keep ranges within ~a year.</p>
@@ -903,7 +903,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
                       firing against its trailing baseline (collected metric history). */}
                   <button onClick={runMetricHealth}
                     className="w-full py-2.5 rounded-xl bg-ds-panel border border-ds-line-strong text-ds-secondary text-sm font-medium hover:bg-ds-panel transition flex items-center justify-center gap-2">
-                    <BarChart3 size={14} className="text-cyan-300" /> Check metric health
+                    <BarChart3 size={14} className="text-ds-accent-text" /> Check metric health
                   </button>
                   <button onClick={() => { setRdPhase('idle'); setRdError(''); }}
                     className="w-full py-2 rounded-xl bg-ds-panel border border-ds-line text-ds-secondary text-sm hover:bg-ds-panel transition">
@@ -931,7 +931,7 @@ export default function ResultsScreen({ plan, score, scrapeData, onReset, onRege
       <div className="h-full w-full flex flex-col items-center justify-center bg-ds-page p-6 text-center">
         {igPhase === 'loading' ? (
           <>
-            <Loader2 className="w-10 h-10 text-cyan-300 animate-spin mb-4" />
+            <Loader2 className="w-10 h-10 text-ds-accent-text animate-spin mb-4" />
             <p className="text-ds-ink font-semibold text-lg">Building implementation guide…</p>
             <p className="text-ds-muted text-sm mt-1.5">Deriving the GTM tags, triggers, and dataLayer pushes from your plan.</p>
           </>
