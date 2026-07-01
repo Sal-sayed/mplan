@@ -16,6 +16,11 @@
 // non-zero if ANY site's drift verdict is 'regression', so Render surfaces the
 // run as failed and it shows up in alerting. (Capture-model logic from the old
 // run-monitor-cron is intentionally NOT carried over — this is report-to-report.)
+//
+// The POST goes through fetchWithRetry so a cold-started Render app (which answers
+// 502/503/504 for the first ~30–60s) is retried, not treated as a hard failure.
+
+import { fetchWithRetry } from './lib/fetch-retry.mjs';
 
 const baseUrl = process.env.APP_BASE_URL;
 const secret = process.env.MONITOR_SECRET;
@@ -39,7 +44,7 @@ if (process.env.SCHEDULED_SITES) {
 const endpoint = new URL('/api/governance/run-scheduled', baseUrl).toString();
 
 try {
-  const res = await fetch(endpoint, {
+  const res = await fetchWithRetry(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
     body: JSON.stringify(sites ? { sites } : {}),

@@ -19,6 +19,11 @@
 // going. The job exits non-zero ONLY for a genuine failure: the app is unreachable
 // / returns non-2xx, or a property hit an UNEXPECTED error (GA4 5xx, store write).
 // One inaccessible property no longer red-X's the whole run.
+//
+// The POST goes through fetchWithRetry so a cold-started Render app (502/503/504 for
+// the first ~30–60s) is retried, not treated as a hard failure.
+
+import { fetchWithRetry } from './lib/fetch-retry.mjs';
 
 const baseUrl = process.env.APP_BASE_URL;
 const secret = process.env.MONITOR_SECRET;
@@ -31,7 +36,7 @@ if (!baseUrl || !secret) {
 const endpoint = new URL('/api/metrics/fetch-scheduled', baseUrl).toString();
 
 try {
-  const res = await fetch(endpoint, {
+  const res = await fetchWithRetry(endpoint, {
     method: 'POST',
     headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
     body: JSON.stringify({}),
