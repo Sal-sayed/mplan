@@ -1,11 +1,11 @@
-// Card — white surface, soft hairline border, 12px radius (rounded-ds). The base
-// surface for the new design system. Presentational; padding is the default p-5 and
-// can be overridden/extended via className.
+// Card — a LIGHT (white) surface that floats on the dark shell: 16px radius, a soft
+// drop shadow, and a hairline border. The base surface for the design system.
+// Presentational; padding defaults to p-5 and can be overridden via className.
 import type { ReactNode } from 'react';
 
 export function Card({ children, className = '' }: { children: ReactNode; className?: string }) {
   return (
-    <div className={`rounded-ds border border-ds-line bg-ds-card p-5 shadow-[0_1px_2px_rgba(15,23,42,0.04)] ${className}`}>
+    <div className={`rounded-2xl border border-ds-line bg-ds-card p-5 shadow-[0_8px_26px_rgba(0,0,0,0.22)] ${className}`}>
       {children}
     </div>
   );

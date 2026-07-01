@@ -52,9 +52,10 @@ test('verdictClasses: container + readable accent per variant', () => {
   assert.match(verdictClasses('danger').accent, /text-ds-danger-text/);
 });
 
-test('buttonClasses: primary is solid accent, secondary is quiet/bordered; both share the base', () => {
+test('buttonClasses: primary solid green; secondary soft-green; ghost neutral outline; all share the base', () => {
   assert.match(buttonClasses('primary'), /bg-ds-accent.*text-ds-accent-ink/);
-  assert.match(buttonClasses('secondary'), /ring-ds-line-strong/);
-  assert.ok(!buttonClasses('secondary').includes('bg-ds-accent '), 'secondary is not the accent fill');
-  for (const v of ['primary', 'secondary'] as const) assert.match(buttonClasses(v), /rounded-lg/);
+  assert.match(buttonClasses('secondary'), /bg-ds-accent-soft.*text-ds-accent-text/);
+  assert.match(buttonClasses('ghost'), /ring-ds-line-strong/);
+  assert.ok(!buttonClasses('secondary').includes('text-ds-accent-ink'), 'secondary is not the solid accent fill');
+  for (const v of ['primary', 'secondary', 'ghost'] as const) assert.match(buttonClasses(v), /rounded-lg/);
 });

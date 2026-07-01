@@ -66,15 +66,17 @@ export function verdictClasses(variant: Verdict): { container: string; accent: s
   return VERDICT_VARIANT[variant];
 }
 
-export type ButtonVariant = 'primary' | 'secondary';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
 const BUTTON_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ds-accent/40 disabled:opacity-50 disabled:cursor-not-allowed';
+  'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-ds-accent/40 disabled:opacity-50 disabled:cursor-not-allowed';
 const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-  // The ONE primary action per screen — solid accent.
+  // The ONE primary action per screen — solid green accent.
   primary: 'bg-ds-accent text-ds-accent-ink hover:bg-ds-accent-hover shadow-sm',
-  // Everything else — quiet, bordered.
-  secondary: 'bg-ds-card text-ds-ink ring-1 ring-inset ring-ds-line-strong hover:bg-ds-panel',
+  // A quiet, soft-green secondary CTA.
+  secondary: 'bg-ds-accent-soft text-ds-accent-text ring-1 ring-inset ring-ds-accent/20 hover:bg-ds-success-soft',
+  // A neutral outline (toolbars, "All metrics ▾").
+  ghost: 'bg-ds-panel text-ds-secondary ring-1 ring-inset ring-ds-line-strong hover:bg-ds-subtle',
 };
 export function buttonClasses(variant: ButtonVariant): string {
   return `${BUTTON_BASE} ${BUTTON_VARIANT[variant]}`;
