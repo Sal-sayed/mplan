@@ -58,56 +58,92 @@ html.light {
   --contrast-ink: #ffffff;
 }
 
-/* ── Design system (NEW — additive, namespaced `ds-*`) ───────────────────────
-   A separate, always-LIGHT enterprise palette for the new Plan → Set up → Go live
-   → Monitor UI. Namespaced under ds-* so it generates NEW utilities (bg-ds-card,
-   text-ds-ink, border-ds-line, bg-ds-accent, rounded-ds, …) WITHOUT touching the
-   existing app tokens (bg-app/text-ink/…). Fixed light values, independent of the
-   dark/light toggle, because the new design is intentionally light. Adopted screen
-   by screen in later steps; nothing existing is restyled by adding this. */
+/* ── Design system (ds-*) — dark SHELL + light CARD surfaces, green accent ─────
+   Two surface families, per the Monitor design target: a DARK app shell (rail +
+   header chrome) and LIGHT cards that float on it. Retheme in ONE place. Card text
+   tokens (ds-ink/secondary/muted) are DARK (they sit on the light cards); shell
+   text tokens (ds-shell-ink/…) are light (they sit on the dark chrome). */
 @theme inline {
+  /* light card surfaces + dark card text */
   --color-ds-page: var(--ds-page);
   --color-ds-card: var(--ds-card);
   --color-ds-panel: var(--ds-panel);
+  --color-ds-subtle: var(--ds-subtle);
   --color-ds-ink: var(--ds-ink);
   --color-ds-secondary: var(--ds-secondary);
   --color-ds-muted: var(--ds-muted);
   --color-ds-line: var(--ds-line);
   --color-ds-line-strong: var(--ds-line-strong);
+  /* dark shell surfaces + light shell text */
+  --color-ds-shell: var(--ds-shell);
+  --color-ds-shell-panel: var(--ds-shell-panel);
+  --color-ds-shell-raised: var(--ds-shell-raised);
+  --color-ds-shell-inset: var(--ds-shell-inset);
+  --color-ds-shell-line: var(--ds-shell-line);
+  --color-ds-shell-ink: var(--ds-shell-ink);
+  --color-ds-shell-secondary: var(--ds-shell-secondary);
+  --color-ds-shell-muted: var(--ds-shell-muted);
+  --color-ds-shell-faint: var(--ds-shell-faint);
+  /* green accent ramp */
   --color-ds-accent: var(--ds-accent);
   --color-ds-accent-hover: var(--ds-accent-hover);
   --color-ds-accent-ink: var(--ds-accent-ink);
+  --color-ds-accent-bright: var(--ds-accent-bright);
+  --color-ds-accent-spark: var(--ds-accent-spark);
   --color-ds-accent-soft: var(--ds-accent-soft);
+  --color-ds-accent-text: var(--ds-accent-text);
+  /* verdict / status — soft bg + readable text, solid for dots/icons */
   --color-ds-success: var(--ds-success);
   --color-ds-success-soft: var(--ds-success-soft);
+  --color-ds-success-text: var(--ds-success-text);
   --color-ds-warning: var(--ds-warning);
   --color-ds-warning-soft: var(--ds-warning-soft);
+  --color-ds-warning-text: var(--ds-warning-text);
   --color-ds-danger: var(--ds-danger);
   --color-ds-danger-soft: var(--ds-danger-soft);
-  --radius-ds: 0.75rem;
+  --color-ds-danger-text: var(--ds-danger-text);
+  --color-ds-neutral: var(--ds-neutral);
+  --color-ds-neutral-soft: var(--ds-neutral-soft);
+  --radius-ds: 1rem;
 }
 
 :root {
-  /* Dark premium (violet) — matches the /home marketing aesthetic so the whole
-     product reads as one cohesive dark, glassy, violet-accented UI. Re-themed in
-     ONE place: every screen on the ds-* tokens flips with these values, no
-     per-screen edits. (Semantic status text uses the lighter -300/-400 shades in
-     the components so it stays readable on this dark surface.) */
-  --ds-page: #0a0613;       /* dark violet-black page background */
-  --ds-card: #14101f;       /* card surface (lifted off the page) */
-  --ds-panel: #1a1426;      /* subtle panel / inset */
-  --ds-ink: #f8fafc;        /* near-white primary text */
-  --ds-secondary: #c3cad6;  /* slate-300 — secondary text */
-  --ds-muted: #8b97a8;      /* slate-400 — muted labels */
-  --ds-line: rgba(255, 255, 255, 0.10);      /* soft hairline border */
-  --ds-line-strong: rgba(255, 255, 255, 0.18); /* stronger hairline */
-  --ds-accent: #8b5cf6;     /* violet-500 — the one accent */
-  --ds-accent-hover: #7c3aed;
+  /* Light CARD surfaces (white cards float on the dark shell) + dark card text. */
+  --ds-page: #0a1210;        /* main content bg = the dark shell */
+  --ds-card: #ffffff;        /* card surface — LIGHT */
+  --ds-panel: #fafbfa;       /* light inset (table header, subtle rows) */
+  --ds-subtle: #f5f7f6;      /* subtler light inset (preliminary tier) */
+  --ds-ink: #101815;         /* primary text ON CARDS (dark) */
+  --ds-secondary: #64726c;   /* secondary card text */
+  --ds-muted: #93a099;       /* muted card labels */
+  --ds-line: #eef2ef;        /* card hairline */
+  --ds-line-strong: #e4e9e6; /* stronger card hairline */
+
+  /* Dark SHELL (rail + header chrome) + light shell text. */
+  --ds-shell: #0a1210;
+  --ds-shell-panel: #0d1613;
+  --ds-shell-raised: #14211b;
+  --ds-shell-inset: #0f1a16;
+  --ds-shell-line: rgba(255, 255, 255, 0.07);
+  --ds-shell-ink: #f2f7f4;
+  --ds-shell-secondary: #c9d6d0;
+  --ds-shell-muted: #8a988f;
+  --ds-shell-faint: #5f6e66;
+
+  /* Green accent ramp. */
+  --ds-accent: #17a35b;         /* primary green (buttons, active) */
+  --ds-accent-hover: #148a4c;
   --ds-accent-ink: #ffffff;
-  --ds-accent-soft: rgba(139, 92, 246, 0.16); /* translucent violet wash */
-  --ds-success: #34d399; --ds-success-soft: rgba(16, 185, 129, 0.14);
-  --ds-warning: #fbbf24; --ds-warning-soft: rgba(245, 158, 11, 0.14);
-  --ds-danger: #f87171;  --ds-danger-soft: rgba(239, 68, 68, 0.14);
+  --ds-accent-bright: #34d399;  /* green on the dark shell */
+  --ds-accent-spark: #22b866;   /* sparklines / dots */
+  --ds-accent-soft: #e3f5ea;    /* light green wash on cards */
+  --ds-accent-text: #17784a;    /* readable green text on light */
+
+  /* Verdicts — green=healthy / amber=watch / red=at-risk / gray=collecting. */
+  --ds-success: #17a35b; --ds-success-soft: #e3f5ea; --ds-success-text: #17784a;
+  --ds-warning: #d99a00; --ds-warning-soft: #faf0d6; --ds-warning-text: #9a6a12;
+  --ds-danger:  #dc2626; --ds-danger-soft:  #fbe4e4; --ds-danger-text:  #c22b2b;
+  --ds-neutral: #6b7a72; --ds-neutral-soft: #eef2f0;
 }
 
 html, body {
@@ -119,11 +155,11 @@ html, body {
   padding: 0;
   position: fixed;
   inset: 0;
-  /* The product is now uniformly dark (ds-* palette). Paint the body backdrop
-     with the dark page color so overscroll/rubber-band behind the scroll
-     containers never reveals a white flash, regardless of the legacy theme. */
-  background: var(--ds-page);
-  color: var(--ds-ink);
+  /* The app shell is dark; paint the body backdrop with the shell color so
+     overscroll never reveals a flash. Default text is the light SHELL ink (the
+     dark card text lives inside cards). */
+  background: var(--ds-shell);
+  color: var(--ds-shell-ink);
   overscroll-behavior: none;
   /* Render native scrollbars (and form controls) in dark — kills the white
      Windows/Chrome scrollbar that clashed with the dark UI while scrolling. */
@@ -132,22 +168,25 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Default thin, dark, violet-tinted scrollbar for every scroll container that
-   isn't explicitly styled (the marketing page + any plain overflow-y-auto). */
-*:not(.scroll-area):not(.no-scrollbar) {
+/* Default thin scrollbar on the dark shell — subtle light thumb (matches the
+   design target's shell scrollbar). Light areas can opt into .lightscroll. */
+*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll) {
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.45) transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
 }
-*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar { width: 10px; height: 10px; }
-*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-track { background: var(--ds-page); }
-*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.45);
-  border: 2px solid var(--ds-page);
+*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar { width: 10px; height: 10px; }
+*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-track { background: transparent; }
+*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 9999px;
 }
-*:not(.scroll-area):not(.no-scrollbar)::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.7);
+*:not(.scroll-area):not(.no-scrollbar):not(.lightscroll)::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
+
+/* Scrollbar for LIGHT card areas — subtle dark thumb. */
+.lightscroll::-webkit-scrollbar { width: 10px; height: 10px; }
+.lightscroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.14); border-radius: 9999px; }
 
 /* Page backdrop (AnimatedBackground). Dark = the canvas cityscape + dark
    gradient. Light = a clean light gradient with the dark canvas FX hidden. */
@@ -165,12 +204,12 @@ html.light .backdrop-fx {
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+  scrollbar-color: rgba(23, 163, 91, 0.4) transparent;
 }
 .scroll-area::-webkit-scrollbar { width: 5px; height: 5px; }
 .scroll-area::-webkit-scrollbar-track { background: transparent; }
 .scroll-area::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #6366f1, #0ea5e9);
+  background: #17a35b;
   border-radius: 999px;
 }
 
