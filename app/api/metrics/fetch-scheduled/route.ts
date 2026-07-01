@@ -58,13 +58,16 @@ interface MetricFetchResult {
 }
 
 // An EXPECTED, skippable per-property condition: the owner hasn't connected
-// Google, their session expired, or the connected account lacks access to that
-// GA4 property (401/403). These are routine for an unattended fan-out across many
-// owners — the cron logs them as warnings and keeps going, rather than failing the
-// whole run. Anything else (GA4 5xx, a store write failure, a bug) is a genuine
-// error. Matches the messages thrown by token-store + ga4-data.
+// Google, their refresh token expired or was revoked (they disconnected / Google
+// invalidated it — "invalid_grant" / "Token has been expired or revoked"), or the
+// connected account lacks access to that GA4 property (401/403). All mean the same
+// thing operationally — that owner must reconnect Google — and are routine for an
+// unattended fan-out across many owners, so the cron logs them as warnings and keeps
+// going rather than failing the whole run. Anything else (GA4 5xx, a store write
+// failure, a bug) is a genuine error. Matches the messages thrown by token-store,
+// oauth (Google token endpoint), and ga4-data.
 function isSkippableAccessError(message: string): boolean {
-  return /not connected|reconnect google|does not have access|no access|lacks access|permission denied|forbidden|unauthorized|\b40[13]\b/i.test(message);
+  return /not connected|reconnect google|does not have access|no access|lacks access|permission denied|forbidden|unauthorized|invalid_grant|expired or revoked|has been expired|revoked|\b40[13]\b/i.test(message);
 }
 
 export async function POST(req: NextRequest) {

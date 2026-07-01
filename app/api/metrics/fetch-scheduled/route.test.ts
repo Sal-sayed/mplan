@@ -143,6 +143,17 @@ test('a property the account lacks access to (403) → SKIPPED (expected)', asyn
   assert.match(body.results[0].error, /does not have access/);
 });
 
+test("a property whose Google token is expired/revoked → SKIPPED (owner must reconnect), no crash, nothing saved", async () => {
+  persistedRuns = [runWithProp('p-exp')];
+  ga4ThrowsForProp = 'p-exp';
+  ga4ThrowMessage = 'Google OAuth: Token has been expired or revoked.';
+  const res = await POST(makeReq({}, auth('topsecret')));
+  const body = await res.json();
+  assert.equal(res.status, 200);
+  assert.equal(body.results[0].skipped, true, 'expired/revoked token is a skip, not a hard error');
+  assert.equal(savedBatches.length, 0);
+});
+
 test('an UNEXPECTED per-property error (GA4 5xx) → NOT skipped (a real failure the cron should surface)', async () => {
   persistedRuns = [runWithProp('111')];
   ga4ThrowsForProp = '111';
